@@ -1,0 +1,213 @@
+root:
+  cache: ../tmp/cache/
+  store: ../tmp/store/
+config_files:
+  box: ./creds/BoxApp.json
+  secrets: ./creds/secrets.csv
+hcainventory: 914812277065
+NonQBox:
+  ASA24:
+    WU: 164567251974
+    MGH: 164567848285
+    UMN: 164567856460
+    UCLA: 164567247278
+  Actigraphy:
+    WU: 164567473001
+    MGH: 164567488449
+    UMN: 164567845637
+    UCLA: 164567002110
+  Psychopy:
+    WU: 164567123018
+    MGH: 164567661061
+    UMN: 164567618335
+    UCLA: 164567368480
+Redcap:
+  lagdatevar: visit_date
+  api_url: 'https://redcap.wustl.edu/redcap/api/'
+  api_url10: 'https://redcap.wustl.edu/redcap/api/'
+  api_url7: 'https://redcap.wustl.edu/redcap/srvrs/prod_v3_1_0_001/redcap/api/'
+  #apikeysfile=./secrets.yml
+  datasources:
+    aabcarms:
+      redcapidvar: subject_id
+      idvalid : newaabc_yn=0
+      WU:
+        dag: washington_univers
+        sitenum: 4
+      MGH:
+        dag: mgh_massachusetts
+        sitenum: 1
+      UCLA:
+        dag: ucla
+        sitenum: 2
+      UMN:
+        dag: university_of_minn
+        sitenum: 3
+
+      eventmap:  # new variable, 'redcap_event' should contain the following mapping
+        register_arm_1 : AF0
+        v3_inperson_arm_1 : V3
+        af1_follow_up_arm_1 : AF1
+        v4_inperson_arm_1 : V4
+        af2_follow_up_arm_1 : AF2
+        af3_follow_up_arm_1 : AF3
+        end_of_study_arm_1 : AFZ
+        register_arm_2 : AF0
+        v3_inperson_arm_2 : V3
+        af1_follow_up_arm_2 : AF1
+        v4_inperson_arm_2 : V4
+        af2_follow_up_arm_2 : AF2
+        af3_follow_up_arm_2 : AF3
+        end_of_study_arm_2 : AFZ
+        register_arm_3 : AF0
+        v3_inperson_arm_3 : V3
+        af1_follow_up_arm_3 : AF1
+        v4_inperson_arm_3 : V4
+        af2_follow_up_arm_3 : AF2
+        af3_follow_up_arm_3 : AF3
+        end_of_study_arm_3 : AFZ
+        register_arm_4 : AF0
+        v3_inperson_arm_4 : V3
+        af1_follow_up_arm_4 : AF1
+        v4_inperson_arm_4 : V4
+        af2_follow_up_arm_4 : AF2
+        af3_follow_up_arm_4 : AF3
+        end_of_study_arm_4 : AFZ
+        register_arm_5 : AF0
+        v2_inperson_arm_5 : V2
+        af1_follow_up_arm_5 : AF1
+        v3_inperson_arm_5 : V3
+        af2_follow_up_arm_5 : AF2
+        af3_follow_up_arm_5 : AF3
+        end_of_study_arm_5 : AFZ
+        register_arm_6 : AF0
+        v2_inperson_arm_6 : V2
+        af1_follow_up_arm_6 : AF1
+        v3_inperson_arm_6 : V3
+        af2_follow_up_arm_6 : AF2
+        af3_follow_up_arm_6 : AF3
+        end_of_study_arm_6 : AFZ
+        register_arm_7 : AF0
+        v2_inperson_arm_7 : V2
+        af1_follow_up_arm_7 : AF1
+        v3_inperson_arm_7 : V3
+        af2_follow_up_arm_7 : AF2
+        af3_follow_up_arm_7 : AF3
+        end_of_study_arm_7 : AFZ
+        register_arm_8 : AF0
+        v2_inperson_arm_8 : V2
+        af1_follow_up_arm_8 : AF1
+        v3_inperson_arm_8 : V3
+        af2_follow_up_arm_8 : AF2
+        af3_follow_up_arm_8 : AF3
+        end_of_study_arm_8 : AFZ
+        register_arm_9 : AF0
+        v1_inperson_arm_9 : V1
+        af1_follow_up_arm_9 : AF1
+        v2_inperson_arm_9 : V2
+        af2_follow_up_arm_9 : AF2
+        af3_follow_up_arm_9 : AF3
+        end_of_study_arm_9 : AFZ
+        register_arm_10 : AF0
+        v1_inperson_arm_10 : V1
+        af1_follow_up_arm_10 : AF1
+        v2_inperson_arm_10 : V2
+        af2_follow_up_arm_10 : AF2
+        af3_follow_up_arm_10 : AF3
+        end_of_study_arm_10 : AFZ
+        register_arm_11 : AF0
+        v1_inperson_arm_11 : V1
+        af1_follow_up_arm_11 : AF1
+        v2_inperson_arm_11 : V2
+        af2_follow_up_arm_11 : AF2
+        af3_follow_up_arm_11 : AF3
+        end_of_study_arm_11 : AFZ
+        register_arm_12 : AF0
+        v1_inperson_arm_12 : V1
+        af1_follow_up_arm_12 : AF1
+        v2_inperson_arm_12 : V2
+        af2_follow_up_arm_12 : AF2
+        af3_follow_up_arm_12 : AF3
+        end_of_study_arm_12 : AFZ
+    qint:
+      redcapidvar: study_id
+      subject: subjectid
+      eventvar: event
+      BoxFolders:
+        WU: 164567425454
+        MGH: 164567697980
+        UCLA: 164567694892
+        UMN: 164567205278
+variablemask: 951436222592
+#NonRedCAP:
+# tlbx:
+#    instruments:
+#      1,Cognition Fluid Composite v1.1
+#      2,Cognition Crystallized Composite v1.1
+#      3,Cognition Early Childhood Composite v1.1
+#      4,Cognition Total Composite Score v1.1
+#      5,Negative Affect Summary (18+)
+#      6,Social Satisfaction Summary (18+)
+#      7,Psychological Well Being Summary (18+)
+#      8,NIH Toolbox Picture Vocabulary Test Age 3+ v2.0
+#      9,NIH Toolbox Flanker Inhibitory Control and Attention Test Age 12+ v2.1
+##      10,NIH Toolbox List Sorting Working Memory Test Age 7+ v2.1
+#      11,NIH Toolbox Dimensional Change Card Sort Test Age 12+ v2.1
+#      12,NIH Toolbox Pattern Comparison Processing Speed Test Age 7+ v2.1
+#      13,NIH Toolbox Picture Sequence Memory Test Age 8+ Form A v2.1
+#      14,NIH Toolbox Oral Reading Recognition Test Age 3+ v2.0
+#      15,NIH Toolbox Grip Strength Test Age 3+ v2.0
+#      16,NIH Toolbox 4-Meter Walk Gait Speed Test Age 7+ v2.0
+#      17,NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0
+#      18,NIH Toolbox Positive Affect CAT Age 18+ v2.0
+#      19,NIH Toolbox General Life Satisfaction CAT Age 18+ v2.0
+#      20,NIH Toolbox Meaning and Purpose CAT Age 18+ v2.0
+#      21,NIH Toolbox Emotional Support FF Age 18+ v2.0
+#      22,NIH Toolbox Instrumental Support FF Age 18+ v2.0
+#      23,NIH Toolbox Friendship FF Age 18+ v2.0
+#      24,NIH Toolbox Loneliness FF Age 18+ v2.0
+#      25,NIH Toolbox Perceived Rejection FF Age 18+ v2.0
+###      26,NIH Toolbox Perceived Hostility FF Age 18+ v2.0
+#      27,NIH Toolbox Self-Efficacy CAT Age 18+ v2.0
+##      28,NIH Toolbox Perceived Stress FF Age 18+ v2.0
+#      29,NIH Toolbox Fear-Affect CAT Age 18+ v2.0
+#      30,NIH Toolbox Fear-Somatic Arousal FF Age 18+ v2.0
+#      31,NIH Toolbox Sadness CAT Age 18+ v2.0
+#      32,NIH Toolbox Anger-Affect CAT Age 18+ v2.0
+#      33,NIH Toolbox Anger-Hostility FF Age 18+ v2.0
+#      34,NIH Toolbox Anger-Physical Aggression FF Age 18+ v2.0
+#      35,NIH Toolbox Pain Interference CAT Age 18+ v2.0
+#      36,NIH Toolbox Words-In-Noise Test Age 6+ v2.1
+#      37,NIH Toolbox Visual Acuity Practice Age 8+ v2.0
+##      38,NIH Toolbox Visual Acuity Test Age 8+ v2.0
+
+
+
+#PreRelease:
+#  mask:
+#    subjects: #in an unmoving list in box from Angela?
+#    variablemask: 951436222592
+##    qintaabc:
+#      dropvars: Q-DROP
+##      restrictvars: Q-RESTRICTED
+#    aabc:
+#      dropvars: AABC-ARMS-DROP
+##      restrictvars: AABC-ARMS-RESTRICTED
+#    tlbx:
+#      dropvars: {TLBX-SCORES-DROP,TLBX-RAW-DROP}
+#      restrictvars: {TLBX-SCORES-RESTRICTED,TLBX-RAW-RESTRICTED}
+#  restrictedfolder:
+#  unrestrictedfolder:
+#  createvars:
+#    cogcomps:
+#    bmi:
+#    redcap_event:
+#    subject:
+##  aabc2hcpmap:
+#  folder_restricted:
+#  folder_unrestricted: 161956162589
+
+# qint.py -> find all new records (new shaws and/or new filenames) and transform them one file per person/event to one row per person event in qintaabc
+# AXEBA
+# moca.py -> check that moca score is complete.  If not, check for an attachment file.  If not an attachment - send a ticket to upload file and fix missingness issue
+#
