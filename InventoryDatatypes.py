@@ -6,6 +6,7 @@ import re
 import collections
 from functions import *
 
+#config = LoadSettings()
 filename="./config.yml"
 with open(filename, 'r') as fd:
         config=yaml.load(fd, Loader=yaml.SafeLoader)
@@ -17,7 +18,10 @@ ids=pd.read_csv(pathp)
 hcaids=ids.subject.drop_duplicates()
 hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','V2'])].sort_values('redcap_event').drop_duplicates(subset='subject',keep='last')
 
-#config = LoadSettings()
+
+#CREATE TIME DEPENDENT FLAGS
+
+#
 #########################################################################################
 #PHASE 0 TEST IDS AND ARMS
 # if Legacy, id exists in HCA and other subject id related tests:
@@ -300,6 +304,7 @@ dupass3=dffull3.loc[dffull1.duplicated(subset=['PIN','Inst'],keep=False)][['PIN'
 print('WU duplicated assessments')
 print(dupass1)
 
+###CHANGE THIS SO THAT SPECIFIC INSTRUMENT TO DELETE IS IN A SINGLE VARIABLE, since 1 2 3 are not the only options.
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
 fixass=inventoryaabc2[['subject','redcap_event','tlbxwin_dups___1','tlbxwin_dups___2','tlbxwin_dups___3']].copy()
 fixass['Assessment Name']=''

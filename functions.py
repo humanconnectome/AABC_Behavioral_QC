@@ -1,5 +1,5 @@
 #functions
-def redjson(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0]):
+def redjson(tok):
     aabcarms = {
         'token': tok,
         'content': 'record',
@@ -14,7 +14,7 @@ def redjson(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().dr
         'returnFormat': 'json'}
     return aabcarms
 
-def redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51031'):
+def redreport(tok):
     aabcreport = {
         'token':tok,
         'content': 'report',
@@ -28,7 +28,7 @@ def redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().
     }
     return aabcreport
 
-def getframe(struct,api_url=config['Redcap']['api_url10']):
+def getframe(struct,api_url):
     r = requests.post(api_url,data=struct)
     print('HTTP Status: ' + str(r.status_code))
     a=r.json()
@@ -95,7 +95,7 @@ def parse_content(content):
 
     return new_row
 
-def send_frame(dataframe, tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0]):
+def send_frame(dataframe, tok):
     data = {
         'token': tok,
         'content': 'record',
