@@ -1,3 +1,7 @@
+import requests
+import os
+import sys
+
 #functions
 def redjson(tok):
     aabcarms = {
@@ -14,7 +18,7 @@ def redjson(tok):
         'returnFormat': 'json'}
     return aabcarms
 
-def redreport(tok):
+def redreport(tok,reportid):
     aabcreport = {
         'token':tok,
         'content': 'report',
@@ -60,7 +64,7 @@ def idvisits(aabcarmsdf,keepsies):
     idvisit=idvisit.rename(columns={'subject_id_x':'subject','subject_id_y':'subject_id'})
     idvisit['redcap_event']=idvisit.replace({'redcap_event_name':
                                            config['Redcap']['datasources']['aabcarms']['eventmap']})['redcap_event_name']
-    idvisit = idvisit.loc[~(idvisit.subject.str.upper().str.contains('TEST'))]
+    idvisit = idvisit.loc[~(idvisit.subject.astype(str).str.upper().str.contains('TEST'))]
     return idvisit
 
 def parse_content(content):
@@ -114,6 +118,7 @@ def send_frame(dataframe, tok):
 def run_ssh_cmd(host, cmd):
     cmds = ['ssh', '-t', host, cmd]
     return Popen(cmds, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+
 
 def TLBXreshape(results1):
     df=results1.decode('utf-8')

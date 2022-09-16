@@ -1,15 +1,22 @@
 import pandas as pd
 import yaml
+import ccf
 from ccf.box import LifespanBox
 import requests
 import re
 import collections
 from functions import *
+from config import *
+import subprocess
 
-#config = LoadSettings()
-filename="./config.yml"
-with open(filename, 'r') as fd:
-        config=yaml.load(fd, Loader=yaml.SafeLoader)
+
+import os
+import sys
+
+config = LoadSettings()
+#filename="./config.yml"
+#with open(filename, 'r') as fd:
+#        config=yaml.load(fd, Loader=yaml.SafeLoader)
 secret=pd.read_csv(config['config_files']['secrets'])
 
 box = LifespanBox(cache="./tmp")
@@ -20,7 +27,7 @@ hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','
 
 
 #CREATE TIME DEPENDENT FLAGS
-
+pd.concat([x for x in args if not x.empty])
 #
 #########################################################################################
 #PHASE 0 TEST IDS AND ARMS
@@ -34,21 +41,9 @@ aabcreport = redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset
 #aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
 aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 
-
-#hcpadf=getframe(struct=hcpa,api_url=config['Redcap']['api_url7'])
-##achenbach alert HCA
-#acbh=hcpadf[['subject_id','redcap_event_name','id','alert_cal','site']]
-#subs=acbh.loc[acbh.redcap_event_name=='visit_1_arm_1'][['subject_id','id','site']]
-#subs.columns=['subject','id','site']
-#acbhreport=pd.merge(acbh.drop(columns=['site']),subs,on='id')
-#afin=acbhreport.loc[~(acbhreport.alert_cal.isin(['','0']))]
-#afin=afin.loc[~(afin.subject.str.contains('_'))]
-#afin['redcap_event']=afin.redcap_event_name.str.replace('visit_2_arm_1','V2').str.replace('visit_1_arm_1','V1')
-#afin[['id','site','subject','redcap_event','alert_cal']].sort_values('subject').to_csv('HCA_Achenbach_Alert.csv',index=False)
-
 study_id=config['Redcap']['datasources']['aabcarms']['redcapidvar']
 #slim=aabcarmsdf[['study_id','redcap_event_name',study_id,'legacy_yn']].loc[(aabcarmsdf.redcap_event_name.str.contains('register'))]# & (~(aabcarmsdf[study_id].str.upper().str.contains('TEST')))]
-slim=aabcinvent[['study_id','redcap_event_name',study_id,'legacy_yn']].loc[(aabcinvent.redcap_event_name.str.contains('register'))]# & (~(aabcinvent[study_id].str.upper().str.contains('TEST')))]
+slim=aabcinvent[['study_id','redcap_event_name',study_id,'legacy_yn','site']].loc[(aabcinvent.redcap_event_name.str.contains('register'))]# & (~(aabcinvent[study_id].str.upper().str.contains('TEST')))]
 
 fortest=pd.merge(hcaids,slim,left_on='subject',right_on=study_id,how="outer",indicator=True)
 fortest._merge.value_counts()
@@ -57,20 +52,28 @@ legacyarms=['register_arm_1','register_arm_2','register_arm_3','register_arm_4',
 #send these to Angela for emergency correction:
 ft=fortest.loc[(fortest._merge=='right_only') & ((fortest.legacy_yn=='1')|(fortest.redcap_event_name.isin(legacyarms)))]
 ft=ft.loc[~((ft[study_id]=='')|(ft[study_id].str.upper().str.contains('TEST')))]
+qlist1=pd.DataFrame()
 if not ft.empty:
+    ft['reason']='Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list'
+    ft['code']='RED'
+    qlist1=ft[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date']]
     for s in list(ft[study_id].unique()):
         print('CODE RED :',s,': Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list')
 
 #if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 ft2=fortest.loc[(fortest._merge=='both') & ((fortest.legacy_yn != '1')|(~(fortest.redcap_event_name.isin(legacyarms))))]
-if not ft.empty:
+qlist2=pd.DataFrame()
+if not ft2.empty:
+    ft2['reason']='Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list'
+    ft2['code']='RED'
+    qlist2 = ft2[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date']]
     for s2 in list(ft2[study_id].unique()):
-        print('CODE RED :',s2,': Subject found in AABC REDCap Database with an ID from HCP-A study but no legacy indications')
+        print('CODE RED :',s2,': Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked')
 
 #if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 #get last visit
 hca_lastvisits["next_visit"]=''
-aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site',study_id])
+aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site','subject_id','site','v0_date','event_date'])
 sortaabc=aabcidvisits.sort_values(['study_id','redcap_event_name'])
 sortaabcv=sortaabc.loc[~(sortaabc.redcap_event_name.str.contains('register'))]
 sortaabcv.drop_duplicates(subset=['study_id'],keep='first')
@@ -80,23 +83,39 @@ hca_lastvisits2=hca_lastvisits.drop(columns=['redcap_event','next_visit'])
 check=pd.merge(hca_lastvisits2,sortaabcv,left_on=['subject','next_visit2'],right_on=['subject','redcap_event'],how='outer',indicator=True)
 check=check.loc[check._merge !='left_only']
 wrongvisit=check.loc[check._merge=='right_only']
-
+wrongvisit=wrongvisit.loc[~(wrongvisit.redcap_event=='phone_call_arm_13')]
+qlist3=pd.DataFrame()
 if not wrongvisit.empty:
+    wrongvisit['reason']='Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2'
+    wrongvisit['code']='RED'
+    qlist3 = wrongvisit[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','event_date']]
     for s3 in list(wrongvisit[study_id].unique()):
         if s3 !='':
-            print('CODE RED :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2 or v.v')
+            print('CODE RED :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
 
 missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('register')) & (aabcinvent[study_id]=='')]
+qlist4=pd.DataFrame()
 if not missingsubids.empty:
+    missingsubids['reason']='Subject ID is MISSING in AABC REDCap Database Record with study id'
+    missingsubids['code']='ORANGE'
+    qlist4 = missingsubids[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
     for s4 in list(missingsubids.study_id.unique()):
-        print('CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
+        print('CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
 
 #test subjects that need to be deleted
 tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST'))][['study_id',study_id,'redcap_event_name']]
+qlist5=pd.DataFrame()
 if not tests.empty:
+    tests['reason']='HOUSEKEEPING : Please delete test subject.  Use test database when practicing'
+    tests['code']='HOUSEKEEPING'
+    qlist5 = tests[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
     for s5 in list(tests[study_id].unique()):
         print('HOUSEKEEPING : Please consider deleting test Subject:', s5)
 
+
+#concatenate flags for REDCap key variables
+Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
+Q1=pd.concat([Q0,qlist1,qlist2,qlist3,qlist4,qlist5],axis=0)
 
 #########################################################################################
 # PHASE 1 Test that all dataypes expected are present
@@ -143,6 +162,8 @@ aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 #all box files
 folderqueue=['WU','UMN']#,'MGH','UCLA']
 ######
+###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
+#import anything new by any definition (new name, new sha, new fileid).
 for studyshort in folderqueue:
     folder = config['Redcap']['datasources']['qint']['BoxFolders'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
@@ -213,17 +234,18 @@ for studyshort in folderqueue:
                 print(len(rows2push.subjectid),"rows to push:")
                 print(list(rows2push.subjectid))
 
-
 if not rows2push.empty:
   send_frame(dataframe=rows2push, tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
+###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
 
+#QC checks
 #now check
 qintdf2=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 invq=qintdf2[['id', 'site', 'subjectid','visit']].copy()
 invq['redcap_event']="V"+invq.visit
 invq['Qint']='YES'
 invq=invq.loc[~(invq.subjectid.str.upper().str.contains('TEST'))]
-#before merging, check for duplicates that haven't been given the 'unusable' flag
+#Before merging, check for duplicates that haven't been given the 'unusable' flag
 dups=qintdf.loc[qintdf.duplicated(subset=['subjectid','visit'])]
 dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
 if dups2.shape[0]>0:
@@ -232,34 +254,45 @@ if dups2.shape[0]>0:
 
 inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
 
+q1=pd.DataFrame()
 if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subject','redcap_event']])
+    q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subject','redcap_event']]
+    q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo']
+    q1['code']='ORANGE'
+
 inventoryaabc2._merge.value_counts()
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
-missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES'))][['subject','redcap_event','site','event_date']]
+missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES'))][['subject_id','study_id','subject','redcap_event','site','event_date']]
+q2=pd.DataFrame()
 if missingQ.shape[0]>0:
     print("Q-interactive cannot be found for")
     print(missingQ)
+    q2=missingQ.copy()
+    q2['reason']='Unable to locate Q-interactive data for this subject/visit'
+    q2['code']='ORANGE'
 
+Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
+Q2=pd.concat([Q0,q1,q2],axis=0)
 
 # Toolbox  ###need to rename these all so that numbering 1::4 matches site convention
-##FIRST THE RAW DATA
-
-rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#note that you'll need to be on VPN for this to work
+##FIRST THE RAW DATA FILES
+rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-raw11=TLBXreshape(rawd1)
-#raw21=TLBXreshape(rawd2)
+raw41=TLBXreshape(rawd4)
+#raw11=TLBXreshape(rawd2)
 raw31=TLBXreshape(rawd3)
-#raw41=TLBXreshape(rawd4)
+#raw21=TLBXreshape(rawd4)
 
 rf2=pd.concat([raw11,raw31])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
