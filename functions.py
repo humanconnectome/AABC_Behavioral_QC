@@ -1,6 +1,14 @@
+import pandas as pd
+import yaml
+import ccf
+from ccf.box import LifespanBox
 import requests
+import re
+import collections
+import subprocess
 import os
 import sys
+from subprocess import Popen, PIPE
 
 #functions
 def redjson(tok):
@@ -59,7 +67,7 @@ def getframe(struct,api_url):
 
 def idvisits(aabcarmsdf,keepsies):
     idvisit=aabcarmsdf[keepsies].copy()
-    registers=idvisit.loc[idvisit.redcap_event_name.str.contains('register')][[study_id,'study_id','site']]
+    registers=idvisit.loc[idvisit.redcap_event_name.str.contains('register')][['subject_id','study_id','site']]
     idvisit=pd.merge(registers,idvisit.drop(columns=['site']),on='study_id',how='right')
     idvisit=idvisit.rename(columns={'subject_id_x':'subject','subject_id_y':'subject_id'})
     idvisit['redcap_event']=idvisit.replace({'redcap_event_name':
@@ -114,6 +122,7 @@ def send_frame(dataframe, tok):
     r = requests.post('https://redcap.wustl.edu/redcap/api/', data=data)
     print('HTTP Status: ' + str(r.status_code))
     print(r.json())
+
 
 def run_ssh_cmd(host, cmd):
     cmds = ['ssh', '-t', host, cmd]

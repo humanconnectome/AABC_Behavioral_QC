@@ -8,8 +8,6 @@ import collections
 from functions import *
 from config import *
 import subprocess
-
-
 import os
 import sys
 
@@ -27,7 +25,7 @@ hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','
 
 
 #CREATE TIME DEPENDENT FLAGS
-pd.concat([x for x in args if not x.empty])
+#pd.concat([x for x in args if not x.empty])
 #
 #########################################################################################
 #PHASE 0 TEST IDS AND ARMS
@@ -123,7 +121,7 @@ Q1=pd.concat([Q0,qlist1,qlist2,qlist3,qlist4,qlist5],axis=0)
 keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
           'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
           'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
-          'tlbxwin_dups___1', 'tlbxwin_dups___2','tlbxwin_dups___3','actigraphy_collectyn',
+          'tlbxwin_dups_v2','actigraphy_collectyn',
           'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
 inventoryaabc=idvisits(aabcinvent,keepsies=keeplist)
 #inventoryaabc['redcap_event'] = inventoryaabc.replace({'redcap_event_name':
@@ -248,9 +246,12 @@ invq=invq.loc[~(invq.subjectid.str.upper().str.contains('TEST'))]
 #Before merging, check for duplicates that haven't been given the 'unusable' flag
 dups=qintdf.loc[qintdf.duplicated(subset=['subjectid','visit'])]
 dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
+q0=pd.DataFrame()
 if dups2.shape[0]>0:
     print("Duplicate Q-interactive records")
     print(dups2[['subjectid','visit']])
+    q0['reason']=['Duplicate Q-interactive records']
+    q0['code']='ORANGE'
 
 inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
 
@@ -276,11 +277,12 @@ if missingQ.shape[0]>0:
     q2['code']='ORANGE'
 
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
-Q2=pd.concat([Q0,q1,q2],axis=0)
+Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 
 # Toolbox  ###need to rename these all so that numbering 1::4 matches site convention
 #note that you'll need to be on VPN for this to work
 ##FIRST THE RAW DATA FILES
+
 rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
@@ -290,86 +292,87 @@ rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
 rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 raw41=TLBXreshape(rawd4)
-#raw11=TLBXreshape(rawd2)
+raw11=TLBXreshape(rawd1)
 raw31=TLBXreshape(rawd3)
-#raw21=TLBXreshape(rawd4)
+raw21=TLBXreshape(rawd2)
 
-rf2=pd.concat([raw11,raw31])
+rf2=pd.concat([raw41,raw31,raw21,raw11])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper()=='ABC123')]
 rf2=rf2.drop_duplicates(subset='PIN').copy()
 
-#fixtypos - need to incorporate information about date of session as given in filename because of typos involving legit ids
+#fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
+# THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
 fixtypos=inventoryaabc2.loc[inventoryaabc2.nih_toolbox_upload_typo!=''][['subject','redcap_event','nih_toolbox_upload_typo']]
 fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
 fixes=dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
 rf2.PIN=rf2.PIN.replace(fixes)
 
-df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
-df2['subject']=df2.PIN.str.split("_",expand=True)[0]
-df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
-df2['TLBX']='YES'
-
 
 #NOW THE SCORED DATA
-results1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+results1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
 results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
 
 
 dffull1=TLBXreshape(results1)
-#dffull2=TLBXreshape(results2)
+dffull2=TLBXreshape(results2)
 dffull3=TLBXreshape(results3)
-#dffull4=TLBXreshape(results4)
+dffull4=TLBXreshape(results4)
+
+# THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
+##fixtypos - need to extend and incorporate information about date of session as given in filename because of typos involving legit ids
+dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
+dffull.PIN=dffull.PIN.replace(fixes)
 
 #Find any duplicated Assessments
-dupass1=dffull1.loc[dffull1.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-dupass3=dffull3.loc[dffull1.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-#dupass2=dffull2.loc[dffull1.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-#dupass4=dffull4.loc[dffull1.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
+dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
+dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
 
 # HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
-print('WU duplicated assessments')
-print(dupass1)
+print('Duplicated assessments')
+print(dupass)
+#TURN THIS INTO A TICKET
 
-###CHANGE THIS SO THAT SPECIFIC INSTRUMENT TO DELETE IS IN A SINGLE VARIABLE, since 1 2 3 are not the only options.
+#turn this into a function so you don't have to write it out for all the instrumnets
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
-fixass=inventoryaabc2[['subject','redcap_event','tlbxwin_dups___1','tlbxwin_dups___2','tlbxwin_dups___3']].copy()
-fixass['Assessment Name']=''
-fixass['Inst']=''
-fixass.loc[fixass.tlbxwin_dups___1=='1','Assessment Name']=1
-fixass.loc[fixass.tlbxwin_dups___2=='1','Assessment Name']=2
-fixass.loc[fixass.tlbxwin_dups___3=='1','Assessment Name']=3
-fixass.loc[fixass.tlbxwin_dups___1=='1','Inst']='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
-fixass.loc[fixass.tlbxwin_dups___2=='1','Inst']='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
-fixass.loc[fixass.tlbxwin_dups___3=='1','Inst']='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
-fixass['PIN']=fixass.subject+'_'+fixass.redcap_event
-badass=fixass.loc[~(fixass['Inst']=='')]
+instrument='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
+dupvar='tlbxwin_dups_v2'
+iset=inventoryaabc2
+dset=dffull
 
-dffull=pd.concat([dffull1, dffull3])#, dffull2, dffull4])
-#still working on this logic:
-#dffull=pd.merge(dffull,badass[['PIN','Inst','Assessment Name']],on=['PIN','Inst','Assessment Name'],how='outer',indicator=True)
+def filterdupass(instrument,dupvar,iset,dset):
+    fixass=iset[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','v0_date','event_date',dupvar]].copy()
+    fixass['reason']='Duplicated Assessments'
+    fixass['code']='orange'
+    fixass['PIN']=fixass.subject + '_' + fixass.redcap_event
+    fixass=fixass.loc[~(fixass[dupvar]=='')][['PIN',dupvar]]
+    fixass['Assessment Name']="Assessment " + fixass[dupvar]
+    fixass['Inst']=instrument
+    dset=pd.merge(dset,fixass,on=['PIN','Inst','Assessment Name'],how='left')
+    dset=dset.loc[~(dset[dupvar].isnull()==False)]
+    return dset
 
-#date split isn't woring here...won't lead to the catching of PINs that were reused by accident on subsequent visits
+dffull=filterdupass(instrument,dupvar,iset,dffull)
+
+#date split isn't woring here...won't lead to the catching of PINs that were reused by accident on subsequent visits - need to read the filename
+#from the filesystem
 #fix and then rewrite the last chec
-dffull['Date']=dffull.DateFinished.str.split(' ',expand=True)[[0]]
-df=dffull[['PIN', 'DeviceID', 'Assessment Name', 'Date']].rename(columns={'Date': 'DateFinished'}).drop_duplicates(subset=['PIN'])
+#dffull['Date']=dffull.DateFinished.str.split(' ',expand=True)[[0]]
+#df=dffull[['PIN', 'DeviceID', 'Assessment Name', 'Date']].rename(columns={'Date': 'DateFinished'}).drop_duplicates(subset=['PIN'])
 
-df2=df.copy() #pd.concat([df11,df31])
-df2=df2.loc[~(df2.PIN.str.upper().str.contains('TEST'))]
+dffull=dffull.copy() #pd.concat([df11,df31])
+dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
+dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
 
 #make it such that don't need to delete Date column so that accidental PIN re-use can be caught
-df2=df2.drop(columns='DateFinished')
+dffull=dffull.drop(columns='DateFinished')
 #df2=df2.loc[~(df2.DateFinished=='')]
-df2=df2.loc[~(df2.PIN.str.upper()=='ABC123')]
-
-##fixtypos - need to extend and incorporate information about date of session as given in filename because of typos involving legit ids
-df2.PIN=df2.PIN.replace(fixes)
 
 #Either scored or raw is missing in format expected:
 formats=pd.merge(df2,rf2,how='outer',on='PIN',indicator=True)[['PIN','_merge']]
@@ -397,10 +400,7 @@ if dupsT.shape[0]>0:
 inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN']],on=['subject','redcap_event'],how='outer',indicator=True)
 
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
-inventoryaabc4.loc[inventoryaabc4._merge=='right_only']
-#use HCA8596099_V2 which was entered as HCA8596099_V3 which will be an issue at next visit as an example.
-
-
+#turn this into a ticket
 if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event']])
@@ -415,8 +415,7 @@ if missingT.shape[0]>0:
 
 
 #ASA24
-folderqueue=['WU']
-
+folderqueue=['WU','UMN']
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
@@ -443,13 +442,14 @@ if missingAD.shape[0]>0:
     print(missingAD[['subject','redcap_event','site','event_date','asa24yn','asa24id']])
 
 #ACTIGRAPHY
-folderqueue=['WU']
+folderqueue=['WU','UMN','MGH','UCLA']
 
 #something wierd is happening with the requests library...this doesn't work under requests, but does work under re
 #I guess they are different.
 
 
 for studyshort in folderqueue:
+    print(studyshort)
     folder = config['NonQBox']['Actigraphy'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
     sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
