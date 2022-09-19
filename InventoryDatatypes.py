@@ -465,7 +465,7 @@ if missingAD.shape[0]>0:
     print(missingAD[['subject','redcap_event','site','event_date','asa24yn','asa24id']])
     a1=missingAD.copy()
     a1['reason']='Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit'
-    a1['code']='ORANGE'
+    a1['code']='GREEN'
     a1['subject_id']=a1['subject']
 a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date']]
 
