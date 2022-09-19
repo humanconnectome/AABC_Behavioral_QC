@@ -278,6 +278,7 @@ if missingQ.shape[0]>0:
 
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
 Q2=pd.concat([Q0,q0,q1,q2],axis=0)
+Q2['subject_id']=Q2.subject
 
 # Toolbox  ###need to rename these all so that numbering 1::4 matches site convention
 #note that you'll need to be on VPN for this to work
@@ -319,18 +320,23 @@ results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
 results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
 
+# THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
+
+#still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name.
+#this is close, but wont work for case of multipe PINs in a single file
+#find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
+#cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
 dffull1=TLBXreshape(results1)
 dffull2=TLBXreshape(results2)
 dffull3=TLBXreshape(results3)
 dffull4=TLBXreshape(results4)
 
-# THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
 ##fixtypos - need to extend and incorporate information about date of session as given in filename because of typos involving legit ids
 dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
 dffull.PIN=dffull.PIN.replace(fixes)
 
-#Find any duplicated Assessments
+#find any duplicated Assessments
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
 dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
 
@@ -360,48 +366,55 @@ def filterdupass(instrument,dupvar,iset,dset):
 
 dffull=filterdupass(instrument,dupvar,iset,dffull)
 
-#date split isn't woring here...won't lead to the catching of PINs that were reused by accident on subsequent visits - need to read the filename
-#from the filesystem
-#fix and then rewrite the last chec
-#dffull['Date']=dffull.DateFinished.str.split(' ',expand=True)[[0]]
-#df=dffull[['PIN', 'DeviceID', 'Assessment Name', 'Date']].rename(columns={'Date': 'DateFinished'}).drop_duplicates(subset=['PIN'])
 
 dffull=dffull.copy() #pd.concat([df11,df31])
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
 
-#make it such that don't need to delete Date column so that accidental PIN re-use can be caught
-dffull=dffull.drop(columns='DateFinished')
-#df2=df2.loc[~(df2.DateFinished=='')]
 
 #Either scored or raw is missing in format expected:
-formats=pd.merge(df2,rf2,how='outer',on='PIN',indicator=True)[['PIN','_merge']]
+formats=pd.merge(dffull.PIN.drop_duplicates(),rf2,how='outer',on='PIN',indicator=True)[['PIN','_merge']]
 issues=formats.loc[~(formats._merge=='both')]
+t1=pd.DataFrame()
 if issues.shape[0]>0:
-    print("Raw or Scored data not found (make sure you didn't export Narrow format")
+    t1=issues.copy()
+    t1['code']='YELLOW'
+    t1['reason']="Raw or Scored data not found (make sure you didn't export Narrow format)"
+    print("Raw or Scored data not found (make sure you didn't export Narrow format)")
     print(issues[['PIN']])
 
+
+#DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand.
+#identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
+#find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
+dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
+catchdups=dffull.loc[~(dffull.Date=='')]
+c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
+c.loc[c.duplicated(subset='PIN')]
+
+#dupsT=something.loc[something.duplicated(subset=['PIN'])]
+#if dupsT.shape[0]>0:
+#    print("Duplicate TLBX records")
+#    print(dupsT[['PIN']])
+
 #add subject and visit
+df2=dffull.drop_duplicates(subset='PIN')
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['subject']=df2.PIN.str.split("_",expand=True)[0]
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['TLBX']='YES'
 
-#identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
-# ...e.g. because id was reused at a different time
-#pd.set_option('display.width', 1000)
-#pd.options.display.width=1000
-dupsT=df2.loc[df2.duplicated(subset=['PIN'])]
-if dupsT.shape[0]>0:
-    print("Duplicate TLBX records")
-    print(dupsT[['PIN']])
 
 #now merge with inventory
 inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN']],on=['subject','redcap_event'],how='outer',indicator=True)
 
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 #turn this into a ticket
+t2=pd.DataFrame()
 if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
+    t2=inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].copy()
+    t2['reason']='TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?'
+    t2['code']='ORANGE'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event']])
 
@@ -409,13 +422,22 @@ inventoryaabc4=inventoryaabc4.loc[inventoryaabc4._merge!='right_only'].drop(colu
 #inventoryaabc2.to_csv('test.csv',index=False)
 
 missingT=inventoryaabc4.loc[(inventoryaabc4.redcap_event_name.str.contains('v')) & (~(inventoryaabc4.TLBX=='YES'))]
+t3=pd.DataFrame()
 if missingT.shape[0]>0:
+    t3=missingT.copy()
+    t3['reason']='Missing TLBX data'
+    t3['code']='ORANGE'
     print("TLBX cannot be found for")
     print(missingT[['subject','redcap_event','site','event_date','nih_toolbox_collectyn']])
+
+T=pd.concat([t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code']]
+
 
 
 #ASA24
 folderqueue=['WU','UMN']
+studyshort='WU'
+anydata=[]
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
@@ -430,24 +452,28 @@ for studyshort in folderqueue:
         if not k.empty:
             s=k.UserName.unique().tolist()
             subs=subs+s
-    anydata=list(set(subs))
+    anydata=anydata+list(set(subs))
 
 AD=pd.DataFrame(anydata,columns=['asa24id'])
 AD['ASA24']='YES'
 inventoryaabc5=pd.merge(inventoryaabc4,AD,on='asa24id',how='left')
 missingAD=inventoryaabc5.loc[(inventoryaabc5.redcap_event_name.str.contains('v')) & (~(inventoryaabc5.ASA24=='YES'))]
 missingAD=missingAD.loc[~(missingAD.asa24yn=='0')]
+a1=pd.DataFrame()
 if missingAD.shape[0]>0:
     print("ASA24 cannot be found for")
     print(missingAD[['subject','redcap_event','site','event_date','asa24yn','asa24id']])
+    a1=missingAD.copy()
+    a1['reason']='Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit'
+    a1['code']='ORANGE'
+    a1['subject_id']=a1['subject']
+a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date']]
+
 
 #ACTIGRAPHY
-folderqueue=['WU','UMN','MGH','UCLA']
-
-#something wierd is happening with the requests library...this doesn't work under requests, but does work under re
-#I guess they are different.
-
-
+folderqueue=['WU','UMN','MGH']#,'UCLA']
+actdata=[]
+studyshort='WU'
 for studyshort in folderqueue:
     print(studyshort)
     folder = config['NonQBox']['Actigraphy'][studyshort]
@@ -474,7 +500,7 @@ for studyshort in folderqueue:
             file_one.close()
         except:
             print("Something the matter with file",f)
-    actdata=list(actsubs)#list(set(actsubs))
+    actdata=actdata+list(actsubs)#list(set(actsubs))
 
 #Duplicates?
 if [item for item, count in collections.Counter(actdata).items() if count > 1] != '':
@@ -482,19 +508,27 @@ if [item for item, count in collections.Counter(actdata).items() if count > 1] !
 
 ActD=pd.DataFrame(actdata,columns=['PIN'])
 ActD['Actigraphy']='YES'
-inventoryaabc6=pd.merge(inventoryaabc,ActD,on='PIN',how='left')
+inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
 #Missing?
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
 missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn=='0')]
+a2=pd.DataFrame()
 if missingAct.shape[0]>0:
     print("Actigraphy cannot be found for")
     print(missingAct[['subject','redcap_event','site','event_date','actigraphy_collectyn']])
+    a2=missingAct.copy()
+    a2['reason']='Unable to locate Actigraphy data in Box for this subject/visit'
+    a2['code']='YELLOW'
+    a2['subject_id']=a2['subject']
+a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
+
+
 
 #MOCA SPANISH
 
 #Psychopy - just a super high level scan for existence of id (typo catch)
 studyshort='WU'
-folderqueue=['WU']
+folderqueue=['WU','MGH','UMN']#UCLE
 
 anydata=pd.DataFrame()
 for studyshort in folderqueue:
@@ -515,15 +549,6 @@ for studyshort in folderqueue:
         anydata=pd.concat([anydata,rowfor])
 
 anydata.columns=['subject','redcap_event','scan','fname']
-#anydata['ab']=''
-#for s in list(anydata.subject.unique()):
-#    snydata=anydata.loc[anydata.subject==s]
-#    for v in list(snydata.redcap_event.unique()):
-#       # this doesnt work because there are duplicate subjects in snydata
-#        ab=list(snydata.loc[snydata.redcap_event==v].scan.unique())
-#        #rint(s,v,ab)
-#        #nydata.loc[(anydata.subject==s) & (anydata.redcap_event==v),'ab']=ab
-
 PSY=anydata[['subject','redcap_event']].drop_duplicates()
 PSY['PsychopyBox']='YES'
 checkIDB=anydata[['subject','redcap_event','scan']]
@@ -532,41 +557,72 @@ ci=checkIDB.drop_duplicates(subset='PIN_AB')
 
 #just check for existence of PsychoPY in IntraDB
 #/ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
-psychointradb = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+psychointradb4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                       "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                       "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                       "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 
-df = pd.DataFrame(str.splitlines(psychointradb.decode('utf-8')))
-df = df[0].str.split(',', expand=True)
+df4 = pd.DataFrame(str.splitlines(psychointradb4.decode('utf-8')))
+df4 = df4[0].str.split(',', expand=True)
+df3 = pd.DataFrame(str.splitlines(psychointradb3.decode('utf-8')))
+df3 = df3[0].str.split(',', expand=True)
+#df2 = pd.DataFrame(str.splitlines(psychointradb2.decode('utf-8')))
+#df2 = df2[0].str.split(',', expand=True)
+df1 = pd.DataFrame(str.splitlines(psychointradb1.decode('utf-8')))
+df1 = df1[0].str.split(',', expand=True)
+
+df=pd.concat([df1,df2,df3,df4],axis=0)
 df.columns = ['PIN_AB']
+df.PIN_AB=df.PIN_AB.str.replace('t','')
 
 #merge df and ci to see what's missing
 psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
+#p1=pd.DataFrame()
+p1=[]
 print('psychopy in BOX but not in IntraDB')
 for i in psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique():
     print(i)
+p1 = pd.DataFrame(psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique())
+p1['code']='ORANGE'
+p1['reason']='Psychopy Data Found in Box but not IntraDB'
 
+#p2=pd.DataFrame()
+p2=[]
+print('psychopy in IntraDB but not in Box')
+for i in psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique():
+    print(i)
+p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
+p2['code']='ORANGE'
+p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
-# not necessary to check details.  Java class checs this
-#(base) [plenzini@login01 ~]$ ll /ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
-#total 46
-#-rw-r----- 1 nrg-svc-hcpi nrg-hcpi-fs  9544 Jul 22 09:40 mbPCASL_HCA7281271_V3_B_2022-07-22_090925.log
-#-rw-r----- 1 nrg-svc-hcpi nrg-hcpi-fs    23 Jul 22 09:40 mbPCASL_HCA7281271_V3_BEyeCamFPS_Dist.csv
-#-rw-r----- 1 nrg-svc-hcpi nrg-hcpi-fs 36061 Jul 22 09:40 REST_HCA7281271_V3_B_2022-07-22_082603.log
-#-rw-r----- 1 nrg-svc-hcpi nrg-hcpi-fs    34 Jul 22 09:40 REST_HCA7281271_V3_BEyeCamFPS_Dist.csv
-
+p=pd.concat([p1,p2])#,columns='PIN_AB')
+p['PIN']=p[0].str[:13]
+p['PIN_AB']=p[0]
+p['subject_id']=p[0].str[:10]
+pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id']),p,on='PIN',how='right')
+pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date','PIN_AB']]
 
 inventoryaabc7=pd.merge(inventoryaabc6,PSY,on=['subject','redcap_event'],how='left')
 missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.PsychopyBox=='YES'))]
+missingPY['subject_id']=missingPY.subject
 #missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
+peepy=pd.DataFrame()
 if missingPY.shape[0]>0:
+    peepy=missingPY
     print("PsyhoPy (BOX copy) cannot be found for")
     print(missingPY[['subject','redcap_event','site','event_date','PsychopyBox']])
-
-
+    peepy['reason']='PsychoPy (Box copy) cannot be found'
+    peepy['code']='ORANGE'
 #HOT FLASH DATA (not available yet)
 #GO BACK AND CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
-
+P=pd.concat([pwho,peepy])
 #IntraDB ID
+P=P[['subject','redcap_event','study_id', 'site','reason','code','v0_date','event_date']]
+
 
 # NOW CHECK inventory variables for completeness
 # inventory_complete
@@ -577,9 +633,13 @@ cb=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('register')
 print("Current Counterbalance Ratio:\n",inventoryaabc7.counterbalance_2nd.value_counts())
 print("Currently Missing Counterbalance:",print(cb))
 
-summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','visit_summary_complete','event_date']]
+summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
 summv=summv.loc[~(summv.visit_summary_complete=='2')]
+summv['code']='YELLOW'
+summv['reason']='Visit Summary Incomplete'
+summv=summv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
 print("Visit Summary Incomplete:\n",summv)
+
 
 agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','age_visit','event_date']]
 ag=agev.loc[agev.age_visit !='']
@@ -590,20 +650,36 @@ print("Missing Age:\n",agev)
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 #inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
-bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['redcap_event_name','subject','bmi','event_date']]
-#bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
-print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
+bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date']]
 
 #outliers
 a=bmiv.loc[bmiv.bmi !='']
 print("BMI OUTLIERS:\n",a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)])
+
+
+#missings
+bmiv=bmiv.loc[bmiv.bmi=='']
+
+bmiv['code']='RED'
+bmiv['reason']='Missing Height or Weight (or there is another typo preventing BMI calculation)'
+#bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
+print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
+bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
+
+from datetime import date
+
+QAAP=pd.concat([Q1,Q2,a1,a2,P,summv,bmiv,T],axis=0)
+QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
+QAAP['issue age']=pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
+QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_date','issue age']]
+QAAP.sort_values(['site','issue age'],ascending=False).to_csv('test.csv')
+
 
 # event_dates (would be caught by missing age)
 
 #send to csv
 inventoryaabc7.loc[inventoryaabc7.age=='','age']=inventoryaabc6.age_visit
 inventoryaabc7.loc[inventoryaabc7.event_date=='','event_date']=inventoryaabc7.v0_date
-
 inventoryaabc7=inventoryaabc7.sort_values(['redcap_event','event_date'])
 inventoryaabc7[['study_id','redcap_event_name','redcap_event','subject', 'site',
        'age', 'sex', 'event_date',
@@ -613,7 +689,6 @@ inventoryaabc7[['study_id','redcap_event_name','redcap_event','subject', 'site',
                 'Actigraphy','actigraphy_collectyn', 'vms_collectyn',
                 'legacy_yn', 'psuedo_guid', 'ethnic', 'racial',
        'visit_summary_complete']].to_csv('Inventory_Beta.csv',index=False)
-
 
 #HARMONIZE Event Names
 #Add filenames to TLBX data
