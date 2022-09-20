@@ -280,6 +280,12 @@ Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','
 Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
+# HARMONIZE EVENT VARIABLES ACROSS HCA, HCD, and AABC
+# drop first duplicates, typo records from Q (q0,q1), and unusables q_unusable.isnull()==False)
+# drop restricted vars.
+# send to BOX
+
+
 # Toolbox  ###need to rename these all so that numbering 1::4 matches site convention
 #note that you'll need to be on VPN for this to work
 ##FIRST THE RAW DATA FILES

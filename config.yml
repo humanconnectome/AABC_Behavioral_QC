@@ -43,8 +43,93 @@ Redcap:
       UMN:
         dag: university_of_minn
         sitenum: 3
-
-      eventmap:  # new variable, 'redcap_event' should contain the following mapping
+      UniverseEventmap: #'hcaaabc_event' is map that can hold HCA and AABC universes together...will be added to HCA eventually
+        register_arm_1 : V0
+        v3_inperson_arm_1 : V3
+        af1_follow_up_arm_1 : V3F1
+        v4_inperson_arm_1 : V4
+        af2_follow_up_arm_1 : V4F1
+        af3_follow_up_arm_1 : V4F2
+        end_of_study_arm_1 : VZ
+        register_arm_2 : V0
+        v3_inperson_arm_2 : V3
+        af1_follow_up_arm_2 : V3F1
+        v4_inperson_arm_2 : V4
+        af2_follow_up_arm_2 : V4F1
+        af3_follow_up_arm_2 : V4F2
+        end_of_study_arm_2 : VZ
+        register_arm_3 : V0
+        v3_inperson_arm_3 : V3
+        af1_follow_up_arm_3 : V3F1
+        v4_inperson_arm_3 : V4
+        af2_follow_up_arm_3 : V4F1
+        af3_follow_up_arm_3 : V4F2
+        end_of_study_arm_3 : VZ
+        register_arm_4 : V0
+        v3_inperson_arm_4 : V3
+        af1_follow_up_arm_4 : V3F1
+        v4_inperson_arm_4 : V4
+        af2_follow_up_arm_4 : V4F1
+        af3_follow_up_arm_4 : V4F2
+        end_of_study_arm_4 : VZ
+        register_arm_5 : V0
+        v2_inperson_arm_5 : V2
+        af1_follow_up_arm_5 : V2F1
+        v3_inperson_arm_5 : V3
+        af2_follow_up_arm_5 : V3F1
+        af3_follow_up_arm_5 : V3F2
+        end_of_study_arm_5 : VZ
+        register_arm_6 : V0
+        v2_inperson_arm_6 : V2
+        af1_follow_up_arm_6 : V2F1
+        v3_inperson_arm_6 : V3
+        af2_follow_up_arm_6 : V3F1
+        af3_follow_up_arm_6 : V3F2
+        end_of_study_arm_6 : VZ
+        register_arm_7 : V0
+        v2_inperson_arm_7 : V2
+        af1_follow_up_arm_7 : V2F1
+        v3_inperson_arm_7 : V3
+        af2_follow_up_arm_7 : V3F1
+        af3_follow_up_arm_7 : V3F2
+        end_of_study_arm_7 : VZ
+        register_arm_8 : V0
+        v2_inperson_arm_8 : V2
+        af1_follow_up_arm_8 : V2F1
+        v3_inperson_arm_8 : V3
+        af2_follow_up_arm_8 : V3F1
+        af3_follow_up_arm_8 : V3F2
+        end_of_study_arm_8 : VZ
+        register_arm_9 : V0
+        v1_inperson_arm_9 : V2
+        af1_follow_up_arm_9 : V2F1
+        v2_inperson_arm_9 : V3
+        af2_follow_up_arm_9 : V3F1
+        af3_follow_up_arm_9 : V3F2
+        end_of_study_arm_9 : VZ
+        register_arm_10 : V0
+        v1_inperson_arm_10 : V1
+        af1_follow_up_arm_10 : V1F1
+        v2_inperson_arm_10 : V2
+        af2_follow_up_arm_10 : V2F1
+        af3_follow_up_arm_10 : V2F2
+        end_of_study_arm_10 : VZ
+        register_arm_11 : V0
+        v1_inperson_arm_11 : V1
+        af1_follow_up_arm_11 : V1F1
+        v2_inperson_arm_11 : V2
+        af2_follow_up_arm_11 : V2F1
+        af3_follow_up_arm_11 : V2F2
+        end_of_study_arm_11 : VZ
+        register_arm_12 : V0
+        v1_inperson_arm_12 : V1
+        af1_follow_up_arm_12 : V1F1
+        v2_inperson_arm_12 : V2
+        af2_follow_up_arm_12 : V2F1
+        af3_follow_up_arm_12 : V2F2
+        end_of_study_arm_12 : VZ
+        phone_call_arm_13 : AP
+      AABCeventmap:  # new variable, 'redcap_event' should contain the following mapping
         register_arm_1 : AF0
         v3_inperson_arm_1 : V3
         af1_follow_up_arm_1 : AF1
@@ -129,6 +214,8 @@ Redcap:
         af2_follow_up_arm_12 : AF2
         af3_follow_up_arm_12 : AF3
         end_of_study_arm_12 : AFZ
+        phone_call_arm_13 : AP
+
     qint:
       redcapidvar: study_id
       subject: subjectid
@@ -139,6 +226,7 @@ Redcap:
         UCLA: 164567694892
         UMN: 164567205278
 variablemask: 951436222592
+
 #NonRedCAP:
 # tlbx:
 #    instruments:
