@@ -90,7 +90,7 @@ if not ft2.empty:
 #get last visit
 hca_lastvisits["next_visit"]=''
 #idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
-aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site','subject_id','site','v0_date','event_date'])
+aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site','subject_id','v0_date','event_date'])
 sortaabc=aabcidvisits.sort_values(['study_id','redcap_event_name'])
 sortaabcv=sortaabc.loc[~(sortaabc.redcap_event_name.str.contains('register'))]
 sortaabcv.drop_duplicates(subset=['study_id'],keep='first')
@@ -481,7 +481,7 @@ T=pd.concat([t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event'
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-folderqueue=['WU','UMN']  #UCLA and MGH not started yet
+folderqueue=['WU','UMN','MGH']  #UCLA and MGH not started yet
 anydata=[]
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
@@ -513,6 +513,7 @@ if missingAD.shape[0]>0:
     a1['code']='GREEN'
     a1['subject_id']=a1['subject']
 a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date']]
+#a1 is concatenated later with other q2 codes
 
 #################################################################################
 #ACTIGRAPHY
@@ -608,7 +609,6 @@ for studyshort in folderqueue:
 
 anydata.columns=['subject','redcap_event','scan','fname']
 PSY=anydata[['subject','redcap_event']].drop_duplicates()
-PSY['PsychopyBox']='YES'
 checkIDB=anydata[['subject','redcap_event','scan']]
 checkIDB['PIN_AB']=checkIDB.subject+'_'+checkIDB.redcap_event + '_'+checkIDB.scan
 ci=checkIDB.drop_duplicates(subset='PIN_AB')
@@ -633,7 +633,7 @@ df3 = df3[0].str.split(',', expand=True)
 df1 = pd.DataFrame(str.splitlines(psychointradb1.decode('utf-8')))
 df1 = df1[0].str.split(',', expand=True)
 
-df=pd.concat([df1,df2,df3,df4],axis=0)
+df=pd.concat([df1,df3,df4],axis=0) #df2,
 df.columns = ['PIN_AB']
 df.PIN_AB=df.PIN_AB.str.replace('t','')
 
@@ -657,24 +657,28 @@ p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
 p2['code']='ORANGE'
 p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
-#find subjects in AABC but not in IntraDB (other checks will have found data not in intraDB)
 p=pd.concat([p1,p2])#,columns='PIN_AB')
 p['PIN']=p[0].str[:13]
 p['PIN_AB']=p[0]
 p['subject_id']=p[0].str[:10]
-pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id']),p,on='PIN',how='right')
+p['subject']=p[0].str[:10]
+pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
 pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date','PIN_AB']]
 
-inventoryaabc7=pd.merge(inventoryaabc6,PSY,on=['subject','redcap_event'],how='left')
-missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.PsychopyBox=='YES'))]
+#dont worry about duplicates in IntraDB - these will be filtered.
+#find subjects in AABC but not in IntraDB or BOX
+PSY2=psymiss.drop_duplicates(subset='subject')[['subject','redcap_event']]
+PSY2['Psychopy']='YES'
+inventoryaabc7=pd.merge(inventoryaabc6,PSY2,on=['subject','redcap_event'],how='left')
+missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.Psychopy=='YES'))].copy()
 missingPY['subject_id']=missingPY.subject
 #missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
 peepy=pd.DataFrame()
 if missingPY.shape[0]>0:
     peepy=missingPY
-    print("PsyhoPy (BOX copy) cannot be found for")
-    print(missingPY[['subject','redcap_event','site','event_date','PsychopyBox']])
-    peepy['reason']='PsychoPy (Box copy) cannot be found'
+    print("PsyhoPy cannot be found in BOX or IntraDB for ")
+    print(missingPY[['subject','redcap_event','site','event_date','Psychopy']])
+    peepy['reason']='PsychoPy cannot be found in BOX or IntraDB'
     peepy['code']='ORANGE'
 
 P=pd.concat([pwho,peepy])
@@ -698,46 +702,66 @@ P=P[['subject','redcap_event','study_id', 'site','reason','code','v0_date','even
 pd.set_option('display.width', 1000)
 pd.options.display.width=1000
 
-cb=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('register')) & (inventoryaabc7.counterbalance_2nd=='')][['redcap_event_name','subject','v0_date','passedscreen']]
-print("Current Counterbalance Ratio:\n",inventoryaabc7.counterbalance_2nd.value_counts())
-print("Currently Missing Counterbalance:",print(cb))
+cb=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('register')) & (inventoryaabc7.counterbalance_2nd=='')][['site','study_id','redcap_event','redcap_event_name','subject','v0_date','passedscreen']]
+if cb.shape[0]>0:
+    print("Current Counterbalance Ratio:\n", inventoryaabc7.counterbalance_2nd.value_counts())
+    print("Currently Missing Counterbalance:", cb)
+    cb['reason']='Currently Missing Counterbalance'
+    cb['code']='RED'
+#QC
+C=cb[['subject','redcap_event','study_id', 'site','reason','code','v0_date']]
+
+
 
 summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
 summv=summv.loc[~(summv.visit_summary_complete=='2')]
-summv['code']='YELLOW'
-summv['reason']='Visit Summary Incomplete'
-summv=summv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
-print("Visit Summary Incomplete:\n",summv)
+if summv.shape[0]>0:
+    summv['code']='YELLOW'
+    summv['reason']='Visit Summary Incomplete'
+    summv=summv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
+    print("Visit Summary Incomplete:\n",summv)
 
-agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','age_visit','event_date']]
+agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
 ag=agev.loc[agev.age_visit !='']
-print("AGE OUTLIERS:\n",ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=90 )])
+agemv=ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=90 )].copy()
+if agemv.shape[0]>0:
+    print("AGE OUTLIERS:\n",agemv)
+    agemv['code']='RED'
+    agemv['reason']='Age outlier. Please double check DOB and Event Date'
+    agemv=agemv[['subject','redcap_event','study_id', 'site','reason','code','event_date','v0_date']]
 
-agev=agev.loc[(agev.age_visit.astype(float).isnull()==True)]
-print("Missing Age:\n",agev)
+ageav=agev.loc[(agev.age_visit.astype(float).isnull()==True)]
+if ageav.shape[0]>0:
+    print("Missing Age:\n",ageav)
+    ageav['code']='RED'
+    ageav['reason']='Missing Age. Please check DOB and Event Date'
+    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','code','event_date','v0_date']]
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 #inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
-bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date']]
-
+bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date']].copy()
 #outliers
-a=bmiv.loc[bmiv.bmi !='']
-print("BMI OUTLIERS:\n",a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)])
-
+a=bmiv.loc[bmiv.bmi !=''].copy()
+a=a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)].copy()
+if a.shape[0]>0:
+    a['code']='RED'
+    a['reason']='BMI is an outlier.  Please double check height and weight'
+    a=a[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
+    print("BMI OUTLIERS:\n",a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)])
 
 #missings
 bmiv=bmiv.loc[bmiv.bmi=='']
-
-bmiv['code']='RED'
-bmiv['reason']='Missing Height or Weight (or there is another typo preventing BMI calculation)'
-#bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
-print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
-bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
+if bmiv.shape[0]>0:
+    bmiv['code']='RED'
+    bmiv['reason']='Missing Height or Weight (or there is another typo preventing BMI calculation)'
+    #bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
+    print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
+    bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
 
 
 ##############################################################################
 #all the flags for JIRA together
-QAAP=pd.concat([Q1,Q2,a1,a2,P,summv,bmiv,T],axis=0)
+QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T)
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue age']=pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_date','issue age']]
