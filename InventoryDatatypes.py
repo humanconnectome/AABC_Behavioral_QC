@@ -763,11 +763,12 @@ if bmiv.shape[0]>0:
 #all the flags for JIRA together
 QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T)
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
-QAAP['issue age']=pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
-QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_date','issue age']]
-QAAP.sort_values(['site','issue age'],ascending=False).to_csv('test.csv')
+QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
+QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_date','issue_age']]
+QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('test.csv')
 
 ##REDUCE by Color code.... need to be able to change these values.
+filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>11)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>35)) ]
 #RED=issue_age>7
 #ORANGE=issues_age>11
 #YELLOW=issue_age>28
