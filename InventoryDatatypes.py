@@ -10,25 +10,29 @@ from config import *
 import subprocess
 import os
 import sys
+from datetime import date
 
+
+## get configuration files
 config = LoadSettings()
-#filename="./config.yml"
-#with open(filename, 'r') as fd:
-#        config=yaml.load(fd, Loader=yaml.SafeLoader)
 secret=pd.read_csv(config['config_files']['secrets'])
-
 box = LifespanBox(cache="./tmp")
+
+## get the HCA inventory for ID checking with AABC
 pathp=box.downloadFile(config['hcainventory'])
 
+#get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
+#this is not yet working
 a=box.downloadFile(config['variablemask'])
-rdrop=getlist(a[0],'AABC-ARMS-DROP')
+rdrop=getlist(a,'AABC-ARMS-DROP')
 rrest=getlist(a[0],'AABC-ARMS-RESTRICTED')
 rraw=getlist(a[0],'TLBX-RAW-RESTRICTED')
 rscore=getlist(a[0],'TLBX-SCORES-RESTRICTED')
 
-
+#get ids
 ids=pd.read_csv(pathp)
 hcaids=ids.subject.drop_duplicates()
+#for later use in getting the last visit for each participant in HCA so that you can later make sure that person is starting subsequent visit and not accidentally enrolled in the wrong arm
 hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','V2'])].sort_values('redcap_event').drop_duplicates(subset='subject',keep='last')
 
 
@@ -36,24 +40,33 @@ hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','
 #PHASE 0 TEST IDS AND ARMS
 # if Legacy, id exists in HCA and other subject id related tests:
 #Test that #visits in HCA corresponds with cohort in AABC
-#i.e. if V2 exists, then cohort=
+
+#construct the json that gets sent to REDCap when requesting data.
+#all data (not actually getting these now)
 aabcarms = redjson(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0])
 hcpa = redjson(tok=secret.loc[secret.source=='hcpa','api_key'].reset_index().drop(columns='index').api_key[0])
+#just a report
 aabcreport = redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51031')
 
-#aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
+#download the inventory report from AABC for comparison
 aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
+#aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
 
+#trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_id=config['Redcap']['datasources']['aabcarms']['redcapidvar']
-#slim=aabcarmsdf[['study_id','redcap_event_name',study_id,'legacy_yn']].loc[(aabcarmsdf.redcap_event_name.str.contains('register'))]# & (~(aabcarmsdf[study_id].str.upper().str.contains('TEST')))]
-slim=aabcinvent[['study_id','redcap_event_name',study_id,'legacy_yn','site']].loc[(aabcinvent.redcap_event_name.str.contains('register'))]# & (~(aabcinvent[study_id].str.upper().str.contains('TEST')))]
 
+#slim selects just the registration event (V0) because thats where the ids and legacy information is kept.
+slim=aabcinvent[['study_id','redcap_event_name',study_id,'legacy_yn','site']].loc[(aabcinvent.redcap_event_name.str.contains('register'))]
+
+#compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
 fortest=pd.merge(hcaids,slim,left_on='subject',right_on=study_id,how="outer",indicator=True)
-fortest._merge.value_counts()
+#fortest._merge.value_counts()
 legacyarms=['register_arm_1','register_arm_2','register_arm_3','register_arm_4','register_arm_5','register_arm_6','register_arm_7','register_arm_8']
 
+# First batch of flags: Look for legacy IDs that don't actually exist in HCA
 #send these to Angela for emergency correction:
 ft=fortest.loc[(fortest._merge=='right_only') & ((fortest.legacy_yn=='1')|(fortest.redcap_event_name.isin(legacyarms)))]
+#remove the TEST subjects -- probably better to do this first, but sigh.
 ft=ft.loc[~((ft[study_id]=='')|(ft[study_id].str.upper().str.contains('TEST')))]
 qlist1=pd.DataFrame()
 if not ft.empty:
@@ -63,7 +76,7 @@ if not ft.empty:
     for s in list(ft[study_id].unique()):
         print('CODE RED :',s,': Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list')
 
-#if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
+#2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 ft2=fortest.loc[(fortest._merge=='both') & ((fortest.legacy_yn != '1')|(~(fortest.redcap_event_name.isin(legacyarms))))]
 qlist2=pd.DataFrame()
 if not ft2.empty:
@@ -76,13 +89,16 @@ if not ft2.empty:
 #if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 #get last visit
 hca_lastvisits["next_visit"]=''
+#idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
 aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site','subject_id','site','v0_date','event_date'])
 sortaabc=aabcidvisits.sort_values(['study_id','redcap_event_name'])
 sortaabcv=sortaabc.loc[~(sortaabc.redcap_event_name.str.contains('register'))]
 sortaabcv.drop_duplicates(subset=['study_id'],keep='first')
+#add 1 to last visit from HCA
 hca_lastvisits.next_visit=hca_lastvisits.redcap_event.str.replace('V','').astype('int') +1
 hca_lastvisits["next_visit2"]="V"+hca_lastvisits.next_visit.astype(str)
 hca_lastvisits2=hca_lastvisits.drop(columns=['redcap_event','next_visit'])
+#check that current visit in AABC is the last visit in HCA + 1
 check=pd.merge(hca_lastvisits2,sortaabcv,left_on=['subject','next_visit2'],right_on=['subject','redcap_event'],how='outer',indicator=True)
 check=check.loc[check._merge !='left_only']
 wrongvisit=check.loc[check._merge=='right_only']
@@ -96,6 +112,7 @@ if not wrongvisit.empty:
         if s3 !='':
             print('CODE RED :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
 
+# check to make sure that the subject id is not missing.
 missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('register')) & (aabcinvent[study_id]=='')]
 qlist4=pd.DataFrame()
 if not missingsubids.empty:
@@ -113,26 +130,37 @@ if not tests.empty:
     tests['code']='HOUSEKEEPING'
     qlist5 = tests[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
     for s5 in list(tests[study_id].unique()):
-        print('HOUSEKEEPING : Please consider deleting test Subject:', s5)
+        print('HOUSEKEEPING : Please delete test subject:', s5)
 
-
-#concatenate flags for REDCap key variables
+#########################################################################################
+###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
 Q1=pd.concat([Q0,qlist1,qlist2,qlist3,qlist4,qlist5],axis=0)
+#########################################################################################
+
 
 #########################################################################################
 # PHASE 1 Test that all dataypes expected are present
-# Expected (inventory):
+# Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
+#there are lots of variables in the inventory.  Don't need them all
 keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
           'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
           'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
           'tlbxwin_dups_v2','actigraphy_collectyn',
           'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
+
 inventoryaabc=idvisits(aabcinvent,keepsies=keeplist)
-#inventoryaabc['redcap_event'] = inventoryaabc.replace({'redcap_event_name':
-#                                               config['Redcap']['datasources']['aabcarms']['eventmap']})['redcap_event_name'].copy()
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
 
+# FLOW:
+# Qinteractive  order:
+# # 1. grab new stuff from box
+# # 2. transform it
+# # 3. send it to REDCap
+# # 4. QC (incorporating patches)
+# # 5. generate tickets
+# # 6. send tickets that arent identical to ones already in Jira (now or at the end in a single bolus)
+# # 7. create and send snapshot of patched data to BOX after dropping restricted variables
 
 # Observed:
 # pull Q data from Box to qint REDCap, then query qint against AABC-Arms study ids and visit
@@ -141,21 +169,13 @@ inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.con
 #    typos will be set to unusable automatically
 #    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
 #    if dup, set one to unususable and explain
-qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
-#idstring='Q-Interactive'
-#studystr='AABC'
-#qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
-#qArestricted.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', index=False)
-#box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
-#box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
 
-
-
-
+#the variables that make up the 'common' form in the Qinteractive database.
 firstvarcols = ['id', 'redcap_data_access_group', 'site', 'subjectid', 'fileid',
                 'filename', 'sha1', 'created', 'assessment', 'visit', 'form',
                 'q_unusable', 'unusable_specify', 'common_complete', 'ravlt_two']
 
+#the variables that make up the ravlt form
 columnnames = ['ravlt_pea_ravlt_sd_tc', 'ravlt_delay_scaled', 'ravlt_delay_completion', 'ravlt_discontinue',
                'ravlt_reverse', 'ravlt_pea_ravlt_sd_trial_i_tc', 'ravlt_pea_ravlt_sd_trial_ii_tc',
                'ravlt_pea_ravlt_sd_trial_iii_tc', 'ravlt_pea_ravlt_sd_trial_iv_tc', 'ravlt_pea_ravlt_sd_trial_v_tc',
@@ -166,17 +186,16 @@ columnnames = ['ravlt_pea_ravlt_sd_tc', 'ravlt_delay_scaled', 'ravlt_delay_compl
 
 
 #current Qint Redcap:
-#qintdata=redjson(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
 qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51037')
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
-aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 
 
-#all box files
+#all box files - grab, transform, send
 folderqueue=['WU','UMN']#,'MGH','UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
-#import anything new by any definition (new name, new sha, new fileid).
+#this is currently taing too much time to iterate through box
+#import anything new by any definition (new name, new sha, new fileid)
 for studyshort in folderqueue:
     folder = config['Redcap']['datasources']['qint']['BoxFolders'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
@@ -249,7 +268,9 @@ for studyshort in folderqueue:
 
 if not rows2push.empty:
   send_frame(dataframe=rows2push, tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
+####
 ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
+
 
 #QC checks
 #now check
@@ -295,16 +316,29 @@ Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','
 Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
-# HARMONIZE EVENT VARIABLES ACROSS HCA, HCD, and AABC
-# drop first duplicates, typo records from Q (q0,q1), and unusables q_unusable.isnull()==False)
+
+# Send to Box
+# drop all the q_unusable.isnull()==False) records, as well as any ids that are not in AABC redcap
 # drop restricted vars.
-# send to BOX
+# send to BOX - this code needs to be fixed, but it will work
+#qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
+##idstring='Q-Interactive'
+##studystr='AABC'
+##qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
+##qArestricted.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', index=False)
+##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
+##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
 
 
-# Toolbox  ###need to rename these all so that numbering 1::4 matches site convention
-#note that you'll need to be on VPN for this to work
+# NOW FOR TOOLBOX. ############################################################################
+# # 1. grab partial files from intraDB
+# # 2. QC (after incorporating patches)
+# # 3. generate tickets and send to JIra if don't already exist
+# # 4. send tickets that arent identical to ones already in Jira
+# # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
+# # 6. create and send snapshot of patched data to BOX after dropping restricted variables
+
 ##FIRST THE RAW DATA FILES
-
 rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
@@ -313,14 +347,18 @@ rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                     'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
+#note that some of these won't work because UCLA hasn't started collecting data
 raw41=TLBXreshape(rawd4)
 raw11=TLBXreshape(rawd1)
 raw31=TLBXreshape(rawd3)
 raw21=TLBXreshape(rawd2)
 
+#remove files known to be duds.
 rf2=pd.concat([raw41,raw31,raw21,raw11])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper()=='ABC123')]
+
+#drop duplicates for purpose of generating QC flags.
 rf2=rf2.drop_duplicates(subset='PIN').copy()
 
 #fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
@@ -329,7 +367,6 @@ fixtypos=inventoryaabc2.loc[inventoryaabc2.nih_toolbox_upload_typo!=''][['subjec
 fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
 fixes=dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
 rf2.PIN=rf2.PIN.replace(fixes)
-
 
 #NOW THE SCORED DATA
 results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
@@ -342,22 +379,27 @@ results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
 
 # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
-
-#still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name.
+#still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
 #this is close, but wont work for case of multipe PINs in a single file
 #find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
 #cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
+#note that some of these won't work because UCLA hasn't started collecting data
 dffull1=TLBXreshape(results1)
 dffull2=TLBXreshape(results2)
 dffull3=TLBXreshape(results3)
 dffull4=TLBXreshape(results4)
 
-##fixtypos - need to extend and incorporate information about date of session as given in filename because of typos involving legit ids
+##fixtypos in Scores file now
 dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
+dffull=dffull.copy() #pd.concat([df11,df31])
+dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
+dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
+
+
 dffull.PIN=dffull.PIN.replace(fixes)
 
-#find any duplicated Assessments
+#find any non-identical duplicated Assessments
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
 dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
 
@@ -366,33 +408,13 @@ print('Duplicated assessments')
 print(dupass)
 #TURN THIS INTO A TICKET
 
-#turn this into a function so you don't have to write it out for all the instrumnets
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
 instrument='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
 dupvar='tlbxwin_dups_v2'
 iset=inventoryaabc2
-dset=dffull
-
-def filterdupass(instrument,dupvar,iset,dset):
-    fixass=iset[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','v0_date','event_date',dupvar]].copy()
-    fixass['reason']='Duplicated Assessments'
-    fixass['code']='orange'
-    fixass['PIN']=fixass.subject + '_' + fixass.redcap_event
-    fixass=fixass.loc[~(fixass[dupvar]=='')][['PIN',dupvar]]
-    fixass['Assessment Name']="Assessment " + fixass[dupvar]
-    fixass['Inst']=instrument
-    dset=pd.merge(dset,fixass,on=['PIN','Inst','Assessment Name'],how='left')
-    dset=dset.loc[~(dset[dupvar].isnull()==False)]
-    return dset
-
 dffull=filterdupass(instrument,dupvar,iset,dffull)
 
-
-dffull=dffull.copy() #pd.concat([df11,df31])
-dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
-dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
-
-
+#QC check:
 #Either scored or raw is missing in format expected:
 formats=pd.merge(dffull.PIN.drop_duplicates(),rf2,how='outer',on='PIN',indicator=True)[['PIN','_merge']]
 issues=formats.loc[~(formats._merge=='both')]
@@ -405,7 +427,7 @@ if issues.shape[0]>0:
     print(issues[['PIN']])
 
 
-#DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand.
+#DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
 #identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
 #find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
 dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
@@ -413,10 +435,6 @@ catchdups=dffull.loc[~(dffull.Date=='')]
 c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
 c.loc[c.duplicated(subset='PIN')]
 
-#dupsT=something.loc[something.duplicated(subset=['PIN'])]
-#if dupsT.shape[0]>0:
-#    print("Duplicate TLBX records")
-#    print(dupsT[['PIN']])
 
 #add subject and visit
 df2=dffull.drop_duplicates(subset='PIN')
@@ -424,7 +442,6 @@ df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['subject']=df2.PIN.str.split("_",expand=True)[0]
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['TLBX']='YES'
-
 
 #now merge with inventory
 inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN']],on=['subject','redcap_event'],how='outer',indicator=True)
@@ -442,6 +459,7 @@ if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
 inventoryaabc4=inventoryaabc4.loc[inventoryaabc4._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
+# Look for missing IDs
 missingT=inventoryaabc4.loc[(inventoryaabc4.redcap_event_name.str.contains('v')) & (~(inventoryaabc4.TLBX=='YES'))]
 t3=pd.DataFrame()
 if missingT.shape[0]>0:
@@ -454,10 +472,16 @@ if missingT.shape[0]>0:
 T=pd.concat([t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code']]
 
 
+### NOW For ASA 24 ######################################################################
+# ORDER
+# 1. scan for data (here just looking for existende)
+# 2. QC ids (after incorporating patches and translating ASAID into AABC id)
+# 3. generate tickets and send to JIra if don't already exist
+#  4. send tickets that arent identical to ones already in Jira
+# # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
+# # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-#ASA24
-folderqueue=['WU','UMN']
-studyshort='WU'
+folderqueue=['WU','UMN']  #UCLA and MGH not started yet
 anydata=[]
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
@@ -490,8 +514,11 @@ if missingAD.shape[0]>0:
     a1['subject_id']=a1['subject']
 a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','v0_date','event_date']]
 
-
+#################################################################################
 #ACTIGRAPHY
+### for now, this is basically the same protocol as for ASA24
+
+#scan BOX
 folderqueue=['WU','UMN','MGH']#,'UCLA']
 actdata=[]
 studyshort='WU'
@@ -530,6 +557,7 @@ if [item for item, count in collections.Counter(actdata).items() if count > 1] !
 ActD=pd.DataFrame(actdata,columns=['PIN'])
 ActD['Actigraphy']='YES'
 inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
+
 #Missing?
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
 missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn=='0')]
@@ -545,12 +573,21 @@ a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', '
 
 
 
-#MOCA SPANISH
+#MOCA SPANISH  #############################################################
+## no data yet
 
-#Psychopy - just a super high level scan for existence of id (typo catch)
+############################################################################
+# Psychopy
+# ORDER
+# 1. scan for data in Box (here just looking for existence) and in IntraDB
+# 2. QC ids (after incorporating patches)
+# 3. generate an tickets and send to JIra if don't already exist
+# 4. DONT dump or snapshot.  Leave data in IntraDB.
+
 studyshort='WU'
 folderqueue=['WU','MGH','UMN']#UCLE
 
+#scan Box
 anydata=pd.DataFrame()
 for studyshort in folderqueue:
     folder = config['NonQBox']['Psychopy'][studyshort]
@@ -600,7 +637,7 @@ df=pd.concat([df1,df2,df3,df4],axis=0)
 df.columns = ['PIN_AB']
 df.PIN_AB=df.PIN_AB.str.replace('t','')
 
-#merge df and ci to see what's missing
+#merge df (intradb) and ci (Box) to see what's missing - one of these is redundant with the check against AABC...
 psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
 #p1=pd.DataFrame()
 p1=[]
@@ -620,6 +657,7 @@ p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
 p2['code']='ORANGE'
 p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
+#find subjects in AABC but not in IntraDB (other checks will have found data not in intraDB)
 p=pd.concat([p1,p2])#,columns='PIN_AB')
 p['PIN']=p[0].str[:13]
 p['PIN_AB']=p[0]
@@ -638,14 +676,24 @@ if missingPY.shape[0]>0:
     print(missingPY[['subject','redcap_event','site','event_date','PsychopyBox']])
     peepy['reason']='PsychoPy (Box copy) cannot be found'
     peepy['code']='ORANGE'
-#HOT FLASH DATA (not available yet)
-#GO BACK AND CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
+
 P=pd.concat([pwho,peepy])
 #IntraDB ID
 P=P[['subject','redcap_event','study_id', 'site','reason','code','v0_date','event_date']]
 
+##################################################################################
+#HOT FLASH DATA (not available yet)
 
-# NOW CHECK inventory variables for completeness
+###################################################################################
+#VNS (not available yet)
+
+###################################################################################
+# To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
+###################################################################################
+
+
+###################################################################################
+# NOW CHECK key REDCap AABC variables for completeness (counterbalance, inventory completeness, age, bmi and soon to be more)
 # inventory_complete
 pd.set_option('display.width', 1000)
 pd.options.display.width=1000
@@ -660,7 +708,6 @@ summv['code']='YELLOW'
 summv['reason']='Visit Summary Incomplete'
 summv=summv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
 print("Visit Summary Incomplete:\n",summv)
-
 
 agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','age_visit','event_date']]
 ag=agev.loc[agev.age_visit !='']
@@ -687,18 +734,26 @@ bmiv['reason']='Missing Height or Weight (or there is another typo preventing BM
 print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
 bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
 
-from datetime import date
 
+##############################################################################
+#all the flags for JIRA together
 QAAP=pd.concat([Q1,Q2,a1,a2,P,summv,bmiv,T],axis=0)
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue age']=pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_date','issue age']]
 QAAP.sort_values(['site','issue age'],ascending=False).to_csv('test.csv')
 
+##REDUCE by Color code.... need to be able to change these values.
+#RED=issue_age>7
+#ORANGE=issues_age>11
+#YELLOW=issue_age>28
+#GREEN=issue_age>35
 
-# event_dates (would be caught by missing age)
+####### Download existing JIRA tickets and reduce QAAP accordingly
+## create and upload new tickets.
 
-#send to csv
+########################################################################
+#clean up the AABC inventory and upload to BOX for recruitment stats.
 inventoryaabc7.loc[inventoryaabc7.age=='','age']=inventoryaabc6.age_visit
 inventoryaabc7.loc[inventoryaabc7.event_date=='','event_date']=inventoryaabc7.v0_date
 inventoryaabc7=inventoryaabc7.sort_values(['redcap_event','event_date'])
@@ -711,15 +766,13 @@ inventoryaabc7[['study_id','redcap_event_name','redcap_event','subject', 'site',
                 'legacy_yn', 'psuedo_guid', 'ethnic', 'racial',
        'visit_summary_complete']].to_csv('Inventory_Beta.csv',index=False)
 
+# TO DO
 #HARMONIZE Event Names
 #Add filenames to TLBX data
 #SEND INVENTORY, REDCAPs, and TLBX to PreRelease BOX
 #HCA drop confusing variables
-
-#QC Psychopy IntraDB
-
 #inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
-
+##upload
 
 
 

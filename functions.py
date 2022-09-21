@@ -126,6 +126,18 @@ def TLBXreshape(results1):
     return df2
 
 
+def filterdupass(instrument,dupvar,iset,dset):
+    fixass=iset[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','v0_date','event_date',dupvar]].copy()
+    fixass['reason']='Duplicated Assessments'
+    fixass['code']='orange'
+    fixass['PIN']=fixass.subject + '_' + fixass.redcap_event
+    fixass=fixass.loc[~(fixass[dupvar]=='')][['PIN',dupvar]]
+    fixass['Assessment Name']="Assessment " + fixass[dupvar]
+    fixass['Inst']=instrument
+    dset=pd.merge(dset,fixass,on=['PIN','Inst','Assessment Name'],how='left')
+    dset=dset.loc[~(dset[dupvar].isnull()==False)]
+    return dset
+
 def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
     """
     downloads all events and fields in a redcap database
