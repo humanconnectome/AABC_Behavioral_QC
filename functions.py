@@ -9,6 +9,12 @@ import subprocess
 import os
 import sys
 from subprocess import Popen, PIPE
+from config import *
+
+
+
+## get configuration files
+config = LoadSettings()
 
 #functions
 def redjson(tok):
@@ -53,9 +59,12 @@ def idvisits(aabcarmsdf,keepsies):
     idvisit=pd.merge(registers,idvisit.drop(columns=['site']),on='study_id',how='right')
     idvisit=idvisit.rename(columns={'subject_id_x':'subject','subject_id_y':'subject_id'})
     idvisit['redcap_event']=idvisit.replace({'redcap_event_name':
-                                           config['Redcap']['datasources']['aabcarms']['eventmap']})['redcap_event_name']
+                                           config['Redcap']['datasources']['aabcarms']['AABCeventmap']})['redcap_event_name']
     idvisit = idvisit.loc[~(idvisit.subject.astype(str).str.upper().str.contains('TEST'))]
     return idvisit
+
+def concat(*args):
+    return pd.concat([x for x in args if not x.empty],axis=0)
 
 def parse_content(content):
     section_headers = [

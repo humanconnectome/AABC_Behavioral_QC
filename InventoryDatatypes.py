@@ -25,9 +25,9 @@ pathp=box.downloadFile(config['hcainventory'])
 #this is not yet working
 a=box.downloadFile(config['variablemask'])
 rdrop=getlist(a,'AABC-ARMS-DROP')
-rrest=getlist(a[0],'AABC-ARMS-RESTRICTED')
-rraw=getlist(a[0],'TLBX-RAW-RESTRICTED')
-rscore=getlist(a[0],'TLBX-SCORES-RESTRICTED')
+rrest=getlist(a,'AABC-ARMS-RESTRICTED')
+rraw=getlist(a,'TLBX-RAW-RESTRICTED')
+rscore=getlist(a,'TLBX-SCORES-RESTRICTED')
 
 #get ids
 ids=pd.read_csv(pathp)
@@ -135,7 +135,7 @@ if not tests.empty:
 #########################################################################################
 ###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date'])
-Q1=pd.concat([Q0,qlist1,qlist2,qlist3,qlist4,qlist5],axis=0)
+Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist4,qlist5])
 #########################################################################################
 
 
@@ -214,7 +214,7 @@ for studyshort in folderqueue:
     newfileids=newfileids.loc[newfileids._merge=='left_only'].drop(columns=['_merge'])
     db2go=db.loc[db.fileid.isin(list(newfileids.fileid))]
     if db2go.empty:
-        print("NO NEW RECORDS TO ADD AT THIS TIME")
+        print("NO NEW RECORDS from",studyshort,"TO ADD AT THIS TIME")
     if not db2go.empty:
         #initiate new ids
         s = cached_filelist.id.astype('Int64').max() + 1
@@ -299,7 +299,7 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo']
     q1['code']='ORANGE'
 
-inventoryaabc2._merge.value_counts()
+#inventoryaabc2._merge.value_counts()
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
@@ -399,20 +399,20 @@ dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
 
 dffull.PIN=dffull.PIN.replace(fixes)
 
-#find any non-identical duplicated Assessments
-dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
-
-# HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
-print('Duplicated assessments')
-print(dupass)
-#TURN THIS INTO A TICKET
-
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
+# This is a single fix... need to generalized to all instruments and their corresponding dupvars:
+# -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
 instrument='NIH Toolbox Words-In-Noise Test Age 6+ v2.1'
 dupvar='tlbxwin_dups_v2'
 iset=inventoryaabc2
 dffull=filterdupass(instrument,dupvar,iset,dffull)
+
+#find any non-identical duplicated Assessments still in data after patch
+dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
+dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
+
+
+#TURN THIS INTO A TICKET
 
 #QC check:
 #Either scored or raw is missing in format expected:
@@ -434,10 +434,10 @@ dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
 catchdups=dffull.loc[~(dffull.Date=='')]
 c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
 c.loc[c.duplicated(subset='PIN')]
-
+#c is wierd.
 
 #add subject and visit
-df2=dffull.drop_duplicates(subset='PIN')
+df2=dffull.drop_duplicates(subset='PIN').copy()
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['subject']=df2.PIN.str.split("_",expand=True)[0]
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
