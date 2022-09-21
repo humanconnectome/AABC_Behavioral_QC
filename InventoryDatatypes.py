@@ -117,7 +117,7 @@ missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('registe
 qlist4=pd.DataFrame()
 if not missingsubids.empty:
     missingsubids['reason']='Subject ID is MISSING in AABC REDCap Database Record with study id'
-    missingsubids['code']='ORANGE'
+    missingsubids['code']='RED'
     qlist4 = missingsubids[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
     for s4 in list(missingsubids.study_id.unique()):
         print('CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
@@ -421,7 +421,7 @@ issues=formats.loc[~(formats._merge=='both')]
 t1=pd.DataFrame()
 if issues.shape[0]>0:
     t1=issues.copy()
-    t1['code']='YELLOW'
+    t1['code']='ORANGE'
     t1['reason']="Raw or Scored data not found (make sure you didn't export Narrow format)"
     print("Raw or Scored data not found (make sure you didn't export Narrow format)")
     print(issues[['PIN']])
@@ -716,7 +716,7 @@ C=cb[['subject','redcap_event','study_id', 'site','reason','code','v0_date']]
 summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
 summv=summv.loc[~(summv.visit_summary_complete=='2')]
 if summv.shape[0]>0:
-    summv['code']='YELLOW'
+    summv['code']='GREEN'
     summv['reason']='Visit Summary Incomplete'
     summv=summv[['subject','redcap_event','study_id', 'site','reason','code','event_date']]
     print("Visit Summary Incomplete:\n",summv)
@@ -768,9 +768,9 @@ QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','event_da
 QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('test.csv')
 
 ##REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>11)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>35)) ]
+filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>35)) ]
 #RED=issue_age>7
-#ORANGE=issues_age>11
+#ORANGE=issues_age>18
 #YELLOW=issue_age>28
 #GREEN=issue_age>35
 
