@@ -44,25 +44,7 @@ def getframe(struct,api_url):
     r = requests.post(api_url,data=struct)
     print('HTTP Status: ' + str(r.status_code))
     a=r.json()
-
-    #buf = BytesIO()
-    #ch = pycurl.Curl()
-    #ch.setopt(ch.URL,api_url )
-    #ch.setopt(pycurl.SSL_VERIFYPEER, 0)
-    #ch.setopt(pycurl.SSL_VERIFYHOST, 0)
-    #ch.setopt(ch.HTTPPOST, list(struct.items()))
-    #ch.setopt(ch.WRITEDATA, buf)
-    #ch.perform()
-    #ch.close()
-    #htmlString = buf.getvalue().decode('UTF-8')
-    #buf.close()
-    #HCA_json=json.loads(print(r.json()))
-#   HCA_json=json.loads(htmlString)
     HCAdf=pd.DataFrame(a)
-    #HCAdf=pd.DataFrame(r.json())
-    #HCAdf = HCAdf.reindex(columns=list(HCA_json[0].keys()))
-    #HCAdf.head()
-    #return HCAdf
     return HCAdf
 
 def idvisits(aabcarmsdf,keepsies):
@@ -129,6 +111,11 @@ def run_ssh_cmd(host, cmd):
     return Popen(cmds, stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
 
+def getlist(mask,sheet):
+    restrictA=pd.read_excel(mask, sheet_name=sheet)
+    restrictedA=list(restrictA.field_name)
+    return restrictedA
+
 def TLBXreshape(results1):
     df=results1.decode('utf-8')
     df=pd.DataFrame(str.splitlines(results1.decode('utf-8')))
@@ -138,3 +125,33 @@ def TLBXreshape(results1):
     df2.columns=cols[0]
     return df2
 
+
+def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
+    """
+    downloads all events and fields in a redcap database
+    """
+    df=getframe(struct, api_url)
+    print(df.shape)
+    if (studystr=='qint'):
+        print('Dropping unusuable Q records')
+        print(df.shape)
+        df=df.loc[~(df.q_unusable=='1')]
+        print(df.shape)
+        df['subject']=df[subj]
+        df['redcap_event']='V'+df.visit.astype('str')
+    print(df.shape)
+    print('Dropping exclusions/DNRs/Withdrawns')
+    #for sb in list(flaggedgold.subject):
+    df=df.loc[(df[subj].str[:10].isin(goodies))].copy()
+    df=df.loc[~(df[subj].str.contains('CC'))].copy()
+
+    print(df.shape)
+    if (studystr=='qint'):
+        dfrestricted=df.copy() #[['id', 'subjectid', 'visit']+restrictedcols]
+    for dropcol in restrictedcols:
+        #try:
+        df=df.drop(columns=dropcol)
+        #except:
+        #    pass
+    print(df.shape)
+    return df, dfrestricted

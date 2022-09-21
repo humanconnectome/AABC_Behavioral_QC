@@ -19,14 +19,19 @@ secret=pd.read_csv(config['config_files']['secrets'])
 
 box = LifespanBox(cache="./tmp")
 pathp=box.downloadFile(config['hcainventory'])
+
+a=box.downloadFile(config['variablemask'])
+rdrop=getlist(a[0],'AABC-ARMS-DROP')
+rrest=getlist(a[0],'AABC-ARMS-RESTRICTED')
+rraw=getlist(a[0],'TLBX-RAW-RESTRICTED')
+rscore=getlist(a[0],'TLBX-SCORES-RESTRICTED')
+
+
 ids=pd.read_csv(pathp)
 hcaids=ids.subject.drop_duplicates()
 hca_lastvisits=ids[['subject','redcap_event']].loc[ids.redcap_event.isin(['V1','V2'])].sort_values('redcap_event').drop_duplicates(subset='subject',keep='last')
 
 
-#CREATE TIME DEPENDENT FLAGS
-#pd.concat([x for x in args if not x.empty])
-#
 #########################################################################################
 #PHASE 0 TEST IDS AND ARMS
 # if Legacy, id exists in HCA and other subject id related tests:
@@ -136,6 +141,16 @@ inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.con
 #    typos will be set to unusable automatically
 #    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
 #    if dup, set one to unususable and explain
+qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
+#idstring='Q-Interactive'
+#studystr='AABC'
+#qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
+#qArestricted.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', index=False)
+#box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
+#box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
+
+
+
 
 firstvarcols = ['id', 'redcap_data_access_group', 'site', 'subjectid', 'fileid',
                 'filename', 'sha1', 'created', 'assessment', 'visit', 'form',
