@@ -1,13 +1,10 @@
 import collections
 import re
 from datetime import date
-
 import pandas as pd
+
 from ccf.box import LifespanBox
-
 import functions
-
-## get configuration files
 from config import LoadSettings
 
 config = LoadSettings()
