@@ -1,7 +1,4 @@
-import argparse
 import os
-import subprocess
-
 import yaml
 
 
@@ -24,7 +21,7 @@ def recursive_update(old, new):
         return new
 
 
-def LoadSettings(useArgs=False):
+def LoadSettings():
     config = load_yaml("./config.yml")
 
     if "secrets" in config:
@@ -32,12 +29,3 @@ def LoadSettings(useArgs=False):
         config = recursive_update(config, secrets)
 
     return config
-
-
-def additional():
-    for ds in config["dirs"].values():
-        for name, val in ds.items():
-            if name != "root":
-                path = os.path.join(ds["root"], val)
-                os.makedirs(path, exist_ok=True)
-                ds[name] = path

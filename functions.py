@@ -1,13 +1,5 @@
 import pandas as pd
-import yaml
-import ccf
-from ccf.box import LifespanBox
 import requests
-import re
-import collections
-import subprocess
-import os
-import sys
 from subprocess import Popen, PIPE
 from config import *
 
@@ -178,34 +170,3 @@ def filterdupass(instrument, dupvar, iset, dset):
     dset = pd.merge(dset, fixass, on=["PIN", "Inst", "Assessment Name"], how="left")
     dset = dset.loc[~(dset[dupvar].isnull() == False)]
     return dset
-
-
-def getredcap10Q(studystr, curatedsnaps, goodies, idstring, restrictedcols=[]):
-    """
-    downloads all events and fields in a redcap database
-    """
-    df = getframe(struct, api_url)
-    print(df.shape)
-    if studystr == "qint":
-        print("Dropping unusuable Q records")
-        print(df.shape)
-        df = df.loc[~(df.q_unusable == "1")]
-        print(df.shape)
-        df["subject"] = df[subj]
-        df["redcap_event"] = "V" + df.visit.astype("str")
-    print(df.shape)
-    print("Dropping exclusions/DNRs/Withdrawns")
-    # for sb in list(flaggedgold.subject):
-    df = df.loc[(df[subj].str[:10].isin(goodies))].copy()
-    df = df.loc[~(df[subj].str.contains("CC"))].copy()
-
-    print(df.shape)
-    if studystr == "qint":
-        dfrestricted = df.copy()  # [['id', 'subjectid', 'visit']+restrictedcols]
-    for dropcol in restrictedcols:
-        # try:
-        df = df.drop(columns=dropcol)
-        # except:
-        #    pass
-    print(df.shape)
-    return df, dfrestricted
