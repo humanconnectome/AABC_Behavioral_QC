@@ -1,19 +1,15 @@
-import pandas as pd
-import yaml
-import ccf
-from ccf.box import LifespanBox
-import requests
-import re
 import collections
-from functions import *
-from config import *
-import subprocess
-import os
-import sys
+import re
 from datetime import date
 
+import pandas as pd
+from ccf.box import LifespanBox
+
+import functions
 
 ## get configuration files
+from config import LoadSettings
+
 config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
 box = LifespanBox(cache="./tmp")
@@ -24,10 +20,10 @@ pathp = box.downloadFile(config["hcainventory"])
 # get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
 # this is not yet working
 a = box.downloadFile(config["variablemask"])
-rdrop = getlist(a, "AABC-ARMS-DROP")
-rrest = getlist(a, "AABC-ARMS-RESTRICTED")
-rraw = getlist(a, "TLBX-RAW-RESTRICTED")
-rscore = getlist(a, "TLBX-SCORES-RESTRICTED")
+rdrop = functions.getlist(a, "AABC-ARMS-DROP")
+rrest = functions.getlist(a, "AABC-ARMS-RESTRICTED")
+rraw = functions.getlist(a, "TLBX-RAW-RESTRICTED")
+rscore = functions.getlist(a, "TLBX-SCORES-RESTRICTED")
 
 # get ids
 ids = pd.read_csv(pathp)
@@ -48,20 +44,20 @@ hca_lastvisits = (
 
 # construct the json that gets sent to REDCap when requesting data.
 # all data (not actually getting these now)
-aabcarms = redjson(
+aabcarms = functions.redjson(
     tok=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0]
 )
-hcpa = redjson(
+hcpa = functions.redjson(
     tok=secret.loc[secret.source == "hcpa", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0]
 )
 # just a report
-aabcreport = redreport(
+aabcreport = functions.redreport(
     tok=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
@@ -70,7 +66,9 @@ aabcreport = redreport(
 )
 
 # download the inventory report from AABC for comparison
-aabcinvent = getframe(struct=aabcreport, api_url=config["Redcap"]["api_url10"])
+aabcinvent = functions.getframe(
+    struct=aabcreport, api_url=config["Redcap"]["api_url10"]
+)
 # aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
@@ -162,7 +160,7 @@ if not ft2.empty:
 # get last visit
 hca_lastvisits["next_visit"] = ""
 # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
-aabcidvisits = idvisits(
+aabcidvisits = functions.idvisits(
     aabcinvent,
     keepsies=[
         "study_id",
@@ -287,7 +285,7 @@ Q0 = pd.DataFrame(
         "event_date",
     ]
 )
-Q1 = concat(*[Q0, qlist1, qlist2, qlist3, qlist4, qlist5])
+Q1 = functions.concat(*[Q0, qlist1, qlist2, qlist3, qlist4, qlist5])
 #########################################################################################
 
 
@@ -332,7 +330,7 @@ keeplist = [
     "asa24id",
 ]
 
-inventoryaabc = idvisits(aabcinvent, keepsies=keeplist)
+inventoryaabc = functions.idvisits(aabcinvent, keepsies=keeplist)
 inventoryaabc = inventoryaabc.loc[
     ~(inventoryaabc.subject_id.str.upper().str.contains("TEST"))
 ].copy()
@@ -400,14 +398,14 @@ columnnames = [
 
 
 # current Qint Redcap:
-qintreport = redreport(
+qintreport = functions.redreport(
     tok=secret.loc[secret.source == "qint", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0],
     reportid="51037",
 )
-qintdf = getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
+qintdf = functions.getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
 
 
 # all box files - grab, transform, send
@@ -480,7 +478,7 @@ for studyshort in folderqueue:
             a = fname.replace("AV", "").find("V")
             visit = fname[a + 1]
             # visit=visits[-1]
-            row = parse_content(content)
+            row = functions.parse_content(content)
             df = pd.DataFrame([row], columns=columnnames)
             # print(df)
             firstvars = pd.DataFrame(
@@ -515,7 +513,7 @@ for studyshort in folderqueue:
                 print(list(rows2push.subjectid))
 
 if not rows2push.empty:
-    send_frame(
+    functions.send_frame(
         dataframe=rows2push,
         tok=secret.loc[secret.source == "qint", "api_key"]
         .reset_index()
@@ -528,7 +526,7 @@ if not rows2push.empty:
 
 # QC checks
 # now check
-qintdf2 = getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
+qintdf2 = functions.getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
 invq = qintdf2[["id", "site", "subjectid", "visit"]].copy()
 invq["redcap_event"] = "V" + invq.visit
 invq["Qint"] = "YES"
@@ -625,27 +623,27 @@ Q2["subject_id"] = Q2.subject
 # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
 ##FIRST THE RAW DATA FILES
-rawd4 = run_ssh_cmd(
+rawd4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
 ).stdout.read()
-rawd1 = run_ssh_cmd(
+rawd1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
 ).stdout.read()
-rawd3 = run_ssh_cmd(
+rawd3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
 ).stdout.read()
-rawd2 = run_ssh_cmd(
+rawd2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
 ).stdout.read()
 # note that some of these won't work because UCLA hasn't started collecting data
-raw41 = TLBXreshape(rawd4)
-raw11 = TLBXreshape(rawd1)
-raw31 = TLBXreshape(rawd3)
-raw21 = TLBXreshape(rawd2)
+raw41 = functions.TLBXreshape(rawd4)
+raw11 = functions.TLBXreshape(rawd1)
+raw31 = functions.TLBXreshape(rawd3)
+raw21 = functions.TLBXreshape(rawd2)
 
 # remove files known to be duds.
 rf2 = pd.concat([raw41, raw31, raw21, raw11])
@@ -665,19 +663,19 @@ fixes = dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
 rf2.PIN = rf2.PIN.replace(fixes)
 
 # NOW THE SCORED DATA
-results4 = run_ssh_cmd(
+results4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
 ).stdout.read()
-results1 = run_ssh_cmd(
+results1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
 ).stdout.read()
-results3 = run_ssh_cmd(
+results3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
 ).stdout.read()
-results2 = run_ssh_cmd(
+results2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
 ).stdout.read()
@@ -689,10 +687,10 @@ results2 = run_ssh_cmd(
 # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
 # note that some of these won't work because UCLA hasn't started collecting data
-dffull1 = TLBXreshape(results1)
-dffull2 = TLBXreshape(results2)
-dffull3 = TLBXreshape(results3)
-dffull4 = TLBXreshape(results4)
+dffull1 = functions.TLBXreshape(results1)
+dffull2 = functions.TLBXreshape(results2)
+dffull3 = functions.TLBXreshape(results3)
+dffull4 = functions.TLBXreshape(results4)
 
 ##fixtypos in Scores file now
 dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])
@@ -709,7 +707,7 @@ dffull.PIN = dffull.PIN.replace(fixes)
 instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
 dupvar = "tlbxwin_dups_v2"
 iset = inventoryaabc2
-dffull = filterdupass(instrument, dupvar, iset, dffull)
+dffull = functions.filterdupass(instrument, dupvar, iset, dffull)
 
 # find any non-identical duplicated Assessments still in data after patch
 dupass = dffull.loc[dffull.duplicated(subset=["PIN", "Inst"], keep=False)][
@@ -1009,19 +1007,19 @@ ci = checkIDB.drop_duplicates(subset="PIN_AB")
 
 # just check for existence of PsychoPY in IntraDB
 # /ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
-psychointradb4 = run_ssh_cmd(
+psychointradb4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
 ).stdout.read()
-psychointradb3 = run_ssh_cmd(
+psychointradb3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
 ).stdout.read()
-psychointradb2 = run_ssh_cmd(
+psychointradb2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
 ).stdout.read()
-psychointradb1 = run_ssh_cmd(
+psychointradb1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
 ).stdout.read()
@@ -1272,7 +1270,7 @@ if bmiv.shape[0] > 0:
 
 ##############################################################################
 # all the flags for JIRA together
-QAAP = concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
+QAAP = functions.concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
 QAAP["QCdate"] = date.today().strftime("%Y-%m-%d")
 QAAP["issue_age"] = pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
 QAAP = QAAP[
