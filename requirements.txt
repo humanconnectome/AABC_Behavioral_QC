@@ -8,7 +8,7 @@ bleach==5.0.0
 boto3==1.21.44
 botocore==1.24.44
 boxsdk==3.2.0
-ccf==0.4.6
+ccf @ git+https://github.com/humanconnectome/ccf_libs
 certifi==2021.10.8
 cffi==1.15.0
 charset-normalizer==2.0.12
