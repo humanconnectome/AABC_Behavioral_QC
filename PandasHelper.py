@@ -10,7 +10,7 @@ def __in_common_helper__(data, column_names, column_names2):
     if isinstance(data, Series):
         return data.to_frame()
     elif not isinstance(data, DataFrame):
-        raise TypeError('Expecting either a Series or DataFrame')
+        raise TypeError("Expecting either a Series or DataFrame")
 
     column_names = column_names or column_names2
 
@@ -18,9 +18,11 @@ def __in_common_helper__(data, column_names, column_names2):
 
         # if only a single column is provided, convert to one item set
         # else convert iterable into set
-        column_names = {column_names} \
-            if isinstance(column_names, str) or not isinstance(column_names, Iterable) \
+        column_names = (
+            {column_names}
+            if isinstance(column_names, str) or not isinstance(column_names, Iterable)
             else set(column_names)
+        )
 
         return data[column_names].copy()
     else:
@@ -42,13 +44,15 @@ def unequal_columns(left, right, on=None, left_columns=None, right_columns=None)
     left_df = __in_common_helper__(left, left_columns, on)
     right_df = __in_common_helper__(right, right_columns, on)
     n = min(len(left_df.columns), len(right_df.columns))
-    left_df = left_df.iloc[:,:n].fillna(MIN_FLOAT)
-    right_df = right_df.iloc[:,:n].fillna(MIN_FLOAT)
+    left_df = left_df.iloc[:, :n].fillna(MIN_FLOAT)
+    right_df = right_df.iloc[:, :n].fillna(MIN_FLOAT)
 
     return left_df, right_df
 
 
-def difference(left, right, on=None, left_columns=None, right_columns=None, equal_names=True):
+def difference(
+    left, right, on=None, left_columns=None, right_columns=None, equal_names=True
+):
     """
     difference Finds the set difference from left to right DataFrames and returns either a DataFrame or a boolean Series
 
@@ -69,7 +73,9 @@ def difference(left, right, on=None, left_columns=None, right_columns=None, equa
     if equal_names:
         left_data, right_data = in_common(left, right, on, left_columns, right_columns)
     else:
-        left_data, right_data = unequal_columns(left, right, on, left_columns, right_columns)
+        left_data, right_data = unequal_columns(
+            left, right, on, left_columns, right_columns
+        )
 
     a = set(map(tuple, left_data.values))
     b = set(map(tuple, right_data.values))
@@ -103,8 +109,16 @@ def intersection(left, right, on=None, left_columns=None, right_columns=None):
     return left[bool_series] if isinstance(left, DataFrame) else bool_series
 
 
-def intersection_both(left, right, on=None, left_columns=None, right_columns=None,
-                      sources=None, sources_column='sources', drop_duplicates=True):
+def intersection_both(
+    left,
+    right,
+    on=None,
+    left_columns=None,
+    right_columns=None,
+    sources=None,
+    sources_column="sources",
+    drop_duplicates=True,
+):
     if not isinstance(left, DataFrame) or not isinstance(right, DataFrame):
         raise TypeError("Expecting two dataframes.")
 
@@ -118,7 +132,7 @@ def intersection_both(left, right, on=None, left_columns=None, right_columns=Non
 
     if sources:
         if sources is True:
-            sources = ['left', 'right']
+            sources = ["left", "right"]
         left_df[sources_column] = sources[0]
         right_df[sources_column] = sources[1]
 
@@ -126,22 +140,24 @@ def intersection_both(left, right, on=None, left_columns=None, right_columns=Non
     else:
         neg = left_df.columns
 
-    result = left_df.append(right_df, sort=False).sort_values(left_data.columns.to_list())
+    result = left_df.append(right_df, sort=False).sort_values(
+        left_data.columns.to_list()
+    )
 
     return result.drop_duplicates(neg, keep=False) if drop_duplicates else result
 
 
-def showbox(message, heading=None, type='success'):
+def showbox(message, heading=None, type="success"):
     box = '<div class="alert alert-%s" role="alert">' % type
     if heading:
         box += '<h4 class="alert-heading">%s</h4>' % heading
-    box += '<p>%s</p></div>' % message
+    box += "<p>%s</p></div>" % message
     return display(HTML(box))
 
 
 def showdataframe(df):
     if not df.empty:
-        print('Size: r%s x c%s' % df.shape)
+        print("Size: r%s x c%s" % df.shape)
         display(df[:3])
 
 
@@ -150,4 +166,4 @@ def asInt(dfs, *columns):
         dfs = [dfs]
     for df in dfs:
         for column in columns:
-            df[column] = df[column].astype(float).astype('Int64')
+            df[column] = df[column].astype(float).astype("Int64")
