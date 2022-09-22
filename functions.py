@@ -8,9 +8,9 @@ from config import *
 config = LoadSettings()
 
 # functions
-def redjson(tok):
-    aabcarms = {
-        "token": tok,
+def params_request_records(token):
+    return {
+        "token": token,
         "content": "record",
         "format": "json",
         "type": "flat",
@@ -22,30 +22,36 @@ def redjson(tok):
         "exportDataAccessGroups": "false",
         "returnFormat": "json",
     }
-    return aabcarms
 
 
-def redreport(tok, reportid):
-    aabcreport = {
-        "token": tok,
+def params_request_report(token, report_id):
+    return {
+        "token": token,
         "content": "report",
         "format": "json",
-        "report_id": reportid,
+        "report_id": report_id,
         "csvDelimiter": "",
         "rawOrLabel": "raw",
         "rawOrLabelHeaders": "raw",
         "exportCheckboxLabel": "false",
         "returnFormat": "json",
     }
-    return aabcreport
 
 
-def getframe(struct, api_url):
-    r = requests.post(api_url, data=struct)
-    print("HTTP Status: " + str(r.status_code))
-    a = r.json()
-    HCAdf = pd.DataFrame(a)
-    return HCAdf
+def get_frame(api_url: str, data: dict) -> pd.DataFrame:
+    """Get a dataframe from a Redcap API call
+
+    Args:
+        data: dict of parameters for the API call
+        api_url: url for the API call
+
+    Returns:
+        A dataframe of the results
+    """
+    r = requests.post(api_url, data=data)
+    if r.status_code != 200:
+        print(f"HTTP Status: {r.status_code}")
+    return pd.DataFrame(r.json())
 
 
 def idvisits(aabcarmsdf, keepsies):

@@ -41,31 +41,29 @@ hca_lastvisits = (
 
 # construct the json that gets sent to REDCap when requesting data.
 # all data (not actually getting these now)
-aabcarms = functions.redjson(
-    tok=secret.loc[secret.source == "aabcarms", "api_key"]
+aabcarms = functions.params_request_records(
+    token=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0]
 )
-hcpa = functions.redjson(
-    tok=secret.loc[secret.source == "hcpa", "api_key"]
+hcpa = functions.params_request_records(
+    token=secret.loc[secret.source == "hcpa", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0]
 )
 # just a report
-aabcreport = functions.redreport(
-    tok=secret.loc[secret.source == "aabcarms", "api_key"]
+aabcreport = functions.params_request_report(
+    token=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0],
-    reportid="51031",
+    report_id="51031",
 )
 
 # download the inventory report from AABC for comparison
-aabcinvent = functions.getframe(
-    struct=aabcreport, api_url=config["Redcap"]["api_url10"]
-)
+aabcinvent = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=aabcreport)
 # aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
@@ -395,14 +393,14 @@ columnnames = [
 
 
 # current Qint Redcap:
-qintreport = functions.redreport(
-    tok=secret.loc[secret.source == "qint", "api_key"]
+qintreport = functions.params_request_report(
+    token=secret.loc[secret.source == "qint", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0],
-    reportid="51037",
+    report_id="51037",
 )
-qintdf = functions.getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
+qintdf = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qintreport)
 
 
 # all box files - grab, transform, send
@@ -523,7 +521,7 @@ if not rows2push.empty:
 
 # QC checks
 # now check
-qintdf2 = functions.getframe(struct=qintreport, api_url=config["Redcap"]["api_url10"])
+qintdf2 = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qintreport)
 invq = qintdf2[["id", "site", "subjectid", "visit"]].copy()
 invq["redcap_event"] = "V" + invq.visit
 invq["Qint"] = "YES"
