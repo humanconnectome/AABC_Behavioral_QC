@@ -621,19 +621,19 @@ Q2["subject_id"] = Q2.subject
 rawd4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-).stdout.read()
+)
 rawd1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-).stdout.read()
+)
 rawd3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-).stdout.read()
+)
 rawd2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-).stdout.read()
+)
 # note that some of these won't work because UCLA hasn't started collecting data
 raw41 = functions.TLBXreshape(rawd4)
 raw11 = functions.TLBXreshape(rawd1)
@@ -661,19 +661,19 @@ rf2.PIN = rf2.PIN.replace(fixes)
 results4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-).stdout.read()
+)
 results1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-).stdout.read()
+)
 results3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-).stdout.read()
+)
 results2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-).stdout.read()
+)
 
 # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
 # still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
@@ -1005,27 +1005,27 @@ ci = checkIDB.drop_duplicates(subset="PIN_AB")
 psychointradb4 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-).stdout.read()
+)
 psychointradb3 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-).stdout.read()
+)
 psychointradb2 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-).stdout.read()
+)
 psychointradb1 = functions.run_ssh_cmd(
     "plenzini@login3.chpc.wustl.edu",
     "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-).stdout.read()
+)
 
-df4 = pd.DataFrame(str.splitlines(psychointradb4.decode("utf-8")))
+df4 = pd.DataFrame(str.splitlines(psychointradb4))
 df4 = df4[0].str.split(",", expand=True)
-df3 = pd.DataFrame(str.splitlines(psychointradb3.decode("utf-8")))
+df3 = pd.DataFrame(str.splitlines(psychointradb3))
 df3 = df3[0].str.split(",", expand=True)
-# df2 = pd.DataFrame(str.splitlines(psychointradb2.decode('utf-8')))
+# df2 = pd.DataFrame(str.splitlines(psychointradb2))
 # df2 = df2[0].str.split(',', expand=True)
-df1 = pd.DataFrame(str.splitlines(psychointradb1.decode("utf-8")))
+df1 = pd.DataFrame(str.splitlines(psychointradb1))
 df1 = df1[0].str.split(",", expand=True)
 
 df = pd.concat([df1, df3, df4], axis=0)  # df2,

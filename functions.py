@@ -1,3 +1,5 @@
+import subprocess
+
 import pandas as pd
 import requests
 from subprocess import Popen, PIPE
@@ -134,7 +136,11 @@ def send_frame(dataframe, tok):
 
 def run_ssh_cmd(host, cmd):
     cmds = ["ssh", "-t", host, cmd]
-    return Popen(cmds, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+    return (
+        subprocess.check_output(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        .decode("utf-8")
+        .strip()
+    )
 
 
 def getlist(mask, sheet):
@@ -144,8 +150,7 @@ def getlist(mask, sheet):
 
 
 def TLBXreshape(results1):
-    df = results1.decode("utf-8")
-    df = pd.DataFrame(str.splitlines(results1.decode("utf-8")))
+    df = pd.DataFrame(str.splitlines(results1))
     df = df[0].str.split(",", expand=True)
     cols = df.loc[df[0] == "PIN"].values.tolist()
     df2 = df.loc[~(df[0] == "PIN")]
