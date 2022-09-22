@@ -56,28 +56,28 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
     return pd.DataFrame(r.json())
 
 
-def idvisits(aabcarmsdf, keepsies):
-    idvisit = aabcarmsdf[keepsies].copy()
-    registers = idvisit.loc[idvisit.redcap_event_name.str.contains("register")][
+def idvisits(aabc_arms_df, keep_cols):
+    id_visit = aabc_arms_df[keep_cols].copy()
+    registers = id_visit.loc[id_visit.redcap_event_name.str.contains("register")][
         ["subject_id", "study_id", "site"]
     ]
-    idvisit = pd.merge(
-        registers, idvisit.drop(columns=["site"]), on="study_id", how="right"
+    id_visit = pd.merge(
+        registers, id_visit.drop(columns=["site"]), on="study_id", how="right"
     )
-    idvisit = idvisit.rename(
+    id_visit = id_visit.rename(
         columns={"subject_id_x": "subject", "subject_id_y": "subject_id"}
     )
-    idvisit["redcap_event"] = idvisit.replace(
+    id_visit["redcap_event"] = id_visit.replace(
         {
             "redcap_event_name": config["Redcap"]["datasources"]["aabcarms"][
                 "AABCeventmap"
             ]
         }
     )["redcap_event_name"]
-    idvisit = idvisit.loc[
-        ~(idvisit.subject.astype(str).str.upper().str.contains("TEST"))
+    id_visit = id_visit.loc[
+        ~(id_visit.subject.astype(str).str.upper().str.contains("TEST"))
     ]
-    return idvisit
+    return id_visit
 
 
 def concat(*args):
@@ -134,7 +134,7 @@ def send_frame(dataframe, tok):
     print(r.json())
 
 
-def run_ssh_cmd(host, cmd):
+def run_ssh_cmd(host: str, cmd: str):
     cmds = ["ssh", "-t", host, cmd]
     return (
         subprocess.check_output(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

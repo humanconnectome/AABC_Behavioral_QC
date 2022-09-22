@@ -24,9 +24,9 @@ rscore = functions.getlist(a, "TLBX-SCORES-RESTRICTED")
 
 # get ids
 ids = pd.read_csv(pathp)
-hcaids = ids.subject.drop_duplicates()
+hca_ids = ids.subject.drop_duplicates()
 # for later use in getting the last visit for each participant in HCA so that you can later make sure that person is starting subsequent visit and not accidentally enrolled in the wrong arm
-hca_lastvisits = (
+hca_last_visits = (
     ids[["subject", "redcap_event"]]
     .loc[ids.redcap_event.isin(["V1", "V2"])]
     .sort_values("redcap_event")
@@ -41,7 +41,7 @@ hca_lastvisits = (
 
 # construct the json that gets sent to REDCap when requesting data.
 # all data (not actually getting these now)
-aabcarms = functions.params_request_records(
+aabc_arms = functions.params_request_records(
     token=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
@@ -54,7 +54,7 @@ hcpa = functions.params_request_records(
     .api_key[0]
 )
 # just a report
-aabcreport = functions.params_request_report(
+aabc_report = functions.params_request_report(
     token=secret.loc[secret.source == "aabcarms", "api_key"]
     .reset_index()
     .drop(columns="index")
@@ -63,23 +63,25 @@ aabcreport = functions.params_request_report(
 )
 
 # download the inventory report from AABC for comparison
-aabcinvent = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=aabcreport)
+aabc_inventory = functions.get_frame(
+    api_url=config["Redcap"]["api_url10"], data=aabc_report
+)
 # aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_id = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
 
 # slim selects just the registration event (V0) because thats where the ids and legacy information is kept.
-slim = aabcinvent[["study_id", "redcap_event_name", study_id, "legacy_yn", "site"]].loc[
-    (aabcinvent.redcap_event_name.str.contains("register"))
-]
+slim = aabc_inventory[
+    ["study_id", "redcap_event_name", study_id, "legacy_yn", "site"]
+].loc[(aabc_inventory.redcap_event_name.str.contains("register"))]
 
 # compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
 fortest = pd.merge(
-    hcaids, slim, left_on="subject", right_on=study_id, how="outer", indicator=True
+    hca_ids, slim, left_on="subject", right_on=study_id, how="outer", indicator=True
 )
 # fortest._merge.value_counts()
-legacyarms = [
+legacy_arms = [
     "register_arm_1",
     "register_arm_2",
     "register_arm_3",
@@ -94,7 +96,7 @@ legacyarms = [
 # send these to Angela for emergency correction:
 ft = fortest.loc[
     (fortest._merge == "right_only")
-    & ((fortest.legacy_yn == "1") | (fortest.redcap_event_name.isin(legacyarms)))
+    & ((fortest.legacy_yn == "1") | (fortest.redcap_event_name.isin(legacy_arms)))
 ]
 # remove the TEST subjects -- probably better to do this first, but sigh.
 ft = ft.loc[~((ft[study_id] == "") | (ft[study_id].str.upper().str.contains("TEST")))]
@@ -125,7 +127,7 @@ if not ft.empty:
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 ft2 = fortest.loc[
     (fortest._merge == "both")
-    & ((fortest.legacy_yn != "1") | (~(fortest.redcap_event_name.isin(legacyarms))))
+    & ((fortest.legacy_yn != "1") | (~(fortest.redcap_event_name.isin(legacy_arms))))
 ]
 qlist2 = pd.DataFrame()
 if not ft2.empty:
@@ -153,11 +155,11 @@ if not ft2.empty:
 
 # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 # get last visit
-hca_lastvisits["next_visit"] = ""
+hca_last_visits["next_visit"] = ""
 # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
-aabcidvisits = functions.idvisits(
-    aabcinvent,
-    keepsies=[
+aabc_id_visits = functions.idvisits(
+    aabc_inventory,
+    keep_cols=[
         "study_id",
         "redcap_event_name",
         "site",
@@ -166,18 +168,22 @@ aabcidvisits = functions.idvisits(
         "event_date",
     ],
 )
-sortaabc = aabcidvisits.sort_values(["study_id", "redcap_event_name"])
-sortaabcv = sortaabc.loc[~(sortaabc.redcap_event_name.str.contains("register"))]
+aabc_sorted_by_studyid_and_event = aabc_id_visits.sort_values(
+    ["study_id", "redcap_event_name"]
+)
+sortaabcv = aabc_sorted_by_studyid_and_event.loc[
+    ~(aabc_sorted_by_studyid_and_event.redcap_event_name.str.contains("register"))
+]
 sortaabcv.drop_duplicates(subset=["study_id"], keep="first")
 # add 1 to last visit from HCA
-hca_lastvisits.next_visit = (
-    hca_lastvisits.redcap_event.str.replace("V", "").astype("int") + 1
+hca_last_visits.next_visit = (
+    hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
 )
-hca_lastvisits["next_visit2"] = "V" + hca_lastvisits.next_visit.astype(str)
-hca_lastvisits2 = hca_lastvisits.drop(columns=["redcap_event", "next_visit"])
+hca_last_visits["next_visit2"] = "V" + hca_last_visits.next_visit.astype(str)
+hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event", "next_visit"])
 # check that current visit in AABC is the last visit in HCA + 1
 check = pd.merge(
-    hca_lastvisits2,
+    hca_last_visits2,
     sortaabcv,
     left_on=["subject", "next_visit2"],
     right_on=["subject", "redcap_event"],
@@ -185,15 +191,15 @@ check = pd.merge(
     indicator=True,
 )
 check = check.loc[check._merge != "left_only"]
-wrongvisit = check.loc[check._merge == "right_only"]
-wrongvisit = wrongvisit.loc[~(wrongvisit.redcap_event == "phone_call_arm_13")]
+wrong_visit = check.loc[check._merge == "right_only"]
+wrong_visit = wrong_visit.loc[~(wrong_visit.redcap_event == "phone_call_arm_13")]
 qlist3 = pd.DataFrame()
-if not wrongvisit.empty:
-    wrongvisit[
+if not wrong_visit.empty:
+    wrong_visit[
         "reason"
     ] = "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2"
-    wrongvisit["code"] = "RED"
-    qlist3 = wrongvisit[
+    wrong_visit["code"] = "RED"
+    qlist3 = wrong_visit[
         [
             "subject_id",
             "study_id",
@@ -204,7 +210,7 @@ if not wrongvisit.empty:
             "event_date",
         ]
     ]
-    for s3 in list(wrongvisit[study_id].unique()):
+    for s3 in list(wrong_visit[study_id].unique()):
         if s3 != "":
             print(
                 "CODE RED :",
@@ -213,17 +219,17 @@ if not wrongvisit.empty:
             )
 
 # check to make sure that the subject id is not missing.
-missingsubids = aabcinvent.loc[
-    (aabcinvent.redcap_event_name.str.contains("register"))
-    & (aabcinvent[study_id] == "")
+missing_sub_ids = aabc_inventory.loc[
+    (aabc_inventory.redcap_event_name.str.contains("register"))
+    & (aabc_inventory[study_id] == "")
 ]
 qlist4 = pd.DataFrame()
-if not missingsubids.empty:
-    missingsubids[
+if not missing_sub_ids.empty:
+    missing_sub_ids[
         "reason"
     ] = "Subject ID is MISSING in AABC REDCap Database Record with study id"
-    missingsubids["code"] = "RED"
-    qlist4 = missingsubids[
+    missing_sub_ids["code"] = "RED"
+    qlist4 = missing_sub_ids[
         [
             "subject_id",
             "study_id",
@@ -235,14 +241,14 @@ if not missingsubids.empty:
             "event_date",
         ]
     ]
-    for s4 in list(missingsubids.study_id.unique()):
+    for s4 in list(missing_sub_ids.study_id.unique()):
         print(
             "CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:",
             s4,
         )
 
 # test subjects that need to be deleted
-tests = aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains("TEST"))][
+tests = aabc_inventory.loc[(aabc_inventory[study_id].str.upper().str.contains("TEST"))][
     ["study_id", study_id, "redcap_event_name"]
 ]
 qlist5 = pd.DataFrame()
@@ -325,9 +331,9 @@ keeplist = [
     "asa24id",
 ]
 
-inventoryaabc = functions.idvisits(aabcinvent, keepsies=keeplist)
-inventoryaabc = inventoryaabc.loc[
-    ~(inventoryaabc.subject_id.str.upper().str.contains("TEST"))
+aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
+aabc_inventory_2 = aabc_inventory_2.loc[
+    ~(aabc_inventory_2.subject_id.str.upper().str.contains("TEST"))
 ].copy()
 
 # FLOW:
@@ -349,7 +355,7 @@ inventoryaabc = inventoryaabc.loc[
 #    if dup, set one to unususable and explain
 
 # the variables that make up the 'common' form in the Qinteractive database.
-firstvarcols = [
+first_var_cols = [
     "id",
     "redcap_data_access_group",
     "site",
@@ -368,7 +374,7 @@ firstvarcols = [
 ]
 
 # the variables that make up the ravlt form
-columnnames = [
+ravlt_columns = [
     "ravlt_pea_ravlt_sd_tc",
     "ravlt_delay_scaled",
     "ravlt_delay_completion",
@@ -393,23 +399,23 @@ columnnames = [
 
 
 # current Qint Redcap:
-qintreport = functions.params_request_report(
+qint_report = functions.params_request_report(
     token=secret.loc[secret.source == "qint", "api_key"]
     .reset_index()
     .drop(columns="index")
     .api_key[0],
     report_id="51037",
 )
-qintdf = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qintreport)
+qint_df = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
 
 
 # all box files - grab, transform, send
-folderqueue = ["WU", "UMN"]  # ,'MGH','UCLA']
+folder_queue = ["WU", "UMN"]  # ,'MGH','UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 # this is currently taing too much time to iterate through box
 # import anything new by any definition (new name, new sha, new fileid)
-for studyshort in folderqueue:
+for studyshort in folder_queue:
     folder = config["Redcap"]["datasources"]["qint"]["BoxFolders"][studyshort]
     dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
     sitenum = config["Redcap"]["datasources"]["aabcarms"][studyshort]["sitenum"]
@@ -421,19 +427,19 @@ for studyshort in folderqueue:
     db.fileid = db.fileid.astype(int)
 
     # ones that already exist in q redcap
-    cached_filelist = qintdf.copy()
+    cached_filelist = qint_df.copy()
     cached_filelist.fileid = cached_filelist.fileid.astype(
         "Int64"
     )  # ph.asInt(cached_filelist, 'fileid')
 
     # find the new ones that need to be pulled in
-    newfileids = pd.merge(
+    new_file_ids = pd.merge(
         db, cached_filelist.fileid, on="fileid", how="left", indicator=True
     )
-    newfileids = newfileids.loc[newfileids._merge == "left_only"].drop(
+    new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(
         columns=["_merge"]
     )
-    db2go = db.loc[db.fileid.isin(list(newfileids.fileid))]
+    db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))]
     if db2go.empty:
         print("NO NEW RECORDS from", studyshort, "TO ADD AT THIS TIME")
     if not db2go.empty:
@@ -445,7 +451,7 @@ for studyshort in folderqueue:
             id = i + s
             vect = vect + [id]
 
-        rows2push = pd.DataFrame(columns=firstvarcols + columnnames)
+        rows2push = pd.DataFrame(columns=first_var_cols + ravlt_columns)
         for i in range(0, db2go.shape[0]):
             redid = vect[i]
             fid = db2go.iloc[i][["fileid"]][0]
@@ -474,7 +480,7 @@ for studyshort in folderqueue:
             visit = fname[a + 1]
             # visit=visits[-1]
             row = functions.parse_content(content)
-            df = pd.DataFrame([row], columns=columnnames)
+            df = pd.DataFrame([row], columns=ravlt_columns)
             # print(df)
             firstvars = pd.DataFrame(
                 [
@@ -496,7 +502,7 @@ for studyshort in folderqueue:
                         "",
                     ]
                 ],
-                columns=firstvarcols,
+                columns=first_var_cols,
             )
             # print(firstvars[['filename','subjectid']])
             pushrow = pd.concat([firstvars, df], axis=1)
@@ -521,13 +527,13 @@ if not rows2push.empty:
 
 # QC checks
 # now check
-qintdf2 = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qintreport)
-invq = qintdf2[["id", "site", "subjectid", "visit"]].copy()
+qint_df2 = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
+invq = qint_df2[["id", "site", "subjectid", "visit"]].copy()
 invq["redcap_event"] = "V" + invq.visit
 invq["Qint"] = "YES"
 invq = invq.loc[~(invq.subjectid.str.upper().str.contains("TEST"))]
 # Before merging, check for duplicates that haven't been given the 'unusable' flag
-dups = qintdf.loc[qintdf.duplicated(subset=["subjectid", "visit"])]
+dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
 dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
 q0 = pd.DataFrame()
 if dups2.shape[0] > 0:
@@ -536,8 +542,8 @@ if dups2.shape[0] > 0:
     q0["reason"] = ["Duplicate Q-interactive records"]
     q0["code"] = "ORANGE"
 
-inventoryaabc2 = pd.merge(
-    inventoryaabc,
+aabc_inventory_3 = pd.merge(
+    aabc_inventory_2,
     invq.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
     on=["subject", "redcap_event"],
     how="outer",
@@ -545,16 +551,16 @@ inventoryaabc2 = pd.merge(
 )
 
 q1 = pd.DataFrame()
-if inventoryaabc2.loc[inventoryaabc2._merge == "right_only"].shape[0] > 0:
+if aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"].shape[0] > 0:
     print(
         "The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate"
     )
     print(
-        inventoryaabc2.loc[inventoryaabc2._merge == "right_only"][
+        aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"][
             ["subject", "redcap_event"]
         ]
     )
-    q1 = inventoryaabc2.loc[inventoryaabc2._merge == "right_only"][
+    q1 = aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"][
         ["subject", "redcap_event"]
     ]
     q1["reason"] = [
@@ -562,15 +568,13 @@ if inventoryaabc2.loc[inventoryaabc2._merge == "right_only"].shape[0] > 0:
     ]
     q1["code"] = "ORANGE"
 
-# inventoryaabc2._merge.value_counts()
-inventoryaabc3 = inventoryaabc2.loc[inventoryaabc2._merge != "right_only"].drop(
+aabc_inventory_4 = aabc_inventory_3.loc[aabc_inventory_3._merge != "right_only"].drop(
     columns=["_merge"]
 )
-# inventoryaabc2.to_csv('test.csv',index=False)
 
-missingQ = inventoryaabc3.loc[
-    (inventoryaabc2.redcap_event_name.str.contains("v"))
-    & (~(inventoryaabc2.Qint == "YES"))
+missingQ = aabc_inventory_4.loc[
+    (aabc_inventory_3.redcap_event_name.str.contains("v"))
+    & (~(aabc_inventory_3.Qint == "YES"))
 ][["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"]]
 q2 = pd.DataFrame()
 if missingQ.shape[0] > 0:
@@ -650,11 +654,11 @@ rf2 = rf2.drop_duplicates(subset="PIN").copy()
 
 # fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
 # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
-fixtypos = inventoryaabc2.loc[inventoryaabc2.nih_toolbox_upload_typo != ""][
+fix_typos = aabc_inventory_3.loc[aabc_inventory_3.nih_toolbox_upload_typo != ""][
     ["subject", "redcap_event", "nih_toolbox_upload_typo"]
 ]
-fixtypos["PIN"] = fixtypos.subject + "_" + fixtypos.redcap_event
-fixes = dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
+fix_typos["PIN"] = fix_typos.subject + "_" + fix_typos.redcap_event
+fixes = dict(zip(fix_typos.nih_toolbox_upload_typo, fix_typos.PIN))
 rf2.PIN = rf2.PIN.replace(fixes)
 
 # NOW THE SCORED DATA
@@ -701,7 +705,7 @@ dffull.PIN = dffull.PIN.replace(fixes)
 # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
 instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
 dupvar = "tlbxwin_dups_v2"
-iset = inventoryaabc2
+iset = aabc_inventory_3
 dffull = functions.filterdupass(instrument, dupvar, iset, dffull)
 
 # find any non-identical duplicated Assessments still in data after patch
@@ -747,8 +751,8 @@ df2["redcap_event"] = df2.PIN.str.split("_", expand=True)[1]
 df2["TLBX"] = "YES"
 
 # now merge with inventory
-inventoryaabc4 = pd.merge(
-    inventoryaabc3,
+aabc_inventory_5 = pd.merge(
+    aabc_inventory_4,
     df2[["subject", "redcap_event", "TLBX", "PIN"]],
     on=["subject", "redcap_event"],
     how="outer",
@@ -758,28 +762,27 @@ inventoryaabc4 = pd.merge(
 # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 # turn this into a ticket
 t2 = pd.DataFrame()
-if inventoryaabc4.loc[inventoryaabc4._merge == "right_only"].shape[0] > 0:
-    t2 = inventoryaabc4.loc[inventoryaabc4._merge == "right_only"].copy()
+if aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"].shape[0] > 0:
+    t2 = aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"].copy()
     t2["reason"] = "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?"
     t2["code"] = "ORANGE"
     print(
         "The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate"
     )
     print(
-        inventoryaabc4.loc[inventoryaabc4._merge == "right_only"][
+        aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"][
             ["PIN", "subject", "redcap_event"]
         ]
     )
 
-inventoryaabc4 = inventoryaabc4.loc[inventoryaabc4._merge != "right_only"].drop(
+aabc_inventory_5 = aabc_inventory_5.loc[aabc_inventory_5._merge != "right_only"].drop(
     columns=["_merge"]
 )
-# inventoryaabc2.to_csv('test.csv',index=False)
 
 # Look for missing IDs
-missingT = inventoryaabc4.loc[
-    (inventoryaabc4.redcap_event_name.str.contains("v"))
-    & (~(inventoryaabc4.TLBX == "YES"))
+missingT = aabc_inventory_5.loc[
+    (aabc_inventory_5.redcap_event_name.str.contains("v"))
+    & (~(aabc_inventory_5.TLBX == "YES"))
 ]
 t3 = pd.DataFrame()
 if missingT.shape[0] > 0:
@@ -816,9 +819,9 @@ T = pd.concat([t1, t2, t3])[
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-folderqueue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
+folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
 anydata = []
-for studyshort in folderqueue:
+for studyshort in folder_queue:
     folder = config["NonQBox"]["ASA24"][studyshort]
     dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
     sitenum = config["Redcap"]["datasources"]["aabcarms"][studyshort]["sitenum"]
@@ -838,10 +841,10 @@ for studyshort in folderqueue:
 
 AD = pd.DataFrame(anydata, columns=["asa24id"])
 AD["ASA24"] = "YES"
-inventoryaabc5 = pd.merge(inventoryaabc4, AD, on="asa24id", how="left")
-missingAD = inventoryaabc5.loc[
-    (inventoryaabc5.redcap_event_name.str.contains("v"))
-    & (~(inventoryaabc5.ASA24 == "YES"))
+aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left")
+missingAD = aabc_inventory_6.loc[
+    (aabc_inventory_6.redcap_event_name.str.contains("v"))
+    & (~(aabc_inventory_6.ASA24 == "YES"))
 ]
 missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
 a1 = pd.DataFrame()
@@ -879,10 +882,10 @@ a1 = a1[
 ### for now, this is basically the same protocol as for ASA24
 
 # scan BOX
-folderqueue = ["WU", "UMN", "MGH"]  # ,'UCLA']
+folder_queue = ["WU", "UMN", "MGH"]  # ,'UCLA']
 actdata = []
 studyshort = "WU"
-for studyshort in folderqueue:
+for studyshort in folder_queue:
     print(studyshort)
     folder = config["NonQBox"]["Actigraphy"][studyshort]
     dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
@@ -921,7 +924,7 @@ if [item for item, count in collections.Counter(actdata).items() if count > 1] !
 
 ActD = pd.DataFrame(actdata, columns=["PIN"])
 ActD["Actigraphy"] = "YES"
-inventoryaabc6 = pd.merge(inventoryaabc5, ActD, on="PIN", how="left")
+inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left")
 
 # Missing?
 missingAct = inventoryaabc6.loc[
@@ -969,11 +972,11 @@ a2 = a2[
 # 4. DONT dump or snapshot.  Leave data in IntraDB.
 
 studyshort = "WU"
-folderqueue = ["WU", "MGH", "UMN"]  # UCLE
+folder_queue = ["WU", "MGH", "UMN"]  # UCLE
 
 # scan Box
 anydata = pd.DataFrame()
-for studyshort in folderqueue:
+for studyshort in folder_queue:
     folder = config["NonQBox"]["Psychopy"][studyshort]
     # dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
     # sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
