@@ -57,16 +57,28 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
     return pd.DataFrame(r.json())
 
 
-def idvisits(aabc_arms_df, keep_cols):
+def idvisits(aabc_arms_df: pd.DataFrame, keep_cols: List[str]) -> pd.DataFrame:
+    """Prepares a dataframe by doing 3 things:
+    1. Keeping only the columns specified in keep_cols
+    2. Forward filling information (site, subject) from registration event to all other events
+    3. Mapping the raw `redcap_event_name` to `redcap_event`
+
+    Args:
+        aabc_arms_df: Dataframe fresh from redcap
+        keep_cols: Columns to keep in the dataframe
+
+    Returns:
+        A modified dataframe
+    """
     df = aabc_arms_df[keep_cols].copy()
     # convert empty strings to NaN
-    df.site = df.site.where(df.site != '')
+    df.site = df.site.where(df.site != "")
     # Now forward fill the fresh NaNs
     df.site = df.site.ffill()
 
     # repeat process as above, but for 'subject_id'.
     #   but name the column 'subject' for some reason
-    df['subject'] = df.subject_id.where(df.subject_id != '')
+    df["subject"] = df.subject_id.where(df.subject_id != "")
     df.subject = df.subject.ffill()
 
     df["redcap_event"] = df.redcap_event_name.replace(
