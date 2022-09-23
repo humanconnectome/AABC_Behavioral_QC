@@ -82,22 +82,23 @@ aabc_inventory = get_aabc_arms_report()
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
 
-# slim selects just the registration event (V0) because thats where the ids and legacy information is kept.
-slim = aabc_inventory.loc[
+aabc_registration_data = aabc_inventory.loc[
+    # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
     aabc_inventory.redcap_event_name.str.contains("register"),
+    # fields of interest from form one
     ["study_id", "redcap_event_name", study_primary_key_field, "legacy_yn", "site"],
 ]
 
-# compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
-fortest = pd.merge(
+# Merge to compare AABC ids against HCA ids
+#  - also check legacy variable flags and actual event in which participant has been enrolled.
+hca_vs_aabc = pd.merge(
     hca_unique_subject_ids,
-    slim,
+    aabc_registration_data,
     left_on="subject",
     right_on=study_primary_key_field,
     how="outer",
     indicator=True,
 )
-# fortest._merge.value_counts()
 legacy_arms = [
     "register_arm_1",
     "register_arm_2",
@@ -111,10 +112,11 @@ legacy_arms = [
 
 # First batch of flags: Look for legacy IDs that don't actually exist in HCA
 # send these to Angela for emergency correction:
-ft = fortest.loc[
-    (fortest._merge == "right_only")
-    & ((fortest.legacy_yn == "1") | (fortest.redcap_event_name.isin(legacy_arms)))
-]
+is_legacy_id = (hca_vs_aabc.legacy_yn == "1") | hca_vs_aabc.redcap_event_name.isin(
+    legacy_arms
+)
+is_in_aabc_not_in_hca = hca_vs_aabc._merge == "right_only"
+ft = hca_vs_aabc.loc[is_in_aabc_not_in_hca & is_legacy_id]
 # remove the TEST subjects -- probably better to do this first, but sigh.
 ft = ft.loc[
     ~(
@@ -147,9 +149,12 @@ if not ft.empty:
         )
 
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-ft2 = fortest.loc[
-    (fortest._merge == "both")
-    & ((fortest.legacy_yn != "1") | (~(fortest.redcap_event_name.isin(legacy_arms))))
+ft2 = hca_vs_aabc.loc[
+    (hca_vs_aabc._merge == "both")
+    & (
+        (hca_vs_aabc.legacy_yn != "1")
+        | (~(hca_vs_aabc.redcap_event_name.isin(legacy_arms)))
+    )
 ]
 qlist2 = pd.DataFrame()
 if not ft2.empty:
