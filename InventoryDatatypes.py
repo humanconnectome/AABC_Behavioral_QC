@@ -273,24 +273,20 @@ test_subjects = aabc_inventory_including_test_subjects.loc[
     aabc_inventory_including_test_subjects[study_primary_key_field].str.contains(
         "test", case=False
     ),
-    ["study_id", study_primary_key_field, "redcap_event_name"],
-]
-test_subjects[
-    "reason"
-] = "HOUSEKEEPING : Please delete test subject.  Use test database when practicing"
-test_subjects["code"] = "HOUSEKEEPING"
-qlist5 = test_subjects[
     [
         "subject_id",
         "study_id",
         "redcap_event_name",
         "site",
-        "reason",
-        "code",
         "v0_date",
         "event_date",
     ]
 ]
+test_subjects[
+    "reason"
+] = "HOUSEKEEPING : Please delete test subject.  Use test database when practicing"
+test_subjects["code"] = "HOUSEKEEPING"
+qlist5 = test_subjects
 print_error_codes(qlist5)
 
 #########################################################################################
