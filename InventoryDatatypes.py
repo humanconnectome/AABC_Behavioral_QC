@@ -269,31 +269,29 @@ qlist4 = missing_sub_ids[
 print_error_codes(qlist4)
 
 # test subjects that need to be deleted
-tests = aabc_inventory_including_test_subjects.loc[
+test_subjects = aabc_inventory_including_test_subjects.loc[
     aabc_inventory_including_test_subjects[study_primary_key_field].str.contains(
         "test", case=False
     ),
     ["study_id", study_primary_key_field, "redcap_event_name"],
 ]
-qlist5 = pd.DataFrame()
-if not tests.empty:
-    tests[
-        "reason"
-    ] = "HOUSEKEEPING : Please delete test subject.  Use test database when practicing"
-    tests["code"] = "HOUSEKEEPING"
-    qlist5 = tests[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-        ]
+test_subjects[
+    "reason"
+] = "HOUSEKEEPING : Please delete test subject.  Use test database when practicing"
+test_subjects["code"] = "HOUSEKEEPING"
+qlist5 = test_subjects[
+    [
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "reason",
+        "code",
+        "v0_date",
+        "event_date",
     ]
-    print_error_codes(qlist5)
+]
+print_error_codes(qlist5)
 
 #########################################################################################
 ###concatenate Phase 0 flags for REDCap key variables
