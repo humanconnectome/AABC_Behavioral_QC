@@ -307,7 +307,7 @@ Q0 = pd.DataFrame(
         "event_date",
     ]
 )
-Q1 = functions.concat(*[Q0, qlist1, qlist2, qlist3, qlist4, qlist5])
+Q1 = functions.concat(Q0, qlist1, qlist2, qlist3, qlist4, qlist5)
 #########################################################################################
 
 
