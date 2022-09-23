@@ -150,24 +150,22 @@ is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
 
 # First batch of flags: Look for legacy IDs that don't actually exist in HCA
 # send these to Angela for emergency correction:
-ft = hca_vs_aabc.loc[is_in_aabc_not_in_hca & is_legacy_id]
-# remove the TEST subjects -- probably better to do this first, but sigh.
-ft = ft.loc[ft[study_primary_key_field] != ""]
-qlist1 = ft[
+qlist1 = hca_vs_aabc.loc[
+    is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc[study_primary_key_field] != "",
     [
         "subject_id",
         "study_id",
         "redcap_event_name",
         "site",
-    ]
+    ],
 ]
 ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
 qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
 qlist1["code"] = "RED"
-for s in ft[study_primary_key_field].unique().to_list():
+for subject_id in qlist1[study_primary_key_field].unique().to_list():
     print(
         "CODE RED :",
-        s,
+        subject_id,
         f": {ERR_MSG_ID_NOT_FOUND}",
     )
 
@@ -484,11 +482,11 @@ for studyshort in folder_queue:
         print("NO NEW RECORDS from", studyshort, "TO ADD AT THIS TIME")
     if not db2go.empty:
         # initiate new ids
-        s = cached_filelist.id.astype("Int64").max() + 1
+        subject_id = cached_filelist.id.astype("Int64").max() + 1
         l = len(db2go)
         vect = []
         for i in range(0, l):
-            id = i + s
+            id = i + subject_id
             vect = vect + [id]
 
         rows2push = pd.DataFrame(columns=first_var_cols + ravlt_columns)
@@ -872,8 +870,8 @@ for studyshort in folder_queue:
         print(f)
         k = box.read_csv(f)
         if not k.empty:
-            s = k.UserName.unique().tolist()
-            subs = subs + s
+            subject_id = k.UserName.unique().tolist()
+            subs = subs + subject_id
     anydata = anydata + list(set(subs))
 
 AD = pd.DataFrame(anydata, columns=["asa24id"])
