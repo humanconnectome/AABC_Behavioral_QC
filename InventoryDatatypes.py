@@ -150,14 +150,15 @@ is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
 
 # First batch of flags: Look for legacy IDs that don't actually exist in HCA
 # send these to Angela for emergency correction:
+cols_for_troubleshooting = [
+    "subject_id",
+    "study_id",
+    "redcap_event_name",
+    "site",
+]
 qlist1 = hca_vs_aabc.loc[
     is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc[study_primary_key_field] != "",
-    [
-        "subject_id",
-        "study_id",
-        "redcap_event_name",
-        "site",
-    ],
+    cols_for_troubleshooting,
 ]
 ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
 qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
@@ -177,24 +178,11 @@ def print_error_codes(df: pd.DataFrame) -> None:
 print_error_codes(qlist1)
 
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-ft2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
-qlist2 = pd.DataFrame()
+qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting]
 ERR_MSG_LEGACY_NOT_CHECKED = "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked"
-if not ft2.empty:
-    ft2["reason"] = ERR_MSG_LEGACY_NOT_CHECKED
-    ft2["code"] = "RED"
-    qlist2 = ft2[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-        ]
-    ]
-    print_error_codes(qlist2)
+qlist2["reason"] = ERR_MSG_LEGACY_NOT_CHECKED
+qlist2["code"] = "RED"
+print_error_codes(qlist2)
 
 # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 # get last visit
