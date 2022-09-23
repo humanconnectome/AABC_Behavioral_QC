@@ -215,17 +215,20 @@ next_visit = hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
 hca_last_visits["next_visit2"] = "V" + next_visit.astype(str)
 hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event"])
 # check that current visit in AABC is the last visit in HCA + 1
-check = pd.merge(
+hca_expected_vs_aabc_actual = pd.merge(
     hca_last_visits2,
     aabc_nonregister_visits,
     left_on=["subject", "next_visit2"],
     right_on=["subject", "redcap_event"],
-    how="outer",
+    how="right",
     indicator=True,
 )
-check = check.loc[check._merge != "left_only"]
-wrong_visit = check.loc[check._merge == "right_only"]
-wrong_visit = wrong_visit.loc[~(wrong_visit.redcap_event == "phone_call_arm_13")]
+wrong_visit = hca_expected_vs_aabc_actual.loc[
+    # was in actual but not expected
+    (hca_expected_vs_aabc_actual._merge == "right_only")
+    # and was not a phone call event
+    & (hca_expected_vs_aabc_actual.redcap_event != "phone_call_arm_13")
+]
 qlist3 = pd.DataFrame()
 if not wrong_visit.empty:
     wrong_visit[
