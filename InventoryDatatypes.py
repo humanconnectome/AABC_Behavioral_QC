@@ -211,11 +211,9 @@ aabc_id_visits = aabc_id_visits.sort_values(["study_id", "redcap_event_name"])
 aabc_nonregister_visits = aabc_id_visits.loc[~is_register_event(aabc_id_visits)]
 
 # Increment the last visit by 1 to get the next visit
-hca_last_visits["next_visit"] = (
-    hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
-)
-hca_last_visits["next_visit2"] = "V" + hca_last_visits.next_visit.astype(str)
-hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event", "next_visit"])
+next_visit = hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
+hca_last_visits["next_visit2"] = "V" + next_visit.astype(str)
+hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event"])
 # check that current visit in AABC is the last visit in HCA + 1
 check = pd.merge(
     hca_last_visits2,
