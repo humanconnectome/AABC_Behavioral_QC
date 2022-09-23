@@ -58,20 +58,21 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
 
 
 def idvisits(aabc_arms_df, keep_cols):
-    id_visit = aabc_arms_df[keep_cols].copy()
-    registers = id_visit.loc[id_visit.redcap_event_name.str.contains("register")][
-        ["subject_id", "study_id", "site"]
-    ]
-    id_visit = pd.merge(
-        registers, id_visit.drop(columns=["site"]), on="study_id", how="right"
-    )
-    id_visit = id_visit.rename(
-        columns={"subject_id_x": "subject", "subject_id_y": "subject_id"}
-    )
-    id_visit["redcap_event"] = id_visit.redcap_event_name.replace(
+    df = aabc_arms_df[keep_cols].copy()
+    # convert empty strings to NaN
+    df.site = df.site.where(df.site != '')
+    # Now forward fill the fresh NaNs
+    df.site = df.site.ffill()
+
+    # repeat process as above, but for 'subject_id'.
+    #   but name the column 'subject' for some reason
+    df['subject'] = df.subject_id.where(df.subject_id != '')
+    df.subject = df.subject.ffill()
+
+    df["redcap_event"] = df.redcap_event_name.replace(
         config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"]
     )
-    return id_visit
+    return df
 
 
 def concat(*args):
