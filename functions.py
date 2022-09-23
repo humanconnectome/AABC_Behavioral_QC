@@ -68,13 +68,9 @@ def idvisits(aabc_arms_df, keep_cols):
     id_visit = id_visit.rename(
         columns={"subject_id_x": "subject", "subject_id_y": "subject_id"}
     )
-    id_visit["redcap_event"] = id_visit.replace(
-        {
-            "redcap_event_name": config["Redcap"]["datasources"]["aabcarms"][
-                "AABCeventmap"
-            ]
-        }
-    )["redcap_event_name"]
+    id_visit["redcap_event"] = id_visit.redcap_event_name.replace(
+        config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"]
+    )
     return id_visit
 
 
