@@ -159,7 +159,6 @@ qlist1 = ft[
         "study_id",
         "redcap_event_name",
         "site",
-        "v0_date",
     ]
 ]
 ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
