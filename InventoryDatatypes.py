@@ -13,21 +13,23 @@ api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
 
 
-# Download (from Box) latest version of Excel file containing the variable masks
-# TODO: exclude variables just prior to sending snapshots to PreRelease for investigator access
-excel_file_with_variables_list = box.downloadFile(config["variablemask"])
-vars_aabc_arms_drop = functions.get_list_from_excel_sheet(
-    excel_file_with_variables_list, "AABC-ARMS-DROP"
-)
-vars_aabc_arms_restricted = functions.get_list_from_excel_sheet(
-    excel_file_with_variables_list, "AABC-ARMS-RESTRICTED"
-)
-vars_tlbx_raw_restricted = functions.get_list_from_excel_sheet(
-    excel_file_with_variables_list, "TLBX-RAW-RESTRICTED"
-)
-vars_tlbx_scores_restricted = functions.get_list_from_excel_sheet(
-    excel_file_with_variables_list, "TLBX-SCORES-RESTRICTED"
-)
+def dead_code_1():
+    # Download (from Box) latest version of Excel file containing the variable masks
+    # TODO: exclude variables just prior to sending snapshots to PreRelease for investigator access
+    excel_file_with_variables_list = box.downloadFile(config["variablemask"])
+    vars_aabc_arms_drop = functions.get_list_from_excel_sheet(
+        excel_file_with_variables_list, "AABC-ARMS-DROP"
+    )
+    vars_aabc_arms_restricted = functions.get_list_from_excel_sheet(
+        excel_file_with_variables_list, "AABC-ARMS-RESTRICTED"
+    )
+    vars_tlbx_raw_restricted = functions.get_list_from_excel_sheet(
+        excel_file_with_variables_list, "TLBX-RAW-RESTRICTED"
+    )
+    vars_tlbx_scores_restricted = functions.get_list_from_excel_sheet(
+        excel_file_with_variables_list, "TLBX-SCORES-RESTRICTED"
+    )
+
 
 ## get the HCA inventory for ID checking with AABC
 csv_file_hca_inventory = box.downloadFile(config["hcainventory"])
@@ -50,29 +52,41 @@ hca_last_visits = (
 # if Legacy, id exists in HCA and other subject id related tests:
 # Test that #visits in HCA corresponds with cohort in AABC
 
-# construct the json that gets sent to REDCap when requesting data.
-# all data (not actually getting these now)
-aabc_arms = functions.params_request_records(token=api_key["aabcarms"])
-hcpa = functions.params_request_records(token=api_key["hcpa"])
-# just a report
-aabc_report = functions.params_request_report(
-    token=api_key["aabcarms"],
-    report_id="51031",
-)
+
+def dead_code_2():
+    # construct the json that gets sent to REDCap when requesting data.
+    # all data (not actually getting these now)
+    aabc_arms = functions.params_request_records(token=api_key["aabcarms"])
+    hcpa = functions.params_request_records(token=api_key["hcpa"])
+
+
+def get_aabc_arms_report() -> pd.DataFrame:
+    """Get the AABC arms report from REDCap
+
+    Returns:
+        A dataframe of the report
+    """
+    aabc_arms_report_request = functions.params_request_report(
+        token=api_key["aabcarms"],
+        report_id="51031",
+    )
+    df = functions.get_frame(
+        api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request
+    )
+    return df
+
 
 # download the inventory report from AABC for comparison
-aabc_inventory = functions.get_frame(
-    api_url=config["Redcap"]["api_url10"], data=aabc_report
-)
-# aabcarmsdf=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
+aabc_inventory = get_aabc_arms_report()
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_id = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
 
 # slim selects just the registration event (V0) because thats where the ids and legacy information is kept.
-slim = aabc_inventory[
-    ["study_id", "redcap_event_name", study_id, "legacy_yn", "site"]
-].loc[(aabc_inventory.redcap_event_name.str.contains("register"))]
+slim = aabc_inventory.loc[
+    aabc_inventory.redcap_event_name.str.contains("register"),
+    ["study_id", "redcap_event_name", study_id, "legacy_yn", "site"],
+]
 
 # compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
 fortest = pd.merge(
