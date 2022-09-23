@@ -100,9 +100,22 @@ aabc_inventory = remove_test_subjects(
     aabc_inventory_including_test_subjects, study_primary_key_field
 )
 
+
+def is_register_event(df: pd.DataFrame) -> pd.Series:
+    """Check if the event is the register event
+
+    Args:
+        df: dataframe to check
+
+    Returns:
+        A series of booleans
+    """
+    return df.redcap_event_name.str.contains("register", case=False, na=False)
+
+
 aabc_registration_data = aabc_inventory.loc[
     # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
-    aabc_inventory.redcap_event_name.str.contains("register"),
+    is_register_event(aabc_inventory),
     # fields of interest from form one
     ["study_id", "redcap_event_name", study_primary_key_field, "legacy_yn", "site"],
 ]
@@ -140,8 +153,18 @@ is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
 ft = hca_vs_aabc.loc[is_in_aabc_not_in_hca & is_legacy_id]
 # remove the TEST subjects -- probably better to do this first, but sigh.
 ft = ft.loc[ft[study_primary_key_field] != ""]
-qlist1 = pd.DataFrame()
-if not ft.empty:
+qlist1 = ft[
+    [
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "v0_date",
+    ]
+]
+if ft.empty:
+    qlist1 = pd.DataFrame()
+else:
     ft[
         "reason"
     ] = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
@@ -209,7 +232,7 @@ aabc_sorted_by_studyid_and_event = aabc_id_visits.sort_values(
     ["study_id", "redcap_event_name"]
 )
 sortaabcv = aabc_sorted_by_studyid_and_event.loc[
-    ~(aabc_sorted_by_studyid_and_event.redcap_event_name.str.contains("register"))
+    ~is_register_event(aabc_sorted_by_studyid_and_event)
 ]
 sortaabcv.drop_duplicates(subset=["study_id"], keep="first")
 # add 1 to last visit from HCA
@@ -257,8 +280,7 @@ if not wrong_visit.empty:
 
 # check to make sure that the subject id is not missing.
 missing_sub_ids = aabc_inventory.loc[
-    (aabc_inventory.redcap_event_name.str.contains("register"))
-    & (aabc_inventory[study_primary_key_field] == "")
+    is_register_event(aabc_inventory) & (aabc_inventory[study_primary_key_field] == "")
 ]
 qlist4 = pd.DataFrame()
 if not missing_sub_ids.empty:
@@ -1171,8 +1193,7 @@ pd.set_option("display.width", 1000)
 pd.options.display.width = 1000
 
 cb = inventoryaabc7.loc[
-    (inventoryaabc7.redcap_event_name.str.contains("register"))
-    & (inventoryaabc7.counterbalance_2nd == "")
+    is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == "")
 ][
     [
         "site",
