@@ -13,19 +13,19 @@ api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
 
 
-# get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
-# this is not yet working
+# Download (from Box) latest version of Excel file containing the variable masks
+# TODO: exclude variables just prior to sending snapshots to PreRelease for investigator access
 excel_file_with_variables_list = box.downloadFile(config["variablemask"])
-rdrop = functions.get_list_from_excel_sheet(
+vars_aabc_arms_drop = functions.get_list_from_excel_sheet(
     excel_file_with_variables_list, "AABC-ARMS-DROP"
 )
-rrest = functions.get_list_from_excel_sheet(
+vars_aabc_arms_restricted = functions.get_list_from_excel_sheet(
     excel_file_with_variables_list, "AABC-ARMS-RESTRICTED"
 )
-rraw = functions.get_list_from_excel_sheet(
+vars_tlbx_raw_restricted = functions.get_list_from_excel_sheet(
     excel_file_with_variables_list, "TLBX-RAW-RESTRICTED"
 )
-rscore = functions.get_list_from_excel_sheet(
+vars_tlbx_scores_restricted = functions.get_list_from_excel_sheet(
     excel_file_with_variables_list, "TLBX-SCORES-RESTRICTED"
 )
 
