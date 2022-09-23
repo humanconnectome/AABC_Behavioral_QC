@@ -31,12 +31,15 @@ vars_tlbx_scores_restricted = functions.get_list_from_excel_sheet(
 
 ## get the HCA inventory for ID checking with AABC
 csv_file_hca_inventory = box.downloadFile(config["hcainventory"])
-ids = pd.read_csv(csv_file_hca_inventory)
-hca_ids = ids.subject.drop_duplicates()
-# for later use in getting the last visit for each participant in HCA so that you can later make sure that person is starting subsequent visit and not accidentally enrolled in the wrong arm
+hca_inventory = pd.read_csv(csv_file_hca_inventory)
+hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
+
+# dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
+# - to check participant is not enrolled in wrong arm
+# - to check participant is starting correct next visit
 hca_last_visits = (
-    ids[["subject", "redcap_event"]]
-    .loc[ids.redcap_event.isin(["V1", "V2"])]
+    hca_inventory[["subject", "redcap_event"]]
+    .loc[hca_inventory.redcap_event.isin(["V1", "V2"])]
     .sort_values("redcap_event")
     .drop_duplicates(subset="subject", keep="last")
 )
@@ -73,7 +76,12 @@ slim = aabc_inventory[
 
 # compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
 fortest = pd.merge(
-    hca_ids, slim, left_on="subject", right_on=study_id, how="outer", indicator=True
+    hca_unique_subject_ids,
+    slim,
+    left_on="subject",
+    right_on=study_id,
+    how="outer",
+    indicator=True,
 )
 # fortest._merge.value_counts()
 legacy_arms = [
