@@ -272,8 +272,9 @@ print_error_codes(qlist4)
 tests = aabc_inventory_including_test_subjects.loc[
     aabc_inventory_including_test_subjects[study_primary_key_field].str.contains(
         "test", case=False
-    )
-][["study_id", study_primary_key_field, "redcap_event_name"]]
+    ),
+    ["study_id", study_primary_key_field, "redcap_event_name"],
+]
 qlist5 = pd.DataFrame()
 if not tests.empty:
     tests[
