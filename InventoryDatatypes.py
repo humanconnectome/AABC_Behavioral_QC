@@ -12,19 +12,26 @@ secret = pd.read_csv(config["config_files"]["secrets"])
 api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
 
-## get the HCA inventory for ID checking with AABC
-pathp = box.downloadFile(config["hcainventory"])
 
 # get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
 # this is not yet working
-a = box.downloadFile(config["variablemask"])
-rdrop = functions.getlist(a, "AABC-ARMS-DROP")
-rrest = functions.getlist(a, "AABC-ARMS-RESTRICTED")
-rraw = functions.getlist(a, "TLBX-RAW-RESTRICTED")
-rscore = functions.getlist(a, "TLBX-SCORES-RESTRICTED")
+excel_file_with_variables_list = box.downloadFile(config["variablemask"])
+rdrop = functions.get_list_from_excel_sheet(
+    excel_file_with_variables_list, "AABC-ARMS-DROP"
+)
+rrest = functions.get_list_from_excel_sheet(
+    excel_file_with_variables_list, "AABC-ARMS-RESTRICTED"
+)
+rraw = functions.get_list_from_excel_sheet(
+    excel_file_with_variables_list, "TLBX-RAW-RESTRICTED"
+)
+rscore = functions.get_list_from_excel_sheet(
+    excel_file_with_variables_list, "TLBX-SCORES-RESTRICTED"
+)
 
-# get ids
-ids = pd.read_csv(pathp)
+## get the HCA inventory for ID checking with AABC
+csv_file_hca_inventory = box.downloadFile(config["hcainventory"])
+ids = pd.read_csv(csv_file_hca_inventory)
 hca_ids = ids.subject.drop_duplicates()
 # for later use in getting the last visit for each participant in HCA so that you can later make sure that person is starting subsequent visit and not accidentally enrolled in the wrong arm
 hca_last_visits = (

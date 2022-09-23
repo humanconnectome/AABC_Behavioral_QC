@@ -1,4 +1,5 @@
 import subprocess
+from typing import List
 
 import pandas as pd
 import requests
@@ -143,10 +144,18 @@ def run_ssh_cmd(host: str, cmd: str):
     )
 
 
-def getlist(mask, sheet):
-    restrictA = pd.read_excel(mask, sheet_name=sheet)
-    restrictedA = list(restrictA.field_name)
-    return restrictedA
+def get_list_from_excel_sheet(excel_file_path: str, sheet_name: str) -> List[str]:
+    """Get a list of values from a specific sheet in an excel file
+
+    Args:
+        excel_file_path: path to the excel file
+        sheet_name: name of the sheet to get the values from
+
+    Returns:
+        A list of field names from the sheet
+    """
+    df = pd.read_excel(excel_file_path, sheet_name=sheet_name)
+    return df.field_name.to_list()
 
 
 def TLBXreshape(results1):
