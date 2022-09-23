@@ -349,7 +349,6 @@ keeplist = [
 ]
 
 aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
-aabc_inventory_2 = remove_test_subjects(aabc_inventory_2, study_primary_key_field)
 
 # FLOW:
 # Qinteractive  order:
