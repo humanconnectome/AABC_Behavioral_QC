@@ -9,6 +9,7 @@ from config import LoadSettings
 
 config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
+api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
 
 ## get the HCA inventory for ID checking with AABC
@@ -41,24 +42,11 @@ hca_last_visits = (
 
 # construct the json that gets sent to REDCap when requesting data.
 # all data (not actually getting these now)
-aabc_arms = functions.params_request_records(
-    token=secret.loc[secret.source == "aabcarms", "api_key"]
-    .reset_index()
-    .drop(columns="index")
-    .api_key[0]
-)
-hcpa = functions.params_request_records(
-    token=secret.loc[secret.source == "hcpa", "api_key"]
-    .reset_index()
-    .drop(columns="index")
-    .api_key[0]
-)
+aabc_arms = functions.params_request_records(token=api_key["aabcarms"])
+hcpa = functions.params_request_records(token=api_key["hcpa"])
 # just a report
 aabc_report = functions.params_request_report(
-    token=secret.loc[secret.source == "aabcarms", "api_key"]
-    .reset_index()
-    .drop(columns="index")
-    .api_key[0],
+    token=api_key["aabcarms"],
     report_id="51031",
 )
 
@@ -400,10 +388,7 @@ ravlt_columns = [
 
 # current Qint Redcap:
 qint_report = functions.params_request_report(
-    token=secret.loc[secret.source == "qint", "api_key"]
-    .reset_index()
-    .drop(columns="index")
-    .api_key[0],
+    token=api_key["qint"],
     report_id="51037",
 )
 qint_df = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
@@ -516,10 +501,7 @@ for studyshort in folder_queue:
 if not rows2push.empty:
     functions.send_frame(
         dataframe=rows2push,
-        tok=secret.loc[secret.source == "qint", "api_key"]
-        .reset_index()
-        .drop(columns="index")
-        .api_key[0],
+        tok=api_key["qint"],
     )
 ####
 ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
