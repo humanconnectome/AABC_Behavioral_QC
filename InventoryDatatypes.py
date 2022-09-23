@@ -207,14 +207,10 @@ aabc_id_visits = functions.idvisits(
         "event_date",
     ],
 )
-aabc_sorted_by_studyid_and_event = aabc_id_visits.sort_values(
-    ["study_id", "redcap_event_name"]
-)
-sortaabcv = aabc_sorted_by_studyid_and_event.loc[
-    ~is_register_event(aabc_sorted_by_studyid_and_event)
-]
-sortaabcv.drop_duplicates(subset=["study_id"], keep="first")
-# add 1 to last visit from HCA
+aabc_id_visits = aabc_id_visits.sort_values(["study_id", "redcap_event_name"])
+aabc_nonregister_visits = aabc_id_visits.loc[~is_register_event(aabc_id_visits)]
+
+# Increment the last visit by 1 to get the next visit
 hca_last_visits["next_visit"] = (
     hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
 )
@@ -223,7 +219,7 @@ hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event", "next_visit"])
 # check that current visit in AABC is the last visit in HCA + 1
 check = pd.merge(
     hca_last_visits2,
-    sortaabcv,
+    aabc_nonregister_visits,
     left_on=["subject", "next_visit2"],
     right_on=["subject", "redcap_event"],
     how="outer",
