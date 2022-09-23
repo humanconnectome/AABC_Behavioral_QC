@@ -162,38 +162,21 @@ qlist1 = ft[
         "v0_date",
     ]
 ]
-if ft.empty:
-    qlist1 = pd.DataFrame()
-else:
-    ft[
-        "reason"
-    ] = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
-    ft["code"] = "RED"
-    qlist1 = ft[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-        ]
-    ]
-    for s in list(ft[study_primary_key_field].unique()):
-        print(
-            "CODE RED :",
-            s,
-            ": Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
-        )
+ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
+qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
+qlist1["code"] = "RED"
+for s in ft[study_primary_key_field].unique().to_list():
+    print(
+        "CODE RED :",
+        s,
+        f": {ERR_MSG_ID_NOT_FOUND}",
+    )
 
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 ft2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
 qlist2 = pd.DataFrame()
 if not ft2.empty:
-    ft2[
-        "reason"
-    ] = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
+    ft2["reason"] = ERR_MSG_ID_NOT_FOUND
     ft2["code"] = "RED"
     qlist2 = ft2[
         [
