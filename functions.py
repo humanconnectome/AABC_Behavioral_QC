@@ -75,9 +75,6 @@ def idvisits(aabc_arms_df, keep_cols):
             ]
         }
     )["redcap_event_name"]
-    id_visit = id_visit.loc[
-        ~(id_visit.subject.astype(str).str.upper().str.contains("TEST"))
-    ]
     return id_visit
 
 
