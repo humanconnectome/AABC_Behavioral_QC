@@ -77,10 +77,28 @@ def get_aabc_arms_report() -> pd.DataFrame:
 
 
 # download the inventory report from AABC for comparison
-aabc_inventory = get_aabc_arms_report()
+aabc_inventory_including_test_subjects = get_aabc_arms_report()
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
+
+
+def remove_test_subjects(df: pd.DataFrame, field: str) -> pd.DataFrame:
+    """Remove test subjects from a dataframe
+
+    Args:
+        df: dataframe to remove test subjects from
+        field: field to check for test subjects
+
+    Returns:
+        A dataframe with test subjects removed
+    """
+    return df.loc[~df[field].str.contains("test", na=False, case=False)].copy()
+
+
+aabc_inventory = remove_test_subjects(
+    aabc_inventory_including_test_subjects, study_primary_key_field
+)
 
 aabc_registration_data = aabc_inventory.loc[
     # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
@@ -121,12 +139,7 @@ is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
 # send these to Angela for emergency correction:
 ft = hca_vs_aabc.loc[is_in_aabc_not_in_hca & is_legacy_id]
 # remove the TEST subjects -- probably better to do this first, but sigh.
-ft = ft.loc[
-    ~(
-        (ft[study_primary_key_field] == "")
-        | (ft[study_primary_key_field].str.upper().str.contains("TEST"))
-    )
-]
+ft = ft.loc[ft[study_primary_key_field] != ""]
 qlist1 = pd.DataFrame()
 if not ft.empty:
     ft[
@@ -272,8 +285,12 @@ if not missing_sub_ids.empty:
         )
 
 # test subjects that need to be deleted
-tests = aabc_inventory.loc[
-    (aabc_inventory[study_primary_key_field].str.upper().str.contains("TEST"))
+tests = aabc_inventory_including_test_subjects.loc[
+    (
+        aabc_inventory_including_test_subjects[study_primary_key_field]
+        .str.upper()
+        .str.contains("TEST")
+    )
 ][["study_id", study_primary_key_field, "redcap_event_name"]]
 qlist5 = pd.DataFrame()
 if not tests.empty:
@@ -356,9 +373,7 @@ keeplist = [
 ]
 
 aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
-aabc_inventory_2 = aabc_inventory_2.loc[
-    ~(aabc_inventory_2.subject_id.str.upper().str.contains("TEST"))
-].copy()
+aabc_inventory_2 = remove_test_subjects(aabc_inventory_2, study_primary_key_field)
 
 # FLOW:
 # Qinteractive  order:
@@ -549,7 +564,7 @@ qint_df2 = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_
 invq = qint_df2[["id", "site", "subjectid", "visit"]].copy()
 invq["redcap_event"] = "V" + invq.visit
 invq["Qint"] = "YES"
-invq = invq.loc[~(invq.subjectid.str.upper().str.contains("TEST"))]
+invq = remove_test_subjects(invq, "subjectid")
 # Before merging, check for duplicates that haven't been given the 'unusable' flag
 dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
 dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
@@ -664,7 +679,7 @@ raw21 = functions.TLBXreshape(rawd2)
 
 # remove files known to be duds.
 rf2 = pd.concat([raw41, raw31, raw21, raw11])
-rf2 = rf2.loc[~(rf2.PIN.str.upper().str.contains("TEST"))]
+rf2 = remove_test_subjects(rf2, "PIN")
 rf2 = rf2.loc[~(rf2.PIN.str.upper() == "ABC123")]
 
 # drop duplicates for purpose of generating QC flags.
@@ -712,7 +727,7 @@ dffull4 = functions.TLBXreshape(results4)
 ##fixtypos in Scores file now
 dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])
 dffull = dffull.copy()  # pd.concat([df11,df31])
-dffull = dffull.loc[~(dffull.PIN.str.upper().str.contains("TEST"))]
+dffull = remove_test_subjects(dffull, "PIN")
 dffull = dffull.loc[~(dffull.PIN.str.upper() == "ABC123")]
 
 
