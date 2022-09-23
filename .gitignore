@@ -6,3 +6,4 @@ creds/
 .*cache
 .venv/
 secrets.yml
+tmp/*
