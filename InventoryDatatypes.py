@@ -195,8 +195,6 @@ qlist2["code"] = "RED"
 print_error_codes(qlist2)
 
 # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-# get last visit
-hca_last_visits["next_visit"] = ""
 # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
 aabc_id_visits = functions.idvisits(
     aabc_inventory,
@@ -217,7 +215,7 @@ sortaabcv = aabc_sorted_by_studyid_and_event.loc[
 ]
 sortaabcv.drop_duplicates(subset=["study_id"], keep="first")
 # add 1 to last visit from HCA
-hca_last_visits.next_visit = (
+hca_last_visits["next_visit"] = (
     hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
 )
 hca_last_visits["next_visit2"] = "V" + hca_last_visits.next_visit.astype(str)
