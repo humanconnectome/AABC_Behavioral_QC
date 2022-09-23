@@ -80,12 +80,12 @@ def get_aabc_arms_report() -> pd.DataFrame:
 aabc_inventory = get_aabc_arms_report()
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
-study_id = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
+study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
 
 # slim selects just the registration event (V0) because thats where the ids and legacy information is kept.
 slim = aabc_inventory.loc[
     aabc_inventory.redcap_event_name.str.contains("register"),
-    ["study_id", "redcap_event_name", study_id, "legacy_yn", "site"],
+    ["study_id", "redcap_event_name", study_primary_key_field, "legacy_yn", "site"],
 ]
 
 # compare aabc ids against hcaids and whether legacy information is properly accounted for (e.g. legacy variable flags and actual event in which participannt has been enrolled.
@@ -93,7 +93,7 @@ fortest = pd.merge(
     hca_unique_subject_ids,
     slim,
     left_on="subject",
-    right_on=study_id,
+    right_on=study_primary_key_field,
     how="outer",
     indicator=True,
 )
@@ -116,7 +116,12 @@ ft = fortest.loc[
     & ((fortest.legacy_yn == "1") | (fortest.redcap_event_name.isin(legacy_arms)))
 ]
 # remove the TEST subjects -- probably better to do this first, but sigh.
-ft = ft.loc[~((ft[study_id] == "") | (ft[study_id].str.upper().str.contains("TEST")))]
+ft = ft.loc[
+    ~(
+        (ft[study_primary_key_field] == "")
+        | (ft[study_primary_key_field].str.upper().str.contains("TEST"))
+    )
+]
 qlist1 = pd.DataFrame()
 if not ft.empty:
     ft[
@@ -134,7 +139,7 @@ if not ft.empty:
             "v0_date",
         ]
     ]
-    for s in list(ft[study_id].unique()):
+    for s in list(ft[study_primary_key_field].unique()):
         print(
             "CODE RED :",
             s,
@@ -163,7 +168,7 @@ if not ft2.empty:
             "v0_date",
         ]
     ]
-    for s2 in list(ft2[study_id].unique()):
+    for s2 in list(ft2[study_primary_key_field].unique()):
         print(
             "CODE RED :",
             s2,
@@ -227,7 +232,7 @@ if not wrong_visit.empty:
             "event_date",
         ]
     ]
-    for s3 in list(wrong_visit[study_id].unique()):
+    for s3 in list(wrong_visit[study_primary_key_field].unique()):
         if s3 != "":
             print(
                 "CODE RED :",
@@ -238,7 +243,7 @@ if not wrong_visit.empty:
 # check to make sure that the subject id is not missing.
 missing_sub_ids = aabc_inventory.loc[
     (aabc_inventory.redcap_event_name.str.contains("register"))
-    & (aabc_inventory[study_id] == "")
+    & (aabc_inventory[study_primary_key_field] == "")
 ]
 qlist4 = pd.DataFrame()
 if not missing_sub_ids.empty:
@@ -258,16 +263,16 @@ if not missing_sub_ids.empty:
             "event_date",
         ]
     ]
-    for s4 in list(missing_sub_ids.study_id.unique()):
+    for s4 in list(missing_sub_ids.study_primary_key_field.unique()):
         print(
             "CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:",
             s4,
         )
 
 # test subjects that need to be deleted
-tests = aabc_inventory.loc[(aabc_inventory[study_id].str.upper().str.contains("TEST"))][
-    ["study_id", study_id, "redcap_event_name"]
-]
+tests = aabc_inventory.loc[
+    (aabc_inventory[study_primary_key_field].str.upper().str.contains("TEST"))
+][["study_id", study_primary_key_field, "redcap_event_name"]]
 qlist5 = pd.DataFrame()
 if not tests.empty:
     tests[
@@ -286,7 +291,7 @@ if not tests.empty:
             "event_date",
         ]
     ]
-    for s5 in list(tests[study_id].unique()):
+    for s5 in list(tests[study_primary_key_field].unique()):
         print("HOUSEKEEPING : Please delete test subject:", s5)
 
 #########################################################################################
