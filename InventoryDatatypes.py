@@ -110,12 +110,15 @@ legacy_arms = [
     "register_arm_8",
 ]
 
-# First batch of flags: Look for legacy IDs that don't actually exist in HCA
-# send these to Angela for emergency correction:
-is_legacy_id = (hca_vs_aabc.legacy_yn == "1") | hca_vs_aabc.redcap_event_name.isin(
-    legacy_arms
+# Boolean filters
+is_legacy_id = hca_vs_aabc.redcap_event_name.isin(legacy_arms) | (
+    hca_vs_aabc.legacy_yn == "1"
 )
 is_in_aabc_not_in_hca = hca_vs_aabc._merge == "right_only"
+is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
+
+# First batch of flags: Look for legacy IDs that don't actually exist in HCA
+# send these to Angela for emergency correction:
 ft = hca_vs_aabc.loc[is_in_aabc_not_in_hca & is_legacy_id]
 # remove the TEST subjects -- probably better to do this first, but sigh.
 ft = ft.loc[
@@ -149,13 +152,7 @@ if not ft.empty:
         )
 
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-ft2 = hca_vs_aabc.loc[
-    (hca_vs_aabc._merge == "both")
-    & (
-        (hca_vs_aabc.legacy_yn != "1")
-        | (~(hca_vs_aabc.redcap_event_name.isin(legacy_arms)))
-    )
-]
+ft2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
 qlist2 = pd.DataFrame()
 if not ft2.empty:
     ft2[
