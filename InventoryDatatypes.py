@@ -229,48 +229,44 @@ wrong_visit = hca_expected_vs_aabc_actual.loc[
     # and was not a phone call event
     & (hca_expected_vs_aabc_actual.redcap_event != "phone_call_arm_13")
 ]
-qlist3 = pd.DataFrame()
-if not wrong_visit.empty:
-    wrong_visit[
-        "reason"
-    ] = "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2"
-    wrong_visit["code"] = "RED"
-    qlist3 = wrong_visit[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-        ]
+wrong_visit[
+    "reason"
+] = "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2"
+wrong_visit["code"] = "RED"
+qlist3 = wrong_visit[
+    [
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "reason",
+        "code",
+        "event_date",
     ]
-    print_error_codes(qlist3)
+]
+print_error_codes(qlist3)
 
 # check to make sure that the subject id is not missing.
 missing_sub_ids = aabc_inventory.loc[
     is_register_event(aabc_inventory) & (aabc_inventory[study_primary_key_field] == "")
 ]
-qlist4 = pd.DataFrame()
-if not missing_sub_ids.empty:
-    missing_sub_ids[
-        "reason"
-    ] = "Subject ID is MISSING in AABC REDCap Database Record with study id"
-    missing_sub_ids["code"] = "ORANGE"
-    qlist4 = missing_sub_ids[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-        ]
+missing_sub_ids[
+    "reason"
+] = "Subject ID is MISSING in AABC REDCap Database Record with study id"
+missing_sub_ids["code"] = "ORANGE"
+qlist4 = missing_sub_ids[
+    [
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "reason",
+        "code",
+        "v0_date",
+        "event_date",
     ]
-    print_error_codes(qlist4)
+]
+print_error_codes(qlist4)
 
 # test subjects that need to be deleted
 tests = aabc_inventory_including_test_subjects.loc[
