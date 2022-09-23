@@ -157,7 +157,9 @@ cols_for_troubleshooting = [
     "site",
 ]
 qlist1 = hca_vs_aabc.loc[
-    is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc[study_primary_key_field] != "",
+    is_in_aabc_not_in_hca
+    & is_legacy_id
+    & hca_vs_aabc[study_primary_key_field].notnull(),
     cols_for_troubleshooting,
 ]
 ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
