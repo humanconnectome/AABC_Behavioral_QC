@@ -162,18 +162,26 @@ qlist1 = hca_vs_aabc.loc[
 ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
 qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
 qlist1["code"] = "RED"
-for subject_id in qlist1[study_primary_key_field].unique().to_list():
-    print(
-        "CODE RED :",
-        subject_id,
-        f": {ERR_MSG_ID_NOT_FOUND}",
-    )
+
+
+def print_error_codes(df: pd.DataFrame) -> None:
+    """Print error codes from a dataframe
+
+    Args:
+        df: dataframe to print error codes from
+    """
+    for row in df.itertuples():
+        print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
+
+
+print_error_codes(qlist1)
 
 # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 ft2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
 qlist2 = pd.DataFrame()
+ERR_MSG_LEGACY_NOT_CHECKED = "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked"
 if not ft2.empty:
-    ft2["reason"] = ERR_MSG_ID_NOT_FOUND
+    ft2["reason"] = ERR_MSG_LEGACY_NOT_CHECKED
     ft2["code"] = "RED"
     qlist2 = ft2[
         [
@@ -186,12 +194,7 @@ if not ft2.empty:
             "v0_date",
         ]
     ]
-    for s2 in list(ft2[study_primary_key_field].unique()):
-        print(
-            "CODE RED :",
-            s2,
-            ": Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
-        )
+    print_error_codes(qlist2)
 
 # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 # get last visit
@@ -250,13 +253,7 @@ if not wrong_visit.empty:
             "event_date",
         ]
     ]
-    for s3 in list(wrong_visit[study_primary_key_field].unique()):
-        if s3 != "":
-            print(
-                "CODE RED :",
-                s3,
-                ": Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
-            )
+    print_error_codes(qlist3)
 
 # check to make sure that the subject id is not missing.
 missing_sub_ids = aabc_inventory.loc[
@@ -267,7 +264,7 @@ if not missing_sub_ids.empty:
     missing_sub_ids[
         "reason"
     ] = "Subject ID is MISSING in AABC REDCap Database Record with study id"
-    missing_sub_ids["code"] = "RED"
+    missing_sub_ids["code"] = "ORANGE"
     qlist4 = missing_sub_ids[
         [
             "subject_id",
@@ -280,11 +277,7 @@ if not missing_sub_ids.empty:
             "event_date",
         ]
     ]
-    for s4 in list(missing_sub_ids.study_primary_key_field.unique()):
-        print(
-            "CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:",
-            s4,
-        )
+    print_error_codes(qlist4)
 
 # test subjects that need to be deleted
 tests = aabc_inventory_including_test_subjects.loc[
@@ -312,8 +305,7 @@ if not tests.empty:
             "event_date",
         ]
     ]
-    for s5 in list(tests[study_primary_key_field].unique()):
-        print("HOUSEKEEPING : Please delete test subject:", s5)
+    print_error_codes(qlist5)
 
 #########################################################################################
 ###concatenate Phase 0 flags for REDCap key variables
