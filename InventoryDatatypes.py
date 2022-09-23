@@ -117,7 +117,14 @@ aabc_registration_data = aabc_inventory.loc[
     # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
     is_register_event(aabc_inventory),
     # fields of interest from form one
-    ["study_id", "redcap_event_name", study_primary_key_field, "legacy_yn", "site"],
+    [
+        "study_id",
+        "redcap_event_name",
+        study_primary_key_field,
+        "legacy_yn",
+        "site",
+        "v0_date",
+    ],
 ]
 
 # Merge to compare AABC ids against HCA ids
@@ -155,6 +162,7 @@ cols_for_troubleshooting = [
     "study_id",
     "redcap_event_name",
     "site",
+    "v0_date",
 ]
 qlist1 = hca_vs_aabc.loc[
     is_in_aabc_not_in_hca
