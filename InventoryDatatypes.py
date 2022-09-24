@@ -854,10 +854,7 @@ def code_block_4(aabc_inventory_5):
     for site_accronym in folder_queue:
         folder = config["NonQBox"]["ASA24"][site_accronym]
         filelist = box.list_of_files([folder])
-        db = pd.DataFrame(
-            filelist
-        ).transpose()  # .reset_index().rename(columns={'index':'fileid'})
-        dbitems = db.copy()  # db.loc[db.filename.str.contains('TNS')].copy()
+        dbitems = pd.DataFrame(filelist).transpose()
         subs = []
         for f in dbitems.fileid:
             print(f)
@@ -923,10 +920,7 @@ def code_block_5(aabc_inventory_6):
         print(site_accronym)
         folder = config["NonQBox"]["Actigraphy"][site_accronym]
         filelist = box.list_of_files([folder])
-        db = pd.DataFrame(
-            filelist
-        ).transpose()  # .reset_index().rename(columns={'index':'fileid'})
-        dbitems = db.copy()  # db.loc[db.filename.str.contains('TNS')].copy()
+        dbitems = pd.DataFrame(filelist).transpose()
         actsubs = []
         for fid in dbitems.fileid:
             try:
@@ -1024,13 +1018,8 @@ def code_block_6(inventoryaabc6):
     for site_accronym in folder_queue:
         folder = config["NonQBox"]["Psychopy"][site_accronym]
         filelist = box.list_of_files([folder])
-        db = pd.DataFrame(
-            filelist
-        ).transpose()  # .reset_index().rename(columns={'index':'fileid'})
-        dbitems = db.copy()  # db.loc[db.filename.str.contains('TNS')].copy()
-        subs = []
+        dbitems = pd.DataFrame(filelist).transpose()
         for fname in dbitems.filename:
-            # print(f)
             subjvscan = fname[fname.find("HCA") : fname.find("HCA") + 15]
             l2 = subjvscan.split("_")
             row = l2 + [fname]
