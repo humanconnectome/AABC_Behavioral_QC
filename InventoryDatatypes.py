@@ -863,18 +863,14 @@ def code_block_4(aabc_inventory_5):
     # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
-    anydata = []
+    anydata = set()
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
         dbitems = list_files_in_box_folders(box_folder_id)
-        subs = []
         for f in dbitems.fileid:
             print(f)
             k = box.read_csv(f)
-            if not k.empty:
-                subject_id = k.UserName.unique().tolist()
-                subs = subs + subject_id
-        anydata = anydata + list(set(subs))
+            anydata.update(k.UserName)
 
     AD = pd.DataFrame(anydata, columns=["asa24id"])
     AD["ASA24"] = "YES"
