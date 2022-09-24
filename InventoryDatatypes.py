@@ -280,7 +280,7 @@ test_subjects = aabc_inventory_including_test_subjects.loc[
         "site",
         "v0_date",
         "event_date",
-    ]
+    ],
 ]
 test_subjects[
     "reason"
@@ -432,16 +432,12 @@ for site_accronym in folder_queue:
     sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
 
     filelist = box.list_of_files([folder])
-    db = pd.DataFrame(
-        filelist
-    ).transpose()
+    db = pd.DataFrame(filelist).transpose()
     db.fileid = db.fileid.astype(int)
 
     # ones that already exist in q redcap
     cached_filelist = qint_df.copy()
-    cached_filelist.fileid = cached_filelist.fileid.astype(
-        "Int64"
-    )  # ph.asInt(cached_filelist, 'fileid')
+    cached_filelist.fileid = cached_filelist.fileid.astype("Int64")
 
     # find the new ones that need to be pulled in
     new_file_ids = pd.merge(
