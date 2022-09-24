@@ -612,6 +612,7 @@ def code_block_2() -> pd.DataFrame:
 
     return Q2, aabc_inventory_3, aabc_inventory_4
 
+
 Q2, aabc_inventory_3, aabc_inventory_4 = code_block_2()
 
 # Send to Box
@@ -627,7 +628,7 @@ Q2, aabc_inventory_3, aabc_inventory_4 = code_block_2()
 ##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
 
 
-def code_block_3():
+def code_block_3(aabc_inventory_3, aabc_inventory_4):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
     # # 2. QC (after incorporating patches)
@@ -825,9 +826,11 @@ def code_block_3():
     ]
     return T, aabc_inventory_5
 
-T, aabc_inventory_5 = code_block_3()
 
-def code_block_4():
+
+T, aabc_inventory_5 = code_block_3(aabc_inventory_3, aabc_inventory_4)
+
+def code_block_4(aabc_inventory_5):
     ### NOW For ASA 24 ######################################################################
     # ORDER
     # 1. scan for data (here just looking for existende)
@@ -896,9 +899,9 @@ def code_block_4():
     # a1 is concatenated later with other q2 codes
     return a1, aabc_inventory_6
 
+a1, aabc_inventory_6 = code_block_4(aabc_inventory_5)
 
-a1, aabc_inventory_6 = code_block_4()
-def code_block_5():
+def code_block_5(aabc_inventory_6):
     #################################################################################
     # ACTIGRAPHY
     ### for now, this is basically the same protocol as for ASA24
@@ -983,10 +986,9 @@ def code_block_5():
     return a2, inventoryaabc6
 
 
+a2, inventoryaabc6 = code_block_5(aabc_inventory_6)
 
-a2, inventoryaabc6 = code_block_5()
-
-def code_block_6():
+def code_block_6(inventoryaabc6):
     # MOCA SPANISH  #############################################################
     ## no data yet
 
@@ -1149,9 +1151,10 @@ def code_block_6():
     return P, inventoryaabc7
 
 
-P, inventoryaabc7 = code_block_6()
+P, inventoryaabc7 = code_block_6(inventoryaabc6)
 
-def code_block_7():
+
+def code_block_7(inventoryaabc7):
 
     ##################################################################################
     # HOT FLASH DATA (not available yet)
@@ -1216,9 +1219,9 @@ def code_block_7():
 
     return summv, C
 
-summv, C = code_block_7()
 
-def code_block_8():
+summv, C = code_block_7(inventoryaabc7)
+def code_block_8(inventoryaabc7):
 
     agev = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
         [
@@ -1273,9 +1276,10 @@ def code_block_8():
 
     return agemv, ageav
 
-agemv, ageav = code_block_8()
 
-def code_block_9():
+agemv, ageav = code_block_8(inventoryaabc7)
+
+def code_block_9(inventoryaabc7):
 
     # calculate BMI: weight (lb) / [height (in)]2 x 703
     # inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
@@ -1311,9 +1315,10 @@ def code_block_9():
 
     return a, bmiv
 
-a, bmiv = code_block_9()
+a, bmiv = code_block_9(inventoryaabc7)
 
-def combine_tickets_into_jira(inventoryaabc7, summv, C, agemv, ageav, a, bmiv):
+def combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T, inventoryaabc7,
+                              inventoryaabc6):
     ##############################################################################
     # all the flags for JIRA together
     QAAP = functions.concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
@@ -1407,4 +1412,4 @@ def combine_tickets_into_jira(inventoryaabc7, summv, C, agemv, ageav, a, bmiv):
     #    Look for missing MOCA, check for file, and ping RA to upload.
 
 
-combine_tickets_into_jira(inventoryaabc7, summv, C, agemv, ageav, a, bmiv)
+combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T, inventoryaabc7, inventoryaabc6)
