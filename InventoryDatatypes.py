@@ -369,7 +369,7 @@ aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
 #    if dup, set one to unususable and explain
 
 # the variables that make up the 'common' form in the Qinteractive database.
-first_var_cols = [
+common_form_fields = [
     "id",
     "redcap_data_access_group",
     "site",
@@ -388,7 +388,7 @@ first_var_cols = [
 ]
 
 # the variables that make up the ravlt form
-ravlt_columns = [
+ravlt_form_fields = [
     "ravlt_pea_ravlt_sd_tc",
     "ravlt_delay_scaled",
     "ravlt_delay_completion",
@@ -426,15 +426,15 @@ folder_queue = ["WU", "UMN"]  # ,'MGH','UCLA']
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 # this is currently taing too much time to iterate through box
 # import anything new by any definition (new name, new sha, new fileid)
-for studyshort in folder_queue:
-    folder = config["Redcap"]["datasources"]["qint"]["BoxFolders"][studyshort]
-    dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
-    sitenum = config["Redcap"]["datasources"]["aabcarms"][studyshort]["sitenum"]
+for site_accronym in folder_queue:
+    folder = config["Redcap"]["datasources"]["qint"]["BoxFolders"][site_accronym]
+    dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
+    sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
 
     filelist = box.list_of_files([folder])
     db = pd.DataFrame(
         filelist
-    ).transpose()  # .reset_index().rename(columns={'index':'fileid'})
+    ).transpose()
     db.fileid = db.fileid.astype(int)
 
     # ones that already exist in q redcap
@@ -452,7 +452,7 @@ for studyshort in folder_queue:
     )
     db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))]
     if db2go.empty:
-        print("NO NEW RECORDS from", studyshort, "TO ADD AT THIS TIME")
+        print("NO NEW RECORDS from", site_accronym, "TO ADD AT THIS TIME")
     if not db2go.empty:
         # initiate new ids
         subject_id = cached_filelist.id.astype("Int64").max() + 1
@@ -462,7 +462,7 @@ for studyshort in folder_queue:
             id = i + subject_id
             vect = vect + [id]
 
-        rows2push = pd.DataFrame(columns=first_var_cols + ravlt_columns)
+        rows2push = pd.DataFrame(columns=common_form_fields + ravlt_form_fields)
         for i in range(0, db2go.shape[0]):
             redid = vect[i]
             fid = db2go.iloc[i][["fileid"]][0]
@@ -491,7 +491,7 @@ for studyshort in folder_queue:
             visit = fname[a + 1]
             # visit=visits[-1]
             row = functions.parse_content(content)
-            df = pd.DataFrame([row], columns=ravlt_columns)
+            df = pd.DataFrame([row], columns=ravlt_form_fields)
             # print(df)
             firstvars = pd.DataFrame(
                 [
@@ -513,7 +513,7 @@ for studyshort in folder_queue:
                         "",
                     ]
                 ],
-                columns=first_var_cols,
+                columns=common_form_fields,
             )
             # print(firstvars[['filename','subjectid']])
             pushrow = pd.concat([firstvars, df], axis=1)
@@ -829,10 +829,10 @@ T = pd.concat([t1, t2, t3])[
 
 folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
 anydata = []
-for studyshort in folder_queue:
-    folder = config["NonQBox"]["ASA24"][studyshort]
-    dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
-    sitenum = config["Redcap"]["datasources"]["aabcarms"][studyshort]["sitenum"]
+for site_accronym in folder_queue:
+    folder = config["NonQBox"]["ASA24"][site_accronym]
+    dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
+    sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
     filelist = box.list_of_files([folder])
     db = pd.DataFrame(
         filelist
@@ -892,12 +892,12 @@ a1 = a1[
 # scan BOX
 folder_queue = ["WU", "UMN", "MGH"]  # ,'UCLA']
 actdata = []
-studyshort = "WU"
-for studyshort in folder_queue:
-    print(studyshort)
-    folder = config["NonQBox"]["Actigraphy"][studyshort]
-    dag = config["Redcap"]["datasources"]["aabcarms"][studyshort]["dag"]
-    sitenum = config["Redcap"]["datasources"]["aabcarms"][studyshort]["sitenum"]
+site_accronym = "WU"
+for site_accronym in folder_queue:
+    print(site_accronym)
+    folder = config["NonQBox"]["Actigraphy"][site_accronym]
+    dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
+    sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
     filelist = box.list_of_files([folder])
     db = pd.DataFrame(
         filelist
@@ -979,13 +979,13 @@ a2 = a2[
 # 3. generate an tickets and send to JIra if don't already exist
 # 4. DONT dump or snapshot.  Leave data in IntraDB.
 
-studyshort = "WU"
+site_accronym = "WU"
 folder_queue = ["WU", "MGH", "UMN"]  # UCLE
 
 # scan Box
 anydata = pd.DataFrame()
-for studyshort in folder_queue:
-    folder = config["NonQBox"]["Psychopy"][studyshort]
+for site_accronym in folder_queue:
+    folder = config["NonQBox"]["Psychopy"][site_accronym]
     # dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
     # sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
     filelist = box.list_of_files([folder])
