@@ -365,11 +365,11 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
     # this is currently taing too much time to iterate through box
     # import anything new by any definition (new name, new sha, new fileid)
     for site_accronym in folder_queue:
-        folder = config["Redcap"]["datasources"]["qint"]["BoxFolders"][site_accronym]
-        dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
-        sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
+        box_folder_id = config["Redcap"]["datasources"]["qint"]["BoxFolders"][site_accronym]
+        data_access_group_name = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
+        site_number = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
 
-        filelist = box.list_of_files([folder])
+        filelist = box.list_of_files([box_folder_id])
         db = pd.DataFrame(filelist).transpose()
         db.fileid = db.fileid.astype(int)
 
@@ -431,8 +431,8 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                     [
                         [
                             redid,
-                            dag,
-                            sitenum,
+                            data_access_group_name,
+                            site_number,
                             subjid,
                             fid,
                             fname,
@@ -853,8 +853,6 @@ def code_block_4(aabc_inventory_5):
     anydata = []
     for site_accronym in folder_queue:
         folder = config["NonQBox"]["ASA24"][site_accronym]
-        dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
-        sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
         filelist = box.list_of_files([folder])
         db = pd.DataFrame(
             filelist
@@ -924,8 +922,6 @@ def code_block_5(aabc_inventory_6):
     for site_accronym in folder_queue:
         print(site_accronym)
         folder = config["NonQBox"]["Actigraphy"][site_accronym]
-        dag = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
-        sitenum = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
         filelist = box.list_of_files([folder])
         db = pd.DataFrame(
             filelist
@@ -1027,8 +1023,6 @@ def code_block_6(inventoryaabc6):
     anydata = pd.DataFrame()
     for site_accronym in folder_queue:
         folder = config["NonQBox"]["Psychopy"][site_accronym]
-        # dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
-        # sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
         filelist = box.list_of_files([folder])
         db = pd.DataFrame(
             filelist
