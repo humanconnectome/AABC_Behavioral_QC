@@ -369,8 +369,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
         data_access_group_name = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
         site_number = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
 
-        filelist = box.list_of_files([box_folder_id])
-        db = pd.DataFrame(filelist).transpose()
+        db = list_files_in_box_folders(box_folder_id)
         db.fileid = db.fileid.astype(int)
 
         # ones that already exist in q redcap
@@ -463,6 +462,20 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                     dataframe=rows2push,
                     tok=api_key["qint"],
                 )
+
+
+def list_files_in_box_folders(*box_folder_ids)->pd.DataFrame:
+    """List filename, fileid, sha1 for all files in specific box folders
+
+    Args:
+        *box_folder_ids: The box id for the folder of interest
+
+    Returns:
+        A dataframe with filename, fileid, sha1 for all files in the folder(s)
+
+    """
+    filelist = box.list_of_files(box_folder_ids)
+    return pd.DataFrame(filelist).transpose()
 
 
 def code_block_2():
@@ -852,9 +865,8 @@ def code_block_4(aabc_inventory_5):
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
     anydata = []
     for site_accronym in folder_queue:
-        folder = config["NonQBox"]["ASA24"][site_accronym]
-        filelist = box.list_of_files([folder])
-        dbitems = pd.DataFrame(filelist).transpose()
+        box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
+        dbitems = list_files_in_box_folders(box_folder_id)
         subs = []
         for f in dbitems.fileid:
             print(f)
@@ -918,9 +930,8 @@ def code_block_5(aabc_inventory_6):
     site_accronym = "WU"
     for site_accronym in folder_queue:
         print(site_accronym)
-        folder = config["NonQBox"]["Actigraphy"][site_accronym]
-        filelist = box.list_of_files([folder])
-        dbitems = pd.DataFrame(filelist).transpose()
+        box_folder_id = config["NonQBox"]["Actigraphy"][site_accronym]
+        dbitems = list_files_in_box_folders(box_folder_id)
         actsubs = []
         for fid in dbitems.fileid:
             try:
@@ -1016,9 +1027,8 @@ def code_block_6(inventoryaabc6):
     # scan Box
     anydata = pd.DataFrame()
     for site_accronym in folder_queue:
-        folder = config["NonQBox"]["Psychopy"][site_accronym]
-        filelist = box.list_of_files([folder])
-        dbitems = pd.DataFrame(filelist).transpose()
+        box_folder_id = config["NonQBox"]["Psychopy"][site_accronym]
+        dbitems = list_files_in_box_folders(box_folder_id)
         for fname in dbitems.filename:
             subjvscan = fname[fname.find("HCA") : fname.find("HCA") + 15]
             l2 = subjvscan.split("_")
