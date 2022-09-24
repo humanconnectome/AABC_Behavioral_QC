@@ -312,71 +312,8 @@ def code_block_1() -> pd.DataFrame:
 
 Q1 = code_block_1()
 
-#########################################################################################
 
-
-def code_block_2() -> pd.DataFrame:
-    #########################################################################################
-    # PHASE 1 Test that all dataypes expected are present
-    # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
-    # there are lots of variables in the inventory.  Don't need them all
-    keeplist = [
-        "study_id",
-        "redcap_event_name",
-        "v0_date",
-        "dob",
-        "age",
-        "sex",
-        "legacy_yn",
-        "psuedo_guid",
-        "ethnic",
-        "racial",
-        "site",
-        "passedscreen",
-        "subject_id",
-        "counterbalance_1st",
-        "counterbalance_2nd",
-        "height_ft",
-        "height_in",
-        "weight",
-        "bmi",
-        "height_outlier_jira",
-        "height_missing_jira",
-        "age_visit",
-        "event_date",
-        "completion_mocayn",
-        "ravlt_collectyn",
-        "nih_toolbox_collectyn",
-        "nih_toolbox_upload_typo",
-        "tlbxwin_dups_v2",
-        "actigraphy_collectyn",
-        "vms_collectyn",
-        "face_complete",
-        "visit_summary_complete",
-        "asa24yn",
-        "asa24id",
-    ]
-
-    aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
-
-    # FLOW:
-    # Qinteractive  order:
-    # # 1. grab new stuff from box
-    # # 2. transform it
-    # # 3. send it to REDCap
-    # # 4. QC (incorporating patches)
-    # # 5. generate tickets
-    # # 6. send tickets that arent identical to ones already in Jira (now or at the end in a single bolus)
-    # # 7. create and send snapshot of patched data to BOX after dropping restricted variables
-
-    # Observed:
-    # pull Q data from Box to qint REDCap, then query qint against AABC-Arms study ids and visit
-    #    All records EVER created will be included in REDCap.
-    #    duplications
-    #    typos will be set to unusable automatically
-    #    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
-    #    if dup, set one to unususable and explain
-
+def cron_job_1(qint_df: pd.DataFrame) -> None:
     # the variables that make up the 'common' form in the Qinteractive database.
     common_form_fields = [
         "id",
@@ -420,17 +357,9 @@ def code_block_2() -> pd.DataFrame:
         "ravlt_delay_total_repetitions",
     ]
 
-    # current Qint Redcap:
-    qint_report = functions.params_request_report(
-        token=api_key["qint"],
-        report_id="51037",
-    )
-    qint_df = functions.get_frame(
-        api_url=config["Redcap"]["api_url10"], data=qint_report
-    )
-
     # all box files - grab, transform, send
     folder_queue = ["WU", "UMN"]  # ,'MGH','UCLA']
+
     ######
     ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
     # this is currently taing too much time to iterate through box
@@ -536,6 +465,80 @@ def code_block_2() -> pd.DataFrame:
         )
     ####
     ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
+
+
+def code_block_2() -> pd.DataFrame:
+    #########################################################################################
+    # PHASE 1 Test that all dataypes expected are present
+    # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
+    # there are lots of variables in the inventory.  Don't need them all
+    keeplist = [
+        "study_id",
+        "redcap_event_name",
+        "v0_date",
+        "dob",
+        "age",
+        "sex",
+        "legacy_yn",
+        "psuedo_guid",
+        "ethnic",
+        "racial",
+        "site",
+        "passedscreen",
+        "subject_id",
+        "counterbalance_1st",
+        "counterbalance_2nd",
+        "height_ft",
+        "height_in",
+        "weight",
+        "bmi",
+        "height_outlier_jira",
+        "height_missing_jira",
+        "age_visit",
+        "event_date",
+        "completion_mocayn",
+        "ravlt_collectyn",
+        "nih_toolbox_collectyn",
+        "nih_toolbox_upload_typo",
+        "tlbxwin_dups_v2",
+        "actigraphy_collectyn",
+        "vms_collectyn",
+        "face_complete",
+        "visit_summary_complete",
+        "asa24yn",
+        "asa24id",
+    ]
+
+    aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
+
+    # FLOW:
+    # Qinteractive  order:
+    # # 1. grab new stuff from box
+    # # 2. transform it
+    # # 3. send it to REDCap
+    # # 4. QC (incorporating patches)
+    # # 5. generate tickets
+    # # 6. send tickets that arent identical to ones already in Jira (now or at the end in a single bolus)
+    # # 7. create and send snapshot of patched data to BOX after dropping restricted variables
+
+    # Observed:
+    # pull Q data from Box to qint REDCap, then query qint against AABC-Arms study ids and visit
+    #    All records EVER created will be included in REDCap.
+    #    duplications
+    #    typos will be set to unusable automatically
+    #    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
+    #    if dup, set one to unususable and explain
+
+    # current Qint Redcap:
+    qint_report = functions.params_request_report(
+        token=api_key["qint"],
+        report_id="51037",
+    )
+    qint_df = functions.get_frame(
+        api_url=config["Redcap"]["api_url10"], data=qint_report
+    )
+
+    cron_job_1(qint_df)
 
     # QC checks
     # now check
