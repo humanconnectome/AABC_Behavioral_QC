@@ -127,6 +127,7 @@ aabc_registration_data = aabc_inventory.loc[
     ],
 ]
 
+
 def code_block_1() -> pd.DataFrame:
     # Merge to compare AABC ids against HCA ids
     #  - also check legacy variable flags and actual event in which participant has been enrolled.
@@ -175,7 +176,6 @@ def code_block_1() -> pd.DataFrame:
     qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
     qlist1["code"] = "RED"
 
-
     def print_error_codes(df: pd.DataFrame) -> None:
         """Print error codes from a dataframe
 
@@ -185,11 +185,12 @@ def code_block_1() -> pd.DataFrame:
         for row in df.itertuples():
             print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
-
     print_error_codes(qlist1)
 
     # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-    qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting]
+    qlist2 = hca_vs_aabc.loc[
+        is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting
+    ]
     ERR_MSG_LEGACY_NOT_CHECKED = "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked"
     qlist2["reason"] = ERR_MSG_LEGACY_NOT_CHECKED
     qlist2["code"] = "RED"
@@ -249,7 +250,8 @@ def code_block_1() -> pd.DataFrame:
 
     # check to make sure that the subject id is not missing.
     missing_sub_ids = aabc_inventory.loc[
-        is_register_event(aabc_inventory) & (aabc_inventory[study_primary_key_field] == "")
+        is_register_event(aabc_inventory)
+        & (aabc_inventory[study_primary_key_field] == "")
     ]
     missing_sub_ids[
         "reason"
@@ -418,14 +420,14 @@ def code_block_2() -> pd.DataFrame:
         "ravlt_delay_total_repetitions",
     ]
 
-
     # current Qint Redcap:
     qint_report = functions.params_request_report(
         token=api_key["qint"],
         report_id="51037",
     )
-    qint_df = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
-
+    qint_df = functions.get_frame(
+        api_url=config["Redcap"]["api_url10"], data=qint_report
+    )
 
     # all box files - grab, transform, send
     folder_queue = ["WU", "UMN"]  # ,'MGH','UCLA']
@@ -535,10 +537,11 @@ def code_block_2() -> pd.DataFrame:
     ####
     ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
 
-
     # QC checks
     # now check
-    qint_df2 = functions.get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
+    qint_df2 = functions.get_frame(
+        api_url=config["Redcap"]["api_url10"], data=qint_report
+    )
     invq = qint_df2[["id", "site", "subjectid", "visit"]].copy()
     invq["redcap_event"] = "V" + invq.visit
     invq["Qint"] = "YES"
@@ -579,9 +582,9 @@ def code_block_2() -> pd.DataFrame:
         ]
         q1["code"] = "ORANGE"
 
-    aabc_inventory_4 = aabc_inventory_3.loc[aabc_inventory_3._merge != "right_only"].drop(
-        columns=["_merge"]
-    )
+    aabc_inventory_4 = aabc_inventory_3.loc[
+        aabc_inventory_3._merge != "right_only"
+    ].drop(columns=["_merge"])
 
     missingQ = aabc_inventory_4.loc[
         (aabc_inventory_3.redcap_event_name.str.contains("v"))
@@ -713,7 +716,6 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     dffull = remove_test_subjects(dffull, "PIN")
     dffull = dffull.loc[~(dffull.PIN.str.upper() == "ABC123")]
 
-
     dffull.PIN = dffull.PIN.replace(fixes)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
@@ -730,7 +732,6 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     ]
     dupass = dupass.loc[~(dupass.Inst.str.upper().str.contains("ASSESSMENT"))]
 
-
     # TURN THIS INTO A TICKET
 
     # QC check:
@@ -746,9 +747,10 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
         t1[
             "reason"
         ] = "Raw or Scored data not found (make sure you didn't export Narrow format)"
-        print("Raw or Scored data not found (make sure you didn't export Narrow format)")
+        print(
+            "Raw or Scored data not found (make sure you didn't export Narrow format)"
+        )
         print(issues[["PIN"]])
-
 
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
@@ -791,9 +793,9 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
             ]
         )
 
-    aabc_inventory_5 = aabc_inventory_5.loc[aabc_inventory_5._merge != "right_only"].drop(
-        columns=["_merge"]
-    )
+    aabc_inventory_5 = aabc_inventory_5.loc[
+        aabc_inventory_5._merge != "right_only"
+    ].drop(columns=["_merge"])
 
     # Look for missing IDs
     missingT = aabc_inventory_5.loc[
@@ -808,7 +810,13 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
         print("TLBX cannot be found for")
         print(
             missingT[
-                ["subject", "redcap_event", "site", "event_date", "nih_toolbox_collectyn"]
+                [
+                    "subject",
+                    "redcap_event",
+                    "site",
+                    "event_date",
+                    "nih_toolbox_collectyn",
+                ]
             ]
         )
 
@@ -827,8 +835,8 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     return T, aabc_inventory_5
 
 
-
 T, aabc_inventory_5 = code_block_3(aabc_inventory_3, aabc_inventory_4)
+
 
 def code_block_4(aabc_inventory_5):
     ### NOW For ASA 24 ######################################################################
@@ -899,7 +907,9 @@ def code_block_4(aabc_inventory_5):
     # a1 is concatenated later with other q2 codes
     return a1, aabc_inventory_6
 
+
 a1, aabc_inventory_6 = code_block_4(aabc_inventory_5)
+
 
 def code_block_5(aabc_inventory_6):
     #################################################################################
@@ -941,7 +951,9 @@ def code_block_5(aabc_inventory_6):
         actdata = actdata + list(actsubs)  # list(set(actsubs))
 
     # Duplicates?
-    if [item for item, count in collections.Counter(actdata).items() if count > 1] != "":
+    if [
+        item for item, count in collections.Counter(actdata).items() if count > 1
+    ] != "":
         print(
             "Duplicated Actigraphy Record Found:",
             [item for item, count in collections.Counter(actdata).items() if count > 1],
@@ -962,7 +974,13 @@ def code_block_5(aabc_inventory_6):
         print("Actigraphy cannot be found for")
         print(
             missingAct[
-                ["subject", "redcap_event", "site", "event_date", "actigraphy_collectyn"]
+                [
+                    "subject",
+                    "redcap_event",
+                    "site",
+                    "event_date",
+                    "actigraphy_collectyn",
+                ]
             ]
         )
         a2 = missingAct.copy()
@@ -987,6 +1005,7 @@ def code_block_5(aabc_inventory_6):
 
 
 a2, inventoryaabc6 = code_block_5(aabc_inventory_6)
+
 
 def code_block_6(inventoryaabc6):
     # MOCA SPANISH  #############################################################
@@ -1166,7 +1185,6 @@ def code_block_7(inventoryaabc7):
     # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
     ###################################################################################
 
-
     ###################################################################################
     # NOW CHECK key REDCap AABC variables for completeness (counterbalance, inventory completeness, age, bmi and soon to be more)
     # inventory_complete
@@ -1197,7 +1215,6 @@ def code_block_7(inventoryaabc7):
     # QC
     C = cb[["subject", "redcap_event", "study_id", "site", "reason", "code", "v0_date"]]
 
-
     summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
         [
             "study_id",
@@ -1213,7 +1230,15 @@ def code_block_7(inventoryaabc7):
         summv["code"] = "GREEN"
         summv["reason"] = "Visit Summary Incomplete"
         summv = summv[
-            ["subject", "redcap_event", "study_id", "site", "reason", "code", "event_date"]
+            [
+                "subject",
+                "redcap_event",
+                "study_id",
+                "site",
+                "reason",
+                "code",
+                "event_date",
+            ]
         ]
         print("Visit Summary Incomplete:\n", summv)
 
@@ -1221,6 +1246,8 @@ def code_block_7(inventoryaabc7):
 
 
 summv, C = code_block_7(inventoryaabc7)
+
+
 def code_block_8(inventoryaabc7):
 
     agev = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
@@ -1279,6 +1306,7 @@ def code_block_8(inventoryaabc7):
 
 agemv, ageav = code_block_8(inventoryaabc7)
 
+
 def code_block_9(inventoryaabc7):
 
     # calculate BMI: weight (lb) / [height (in)]2 x 703
@@ -1293,7 +1321,15 @@ def code_block_9(inventoryaabc7):
         a["code"] = "RED"
         a["reason"] = "BMI is an outlier.  Please double check height and weight"
         a = a[
-            ["subject", "redcap_event", "study_id", "site", "reason", "code", "event_date"]
+            [
+                "subject",
+                "redcap_event",
+                "study_id",
+                "site",
+                "reason",
+                "code",
+                "event_date",
+            ]
         ]
         print(
             "BMI OUTLIERS:\n",
@@ -1310,15 +1346,39 @@ def code_block_9(inventoryaabc7):
         # bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
         print("Missing BMI:\n", bmiv.loc[bmiv.bmi == ""])
         bmiv = bmiv[
-            ["subject", "redcap_event", "study_id", "site", "reason", "code", "event_date"]
+            [
+                "subject",
+                "redcap_event",
+                "study_id",
+                "site",
+                "reason",
+                "code",
+                "event_date",
+            ]
         ]
 
     return a, bmiv
 
+
 a, bmiv = code_block_9(inventoryaabc7)
 
-def combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T, inventoryaabc7,
-                              inventoryaabc6):
+
+def combine_tickets_into_jira(
+    Q1,
+    Q2,
+    a1,
+    a2,
+    P,
+    C,
+    summv,
+    agemv,
+    ageav,
+    a,
+    bmiv,
+    T,
+    inventoryaabc7,
+    inventoryaabc6,
+):
     ##############################################################################
     # all the flags for JIRA together
     QAAP = functions.concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
@@ -1399,7 +1459,6 @@ def combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv
     # inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
     ##upload
 
-
     #    Check IntraDB for file and IDs therein - read and apply patch
     # Actigraphy
     #    Check IntraDB for file and IDs therein - read and apply patch
@@ -1412,4 +1471,19 @@ def combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv
     #    Look for missing MOCA, check for file, and ping RA to upload.
 
 
-combine_tickets_into_jira(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T, inventoryaabc7, inventoryaabc6)
+combine_tickets_into_jira(
+    Q1,
+    Q2,
+    a1,
+    a2,
+    P,
+    C,
+    summv,
+    agemv,
+    ageav,
+    a,
+    bmiv,
+    T,
+    inventoryaabc7,
+    inventoryaabc6,
+)
