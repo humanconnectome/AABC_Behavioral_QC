@@ -458,16 +458,14 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                     print(len(rows2push.subjectid), "rows to push:")
                     print(list(rows2push.subjectid))
 
-    if not rows2push.empty:
-        functions.send_frame(
-            dataframe=rows2push,
-            tok=api_key["qint"],
-        )
-    ####
-    ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
+            if not rows2push.empty:
+                functions.send_frame(
+                    dataframe=rows2push,
+                    tok=api_key["qint"],
+                )
 
 
-def code_block_2() -> pd.DataFrame:
+def code_block_2():
     #########################################################################################
     # PHASE 1 Test that all dataypes expected are present
     # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
