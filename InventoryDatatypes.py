@@ -51,8 +51,23 @@ def register_tickets(df, code: str, reason: str) -> None:
     n["code"] = code
     n["reason"] = reason
 
+    rename_col(n, "subject_id", "subject")
+    rename_col(n, "redcap_event_name", "redcap_event")
+
     print_error_codes(n)
     tickets_dataframe = pd.concat([tickets_dataframe, n], ignore_index=True)
+
+
+def rename_col(df, preferred_field_name="subject_id", current_field_name="subject"):
+    """Rename a column in a dataframe
+
+    Args:
+        df: dataframe to rename column in
+        preferred_field_name: the preferred name for the column
+        current_field_name: the current name for the column
+    """
+    if preferred_field_name not in df.columns and current_field_name in df.columns:
+        df.rename(columns={current_field_name: preferred_field_name}, inplace=True)
 
 
 def dead_code_1():
