@@ -13,6 +13,37 @@ api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
 
 
+tickets_dataframe = pd.DataFrame(
+    columns=[
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "reason",
+        "code",
+        "v0_date",
+        "event_date",
+    ]
+)
+
+
+def register_tickets(df, code: str, reason: str) -> None:
+    """Register new tickets in the tickets dataframe
+
+    Args:
+        df: The dataframe containing all the rows to register
+        code: The code for the ticket
+        reason: The description of the error
+
+    """
+    global tickets_dataframe
+    n = df.copy()
+    n["code"] = code
+    n["reason"] = reason
+
+    tickets_dataframe = pd.concat([tickets_dataframe, n], ignore_index=True)
+
+
 def dead_code_1():
     # Download (from Box) latest version of Excel file containing the variable masks
     # TODO: exclude variables just prior to sending snapshots to PreRelease for investigator access
