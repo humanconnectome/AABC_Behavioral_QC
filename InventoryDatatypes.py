@@ -365,9 +365,15 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
     # this is currently taing too much time to iterate through box
     # import anything new by any definition (new name, new sha, new fileid)
     for site_accronym in folder_queue:
-        box_folder_id = config["Redcap"]["datasources"]["qint"]["BoxFolders"][site_accronym]
-        data_access_group_name = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["dag"]
-        site_number = config["Redcap"]["datasources"]["aabcarms"][site_accronym]["sitenum"]
+        box_folder_id = config["Redcap"]["datasources"]["qint"]["BoxFolders"][
+            site_accronym
+        ]
+        data_access_group_name = config["Redcap"]["datasources"]["aabcarms"][
+            site_accronym
+        ]["dag"]
+        site_number = config["Redcap"]["datasources"]["aabcarms"][site_accronym][
+            "sitenum"
+        ]
 
         db = list_files_in_box_folders(box_folder_id)
         db.fileid = db.fileid.astype(int)
@@ -464,7 +470,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                 )
 
 
-def list_files_in_box_folders(*box_folder_ids)->pd.DataFrame:
+def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
     """List filename, fileid, sha1 for all files in specific box folders
 
     Args:
