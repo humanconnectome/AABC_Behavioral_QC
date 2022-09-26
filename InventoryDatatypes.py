@@ -229,20 +229,21 @@ def code_block_1() -> pd.DataFrame:
         & hca_vs_aabc[study_primary_key_field].notnull(),
         cols_for_troubleshooting,
     ]
-    ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
-    qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
-    qlist1["code"] = "RED"
-
-    print_error_codes(qlist1)
+    register_tickets(
+        qlist1,
+        "RED",
+        "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
+    )
 
     # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
     qlist2 = hca_vs_aabc.loc[
         is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting
     ]
-    ERR_MSG_LEGACY_NOT_CHECKED = "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked"
-    qlist2["reason"] = ERR_MSG_LEGACY_NOT_CHECKED
-    qlist2["code"] = "RED"
-    print_error_codes(qlist2)
+    register_tickets(
+        qlist2,
+        "RED",
+        "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
+    )
 
     # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
     # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
@@ -279,32 +280,26 @@ def code_block_1() -> pd.DataFrame:
         # and was not a phone call event
         & (hca_expected_vs_aabc_actual.redcap_event != "phone_call_arm_13")
     ]
-    wrong_visit[
-        "reason"
-    ] = "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2"
-    wrong_visit["code"] = "RED"
     qlist3 = wrong_visit[
         [
             "subject_id",
             "study_id",
             "redcap_event_name",
             "site",
-            "reason",
-            "code",
             "event_date",
         ]
     ]
-    print_error_codes(qlist3)
+    register_tickets(
+        qlist3,
+        "RED",
+        "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
+    )
 
     # check to make sure that the subject id is not missing.
     missing_sub_ids = aabc_inventory.loc[
         is_register_event(aabc_inventory)
         & (aabc_inventory[study_primary_key_field] == "")
     ]
-    missing_sub_ids[
-        "reason"
-    ] = "Subject ID is MISSING in AABC REDCap Database Record with study id"
-    missing_sub_ids["code"] = "ORANGE"
     qlist4 = missing_sub_ids[
         [
             "subject_id",
@@ -317,7 +312,11 @@ def code_block_1() -> pd.DataFrame:
             "event_date",
         ]
     ]
-    print_error_codes(qlist4)
+    register_tickets(
+        qlist4,
+        "ORANGE",
+        "Subject ID is MISSING in AABC REDCap Database Record with study id",
+    )
 
     # test subjects that need to be deleted
     test_subjects = aabc_inventory_including_test_subjects.loc[
@@ -333,32 +332,14 @@ def code_block_1() -> pd.DataFrame:
             "event_date",
         ],
     ]
-    test_subjects[
-        "reason"
-    ] = "HOUSEKEEPING : Please delete test subject.  Use test database when practicing"
-    test_subjects["code"] = "HOUSEKEEPING"
-    qlist5 = test_subjects
-    print_error_codes(qlist5)
-
-    #########################################################################################
-    ###concatenate Phase 0 flags for REDCap key variables
-    Q0 = pd.DataFrame(
-        columns=[
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-        ]
+    register_tickets(
+        test_subjects,
+        "HOUSEKEEPING",
+        "HOUSEKEEPING : Please delete test subject.  Use test database when practicing",
     )
-    Q1 = pd.concat([Q0, qlist1, qlist2, qlist3, qlist4, qlist5], axis=0)
-    return Q1
 
 
-Q1 = code_block_1()
+code_block_1()
 
 
 def cron_job_1(qint_df: pd.DataFrame) -> None:
@@ -617,12 +598,12 @@ def code_block_2():
     # Before merging, check for duplicates that haven't been given the 'unusable' flag
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
     dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
-    q0 = pd.DataFrame()
-    if dups2.shape[0] > 0:
-        print("Duplicate Q-interactive records")
-        print(dups2[["subjectid", "visit"]])
-        q0["reason"] = ["Duplicate Q-interactive records"]
-        q0["code"] = "ORANGE"
+
+    register_tickets(
+        dups2,
+        "ORANGE",
+        "Duplicate Q-interactive records",
+    )
 
     aabc_inventory_3 = pd.merge(
         aabc_inventory_2,
@@ -632,23 +613,12 @@ def code_block_2():
         indicator=True,
     )
 
-    q1 = pd.DataFrame()
-    if aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"].shape[0] > 0:
-        print(
-            "The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate"
-        )
-        print(
-            aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"][
-                ["subject", "redcap_event"]
-            ]
-        )
-        q1 = aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"][
-            ["subject", "redcap_event"]
-        ]
-        q1["reason"] = [
-            "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo"
-        ]
-        q1["code"] = "ORANGE"
+    q1 = aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"]
+    register_tickets(
+        q1[["subject", "redcap_event"]],
+        "ORANGE",
+        "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
+    )
 
     aabc_inventory_4 = aabc_inventory_3.loc[
         aabc_inventory_3._merge != "right_only"
@@ -658,33 +628,17 @@ def code_block_2():
         (aabc_inventory_3.redcap_event_name.str.contains("v"))
         & (~(aabc_inventory_3.Qint == "YES"))
     ][["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"]]
-    q2 = pd.DataFrame()
-    if missingQ.shape[0] > 0:
-        print("Q-interactive cannot be found for")
-        print(missingQ)
-        q2 = missingQ.copy()
-        q2["reason"] = "Unable to locate Q-interactive data for this subject/visit"
-        q2["code"] = "ORANGE"
 
-    Q0 = pd.DataFrame(
-        columns=[
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-        ]
+    register_tickets(
+        missingQ,
+        "ORANGE",
+        "Unable to locate Q-interactive data for this subject/visit",
     )
-    Q2 = pd.concat([Q0, q0, q1, q2], axis=0)
-    Q2["subject_id"] = Q2.subject
 
-    return Q2, aabc_inventory_3, aabc_inventory_4
+    return aabc_inventory_3, aabc_inventory_4
 
 
-Q2, aabc_inventory_3, aabc_inventory_4 = code_block_2()
+aabc_inventory_3, aabc_inventory_4 = code_block_2()
 
 # Send to Box
 # drop all the q_unusable.isnull()==False) records, as well as any ids that are not in AABC redcap
@@ -808,17 +762,11 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
         dffull.PIN.drop_duplicates(), rf2, how="outer", on="PIN", indicator=True
     )[["PIN", "_merge"]]
     issues = formats.loc[~(formats._merge == "both")]
-    t1 = pd.DataFrame()
-    if issues.shape[0] > 0:
-        t1 = issues.copy()
-        t1["code"] = "ORANGE"
-        t1[
-            "reason"
-        ] = "Raw or Scored data not found (make sure you didn't export Narrow format)"
-        print(
-            "Raw or Scored data not found (make sure you didn't export Narrow format)"
-        )
-        print(issues[["PIN"]])
+    register_tickets(
+        issues,
+        "ORANGE",
+        "Raw or Scored data not found (make sure you didn't export Narrow format)",
+    )
 
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
@@ -847,19 +795,14 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
 
     # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
     # turn this into a ticket
-    t2 = pd.DataFrame()
-    if aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"].shape[0] > 0:
-        t2 = aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"].copy()
-        t2["reason"] = "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?"
-        t2["code"] = "ORANGE"
-        print(
-            "The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate"
-        )
-        print(
-            aabc_inventory_5.loc[aabc_inventory_5._merge == "right_only"][
-                ["PIN", "subject", "redcap_event"]
-            ]
-        )
+    t2 = aabc_inventory_5.loc[
+        aabc_inventory_5._merge == "right_only", ["PIN", "subject", "redcap_event"]
+    ]
+    register_tickets(
+        t2,
+        "ORANGE",
+        "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?",
+    )
 
     aabc_inventory_5 = aabc_inventory_5.loc[
         aabc_inventory_5._merge != "right_only"
@@ -870,40 +813,30 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
         (aabc_inventory_5.redcap_event_name.str.contains("v"))
         & (~(aabc_inventory_5.TLBX == "YES"))
     ]
-    t3 = pd.DataFrame()
-    if missingT.shape[0] > 0:
-        t3 = missingT.copy()
-        t3["reason"] = "Missing TLBX data"
-        t3["code"] = "ORANGE"
-        print("TLBX cannot be found for")
-        print(
-            missingT[
-                [
-                    "subject",
-                    "redcap_event",
-                    "site",
-                    "event_date",
-                    "nih_toolbox_collectyn",
-                ]
-            ]
-        )
-
-    T = pd.concat([t1, t2, t3])[
+    t3 = missingT[
         [
             "subject",
-            "study_id",
-            "redcap_event_name",
             "redcap_event",
+            "site",
             "event_date",
-            "PIN",
-            "reason",
-            "code",
+            "nih_toolbox_collectyn",
         ]
     ]
-    return T, aabc_inventory_5
+    # TODO: Make sure these columns are available in dataframes sent to the ticketing system
+    # "subject",
+    # "study_id",
+    # "redcap_event_name",
+    # "redcap_event",
+    # "event_date",
+    # "PIN",
+    # "reason",
+    # "code",
+    register_tickets(t3, "ORANGE", "Missing TLBX data")
+
+    return aabc_inventory_5
 
 
-T, aabc_inventory_5 = code_block_3(aabc_inventory_3, aabc_inventory_4)
+aabc_inventory_5 = code_block_3(aabc_inventory_3, aabc_inventory_4)
 
 
 def code_block_4(aabc_inventory_5):
@@ -934,21 +867,7 @@ def code_block_4(aabc_inventory_5):
         & (~(aabc_inventory_6.ASA24 == "YES"))
     ]
     missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
-    a1 = pd.DataFrame()
-    if missingAD.shape[0] > 0:
-        print("ASA24 cannot be found for")
-        print(
-            missingAD[
-                ["subject", "redcap_event", "site", "event_date", "asa24yn", "asa24id"]
-            ]
-        )
-        a1 = missingAD.copy()
-        a1[
-            "reason"
-        ] = "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit"
-        a1["code"] = "GREEN"
-        a1["subject_id"] = a1["subject"]
-    a1 = a1[
+    a1 = missingAD[
         [
             "subject_id",
             "subject",
@@ -960,13 +879,19 @@ def code_block_4(aabc_inventory_5):
             "code",
             "v0_date",
             "event_date",
+            "asa24yn",
+            "asa24id",
         ]
     ]
-    # a1 is concatenated later with other q2 codes
-    return a1, aabc_inventory_6
+    register_tickets(
+        a1,
+        "GREEN",
+        "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
+    )
+    return aabc_inventory_6
 
 
-a1, aabc_inventory_6 = code_block_4(aabc_inventory_5)
+aabc_inventory_6 = code_block_4(aabc_inventory_5)
 
 
 def code_block_5(aabc_inventory_6):
@@ -1021,25 +946,7 @@ def code_block_5(aabc_inventory_6):
         & (~(inventoryaabc6.Actigraphy == "YES"))
     ]
     missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
-    a2 = pd.DataFrame()
-    if missingAct.shape[0] > 0:
-        print("Actigraphy cannot be found for")
-        print(
-            missingAct[
-                [
-                    "subject",
-                    "redcap_event",
-                    "site",
-                    "event_date",
-                    "actigraphy_collectyn",
-                ]
-            ]
-        )
-        a2 = missingAct.copy()
-        a2["reason"] = "Unable to locate Actigraphy data in Box for this subject/visit"
-        a2["code"] = "YELLOW"
-        a2["subject_id"] = a2["subject"]
-    a2 = a2[
+    a2 = missingAct[
         [
             "subject_id",
             "subject",
@@ -1047,16 +954,19 @@ def code_block_5(aabc_inventory_6):
             "study_id",
             "redcap_event_name",
             "site",
-            "reason",
-            "code",
             "v0_date",
             "event_date",
+            "actigraphy_collectyn",
         ]
     ]
-    return a2, inventoryaabc6
+    register_tickets(
+        a2, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit"
+    )
+
+    return inventoryaabc6
 
 
-a2, inventoryaabc6 = code_block_5(aabc_inventory_6)
+inventoryaabc6 = code_block_5(aabc_inventory_6)
 
 
 def code_block_6(inventoryaabc6):
@@ -1129,8 +1039,6 @@ def code_block_6(inventoryaabc6):
 
     # merge df (intradb) and ci (Box) to see what's missing - one of these is redundant with the check against AABC...
     psymiss = pd.merge(ci, df, on="PIN_AB", how="outer", indicator=True)
-    # p1=pd.DataFrame()
-    p1 = []
     print("psychopy in BOX but not in IntraDB")
     for i in psymiss.loc[psymiss._merge == "left_only"].PIN_AB.unique():
         print(i)
@@ -1175,6 +1083,7 @@ def code_block_6(inventoryaabc6):
             "PIN_AB",
         ]
     ]
+    # TODO: register_ticket for pwho or better yet, the components of pwho (p1 and p2)
 
     # dont worry about duplicates in IntraDB - these will be filtered.
     # find subjects in AABC but not in IntraDB or BOX
@@ -1185,21 +1094,7 @@ def code_block_6(inventoryaabc6):
     )
     missingPY = inventoryaabc7.loc[
         (inventoryaabc7.redcap_event_name.str.contains("v"))
-        & (~(inventoryaabc7.Psychopy == "YES"))
-    ].copy()
-    missingPY["subject_id"] = missingPY.subject
-    # missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
-    peepy = pd.DataFrame()
-    if missingPY.shape[0] > 0:
-        peepy = missingPY
-        print("PsyhoPy cannot be found in BOX or IntraDB for ")
-        print(missingPY[["subject", "redcap_event", "site", "event_date", "Psychopy"]])
-        peepy["reason"] = "PsychoPy cannot be found in BOX or IntraDB"
-        peepy["code"] = "ORANGE"
-
-    P = pd.concat([pwho, peepy])
-    # IntraDB ID
-    P = P[
+        & (~(inventoryaabc7.Psychopy == "YES")),
         [
             "subject",
             "redcap_event",
@@ -1209,12 +1104,18 @@ def code_block_6(inventoryaabc6):
             "code",
             "v0_date",
             "event_date",
-        ]
+            "Psychopy",
+        ],
     ]
-    return P, inventoryaabc7
+    register_tickets(
+        missingPY,
+        "ORANGE",
+        "PsychoPy cannot be found in BOX or IntraDB",
+    )
+    return inventoryaabc7
 
 
-P, inventoryaabc7 = code_block_6(inventoryaabc6)
+inventoryaabc7 = code_block_6(inventoryaabc6)
 
 
 def code_block_7(inventoryaabc7):
@@ -1236,8 +1137,7 @@ def code_block_7(inventoryaabc7):
     pd.options.display.width = 1000
 
     cb = inventoryaabc7.loc[
-        is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == "")
-    ][
+        is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == ""),
         [
             "site",
             "study_id",
@@ -1246,18 +1146,9 @@ def code_block_7(inventoryaabc7):
             "subject",
             "v0_date",
             "passedscreen",
-        ]
+        ],
     ]
-    if cb.shape[0] > 0:
-        print(
-            "Current Counterbalance Ratio:\n",
-            inventoryaabc7.counterbalance_2nd.value_counts(),
-        )
-        print("Currently Missing Counterbalance:", cb)
-        cb["reason"] = "Currently Missing Counterbalance"
-        cb["code"] = "RED"
-    # QC
-    C = cb[["subject", "redcap_event", "study_id", "site", "reason", "code", "v0_date"]]
+    register_tickets(cb, "RED", "Currently Missing Counterbalance")
 
     summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
         [
@@ -1270,26 +1161,14 @@ def code_block_7(inventoryaabc7):
         ]
     ]
     summv = summv.loc[~(summv.visit_summary_complete == "2")]
-    if summv.shape[0] > 0:
-        summv["code"] = "GREEN"
-        summv["reason"] = "Visit Summary Incomplete"
-        summv = summv[
-            [
-                "subject",
-                "redcap_event",
-                "study_id",
-                "site",
-                "reason",
-                "code",
-                "event_date",
-            ]
-        ]
-        print("Visit Summary Incomplete:\n", summv)
-
-    return summv, C
+    register_tickets(
+        summv,
+        "GREEN",
+        "Visit Summary Incomplete",
+    )
 
 
-summv, C = code_block_7(inventoryaabc7)
+code_block_7(inventoryaabc7)
 
 
 def code_block_8(inventoryaabc7):
@@ -1308,47 +1187,45 @@ def code_block_8(inventoryaabc7):
     ]
     ag = agev.loc[agev.age_visit != ""]
     agemv = ag.loc[
-        (ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90)
-    ].copy()
-    if agemv.shape[0] > 0:
-        print("AGE OUTLIERS:\n", agemv)
-        agemv["code"] = "RED"
-        agemv["reason"] = "Age outlier. Please double check DOB and Event Date"
-        agemv = agemv[
-            [
-                "subject",
-                "redcap_event",
-                "study_id",
-                "site",
-                "reason",
-                "code",
-                "event_date",
-                "v0_date",
-            ]
-        ]
+        (ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "reason",
+            "code",
+            "event_date",
+            "v0_date",
+        ],
+    ]
+    register_tickets(
+        agemv,
+        "RED",
+        "Age outlier. Please double check DOB and Event Date",
+    )
 
-    ageav = agev.loc[(agev.age_visit.astype(float).isnull() == True)]
-    if ageav.shape[0] > 0:
-        print("Missing Age:\n", ageav)
-        ageav["code"] = "RED"
-        ageav["reason"] = "Missing Age. Please check DOB and Event Date"
-        ageav = ageav[
-            [
-                "subject",
-                "redcap_event",
-                "study_id",
-                "site",
-                "reason",
-                "code",
-                "event_date",
-                "v0_date",
-            ]
-        ]
-
-    return agemv, ageav
+    ageav = agev.loc[
+        (agev.age_visit.astype(float).isnull() == True),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "reason",
+            "code",
+            "event_date",
+            "v0_date",
+        ],
+    ]
+    register_tickets(
+        ageav,
+        "RED",
+        "Missing Age. Please check DOB and Event Date",
+    )
 
 
-agemv, ageav = code_block_8(inventoryaabc7)
+code_block_8(inventoryaabc7)
 
 
 def code_block_9(inventoryaabc7):
@@ -1360,51 +1237,41 @@ def code_block_9(inventoryaabc7):
     ].copy()
     # outliers
     a = bmiv.loc[bmiv.bmi != ""].copy()
-    a = a.loc[(a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37)].copy()
-    if a.shape[0] > 0:
-        a["code"] = "RED"
-        a["reason"] = "BMI is an outlier.  Please double check height and weight"
-        a = a[
-            [
-                "subject",
-                "redcap_event",
-                "study_id",
-                "site",
-                "reason",
-                "code",
-                "event_date",
-            ]
-        ]
-        print(
-            "BMI OUTLIERS:\n",
-            a.loc[(a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37)],
-        )
+    a = a.loc[
+        (a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        a,
+        "RED",
+        "BMI is an outlier.  Please double check height and weight",
+    )
 
     # missings
-    bmiv = bmiv.loc[bmiv.bmi == ""]
-    if bmiv.shape[0] > 0:
-        bmiv["code"] = "RED"
-        bmiv[
-            "reason"
-        ] = "Missing Height or Weight (or there is another typo preventing BMI calculation)"
-        # bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
-        print("Missing BMI:\n", bmiv.loc[bmiv.bmi == ""])
-        bmiv = bmiv[
-            [
-                "subject",
-                "redcap_event",
-                "study_id",
-                "site",
-                "reason",
-                "code",
-                "event_date",
-            ]
-        ]
-
-    return a, bmiv
+    bmiv = bmiv.loc[
+        bmiv.bmi == "",
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        bmiv,
+        "RED",
+        "Missing Height or Weight (or there is another typo preventing BMI calculation)",
+    )
 
 
-a, bmiv = code_block_9(inventoryaabc7)
+code_block_9(inventoryaabc7)
 
 
 def combine_tickets_into_jira(
