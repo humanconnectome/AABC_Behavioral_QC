@@ -27,6 +27,16 @@ tickets_dataframe = pd.DataFrame(
 )
 
 
+def print_error_codes(df: pd.DataFrame) -> None:
+    """Print error codes from a dataframe
+
+    Args:
+        df: dataframe to print error codes from
+    """
+    for row in df.itertuples():
+        print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
+
+
 def register_tickets(df, code: str, reason: str) -> None:
     """Register new tickets in the tickets dataframe
 
@@ -41,6 +51,7 @@ def register_tickets(df, code: str, reason: str) -> None:
     n["code"] = code
     n["reason"] = reason
 
+    print_error_codes(n)
     tickets_dataframe = pd.concat([tickets_dataframe, n], ignore_index=True)
 
 
@@ -206,15 +217,6 @@ def code_block_1() -> pd.DataFrame:
     ERR_MSG_ID_NOT_FOUND = "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list"
     qlist1["reason"] = ERR_MSG_ID_NOT_FOUND
     qlist1["code"] = "RED"
-
-    def print_error_codes(df: pd.DataFrame) -> None:
-        """Print error codes from a dataframe
-
-        Args:
-            df: dataframe to print error codes from
-        """
-        for row in df.itertuples():
-            print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
     print_error_codes(qlist1)
 
