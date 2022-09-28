@@ -58,7 +58,7 @@ def register_tickets(df, code: str, reason: str) -> None:
     tickets_dataframe = pd.concat([tickets_dataframe, n], ignore_index=True)
 
 
-def rename_col(df, preferred_field_name="subject_id", current_field_name="subject"):
+def rename_col(df, preferred_field_name, current_field_name):
     """Rename a column in a dataframe
 
     Args:
