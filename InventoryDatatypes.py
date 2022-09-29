@@ -70,24 +70,6 @@ def rename_col(df, preferred_field_name, current_field_name):
         df.rename(columns={current_field_name: preferred_field_name}, inplace=True)
 
 
-def dead_code_1():
-    # Download (from Box) latest version of Excel file containing the variable masks
-    # TODO: exclude variables just prior to sending snapshots to PreRelease for investigator access
-    excel_file_with_variables_list = box.downloadFile(config["variablemask"])
-    vars_aabc_arms_drop = functions.get_list_from_excel_sheet(
-        excel_file_with_variables_list, "AABC-ARMS-DROP"
-    )
-    vars_aabc_arms_restricted = functions.get_list_from_excel_sheet(
-        excel_file_with_variables_list, "AABC-ARMS-RESTRICTED"
-    )
-    vars_tlbx_raw_restricted = functions.get_list_from_excel_sheet(
-        excel_file_with_variables_list, "TLBX-RAW-RESTRICTED"
-    )
-    vars_tlbx_scores_restricted = functions.get_list_from_excel_sheet(
-        excel_file_with_variables_list, "TLBX-SCORES-RESTRICTED"
-    )
-
-
 ## get the HCA inventory for ID checking with AABC
 csv_file_hca_inventory = box.downloadFile(config["hcainventory"])
 hca_inventory = pd.read_csv(csv_file_hca_inventory)
@@ -108,13 +90,6 @@ hca_last_visits = (
 # PHASE 0 TEST IDS AND ARMS
 # if Legacy, id exists in HCA and other subject id related tests:
 # Test that #visits in HCA corresponds with cohort in AABC
-
-
-def dead_code_2():
-    # construct the json that gets sent to REDCap when requesting data.
-    # all data (not actually getting these now)
-    aabc_arms = functions.params_request_records(token=api_key["aabcarms"])
-    hcpa = functions.params_request_records(token=api_key["hcpa"])
 
 
 def get_aabc_arms_report() -> pd.DataFrame:
@@ -482,9 +457,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                     ],
                     columns=common_form_fields,
                 )
-                # print(firstvars[['filename','subjectid']])
                 pushrow = pd.concat([firstvars, df], axis=1)
-                # print(pushrow)
                 rows2push = pd.concat([rows2push, pushrow], axis=0)
                 if len(rows2push.subjectid) > 0:
                     print("**************** Summary **********************")
@@ -637,18 +610,6 @@ def code_block_2():
 
 aabc_inventory_3, aabc_inventory_4 = code_block_2()
 
-# Send to Box
-# drop all the q_unusable.isnull()==False) records, as well as any ids that are not in AABC redcap
-# drop restricted vars.
-# send to BOX - this code needs to be fixed, but it will work
-# qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
-##idstring='Q-Interactive'
-##studystr='AABC'
-##qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
-##qArestricted.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', index=False)
-##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
-##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
-
 
 def code_block_3(aabc_inventory_3, aabc_inventory_4):
     # NOW FOR TOOLBOX. ############################################################################
@@ -769,10 +730,6 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
     # find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
     dffull["Date"] = dffull.DateFinished.str.split(" ", expand=True)[0]
-    catchdups = dffull.loc[~(dffull.Date == "")]
-    c = catchdups.drop_duplicates(subset=["PIN", "Date"])[["PIN", "Date"]]
-    c.loc[c.duplicated(subset="PIN")]
-    # c is wierd.
 
     # add subject and visit
     df2 = dffull.drop_duplicates(subset="PIN").copy()
@@ -899,7 +856,6 @@ def code_block_5(aabc_inventory_6):
     # scan BOX
     folder_queue = ["WU", "UMN", "MGH"]  # ,'UCLA']
     actdata = []
-    site_accronym = "WU"
     for site_accronym in folder_queue:
         print(site_accronym)
         box_folder_id = config["NonQBox"]["Actigraphy"][site_accronym]
@@ -995,7 +951,6 @@ def code_block_6(inventoryaabc6):
             anydata = pd.concat([anydata, rowfor])
 
     anydata.columns = ["subject", "redcap_event", "scan", "fname"]
-    PSY = anydata[["subject", "redcap_event"]].drop_duplicates()
     checkIDB = anydata[["subject", "redcap_event", "scan"]]
     checkIDB["PIN_AB"] = (
         checkIDB.subject + "_" + checkIDB.redcap_event + "_" + checkIDB.scan
