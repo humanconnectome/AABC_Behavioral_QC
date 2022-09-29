@@ -595,9 +595,9 @@ def code_block_2():
     ].drop(columns=["_merge"])
 
     missingQ = aabc_inventory_plus_qint.loc[
-        (aabc_vs_qint.redcap_event_name.str.contains("v"))
-        & (~(aabc_vs_qint.Qint == "YES"))
-    ][["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"]]
+        aabc_vs_qint.redcap_event_name.str.contains("v") & (aabc_vs_qint.Qint != "YES"),
+        ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
+    ]
 
     register_tickets(
         missingQ,
