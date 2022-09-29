@@ -588,10 +588,10 @@ def code_block_2():
     qint_df2 = functions.get_frame(
         api_url=config["Redcap"]["api_url10"], data=qint_report
     )
-    invq = qint_df2[["id", "site", "subjectid", "visit"]].copy()
-    invq["redcap_event"] = "V" + invq.visit
-    invq["Qint"] = "YES"
-    invq = remove_test_subjects(invq, "subjectid")
+    qint_df2 = qint_df2[["id", "site", "subjectid", "visit"]].copy()
+    qint_df2["redcap_event"] = "V" + qint_df2.visit
+    qint_df2["Qint"] = "YES"
+    qint_df2 = remove_test_subjects(qint_df2, "subjectid")
     # Before merging, check for duplicates that haven't been given the 'unusable' flag
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
     dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
@@ -602,28 +602,28 @@ def code_block_2():
         "Duplicate Q-interactive records",
     )
 
-    aabc_inventory_3 = pd.merge(
+    aabc_vs_qint = pd.merge(
         aabc_inventory[keeplist],
-        invq.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
+        qint_df2.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
     )
 
-    q1 = aabc_inventory_3.loc[aabc_inventory_3._merge == "right_only"]
+    qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
     register_tickets(
-        q1[["subject", "redcap_event"]],
+        qint_only[["subject", "redcap_event"]],
         "ORANGE",
         "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
     )
 
-    aabc_inventory_4 = aabc_inventory_3.loc[
-        aabc_inventory_3._merge != "right_only"
+    aabc_inventory_plus_qint = aabc_vs_qint.loc[
+        aabc_vs_qint._merge != "right_only"
     ].drop(columns=["_merge"])
 
-    missingQ = aabc_inventory_4.loc[
-        (aabc_inventory_3.redcap_event_name.str.contains("v"))
-        & (~(aabc_inventory_3.Qint == "YES"))
+    missingQ = aabc_inventory_plus_qint.loc[
+        (aabc_vs_qint.redcap_event_name.str.contains("v"))
+        & (~(aabc_vs_qint.Qint == "YES"))
     ][["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"]]
 
     register_tickets(
@@ -632,7 +632,7 @@ def code_block_2():
         "Unable to locate Q-interactive data for this subject/visit",
     )
 
-    return aabc_inventory_3, aabc_inventory_4
+    return aabc_vs_qint, aabc_inventory_plus_qint
 
 
 aabc_inventory_3, aabc_inventory_4 = code_block_2()
