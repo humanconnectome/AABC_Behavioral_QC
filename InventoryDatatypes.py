@@ -247,9 +247,7 @@ def code_block_1() -> pd.DataFrame:
     )
 
     # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-    # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
-    aabc_id_visits = functions.idvisits(aabc_inventory)
-    aabc_id_visits = aabc_id_visits.sort_values(["study_id", "redcap_event_name"])
+    aabc_id_visits = aabc_inventory.sort_values(["study_id", "redcap_event_name"])
     aabc_nonregister_visits = aabc_id_visits.loc[
         ~is_register_event(aabc_id_visits),
         [
