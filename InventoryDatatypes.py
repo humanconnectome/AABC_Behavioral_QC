@@ -485,6 +485,17 @@ def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
     return pd.DataFrame(filelist).transpose()
 
 
+def force_has_fields_be_boolean(df: pd.DataFrame) -> None:
+    """Force fields that start with 'has_' to be boolean
+
+    Args:
+        df: The dataframe to be modified
+
+    """
+    has_fields = df.columns[df.columns.str.startswith("has_")]
+    df[has_fields] = df[has_fields].astype(bool)
+
+
 def code_block_2():
     #########################################################################################
     # PHASE 1 Test that all dataypes expected are present
@@ -563,7 +574,7 @@ def code_block_2():
     )
     qint_df2 = qint_df2[["id", "site", "subjectid", "visit"]].copy()
     qint_df2["redcap_event"] = "V" + qint_df2.visit
-    qint_df2["Qint"] = "YES"
+    qint_df2["has_qint_data"] = True
     qint_df2 = remove_test_subjects(qint_df2, "subjectid")
     # Before merging, check for duplicates that haven't been given the 'unusable' flag
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
@@ -582,6 +593,7 @@ def code_block_2():
         how="outer",
         indicator=True,
     )
+    force_has_fields_be_boolean(aabc_vs_qint)
 
     qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
     register_tickets(
@@ -595,7 +607,7 @@ def code_block_2():
     ].drop(columns=["_merge"])
 
     missingQ = aabc_inventory_plus_qint.loc[
-        aabc_vs_qint.redcap_event_name.str.contains("v") & (aabc_vs_qint.Qint != "YES"),
+        aabc_vs_qint.redcap_event_name.str.contains("v") & ~aabc_vs_qint.has_qint_data,
         ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
     ]
 
@@ -736,16 +748,17 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     df2["redcap_event"] = df2.PIN.str.split("_", expand=True)[1]
     df2["subject"] = df2.PIN.str.split("_", expand=True)[0]
     df2["redcap_event"] = df2.PIN.str.split("_", expand=True)[1]
-    df2["TLBX"] = "YES"
+    df2["has_tlbx_data"] = True
 
     # now merge with inventory
     aabc_inventory_5 = pd.merge(
         aabc_inventory_4,
-        df2[["subject", "redcap_event", "TLBX", "PIN"]],
+        df2[["subject", "redcap_event", "has_tlbx_data", "PIN"]],
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
     )
+    force_has_fields_be_boolean(aabc_inventory_5)
 
     # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
     # turn this into a ticket
@@ -764,8 +777,8 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
 
     # Look for missing IDs
     missingT = aabc_inventory_5.loc[
-        (aabc_inventory_5.redcap_event_name.str.contains("v"))
-        & (~(aabc_inventory_5.TLBX == "YES"))
+        aabc_inventory_5.redcap_event_name.str.contains("v")
+        & ~aabc_inventory_5.has_tlbx_data
     ]
     t3 = missingT[
         [
@@ -814,11 +827,12 @@ def code_block_4(aabc_inventory_5):
             anydata.update(k.UserName)
 
     AD = pd.DataFrame(anydata, columns=["asa24id"])
-    AD["ASA24"] = "YES"
+    AD["has_asa24_data"] = True
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left")
+    force_has_fields_be_boolean(aabc_inventory_6)
     missingAD = aabc_inventory_6.loc[
-        (aabc_inventory_6.redcap_event_name.str.contains("v"))
-        & (~(aabc_inventory_6.ASA24 == "YES"))
+        aabc_inventory_6.redcap_event_name.str.contains("v")
+        & ~aabc_inventory_6.has_asa24_data
     ]
     missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
     a1 = missingAD[
@@ -890,13 +904,14 @@ def code_block_5(aabc_inventory_6):
         )
 
     ActD = pd.DataFrame(actdata, columns=["PIN"])
-    ActD["Actigraphy"] = "YES"
+    ActD["has_actigraphy_data"] = True
     inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left")
+    force_has_fields_be_boolean(inventoryaabc6)
 
     # Missing?
     missingAct = inventoryaabc6.loc[
-        (inventoryaabc6.redcap_event_name.str.contains("v"))
-        & (~(inventoryaabc6.Actigraphy == "YES"))
+        inventoryaabc6.redcap_event_name.str.contains("v")
+        & ~inventoryaabc6.has_actigraphy_data
     ]
     missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
     a2 = missingAct[
@@ -1040,13 +1055,14 @@ def code_block_6(inventoryaabc6):
     # dont worry about duplicates in IntraDB - these will be filtered.
     # find subjects in AABC but not in IntraDB or BOX
     PSY2 = psymiss.drop_duplicates(subset="subject")[["subject", "redcap_event"]]
-    PSY2["Psychopy"] = "YES"
+    PSY2["has_psychopy_data"] = True
     inventoryaabc7 = pd.merge(
         inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left"
     )
+    force_has_fields_be_boolean(inventoryaabc7)
     missingPY = inventoryaabc7.loc[
-        (inventoryaabc7.redcap_event_name.str.contains("v"))
-        & (~(inventoryaabc7.Psychopy == "YES")),
+        inventoryaabc7.redcap_event_name.str.contains("v")
+        & ~inventoryaabc7.has_psychopy_data,
         [
             "subject",
             "redcap_event",
@@ -1056,7 +1072,7 @@ def code_block_6(inventoryaabc6):
             "code",
             "v0_date",
             "event_date",
-            "Psychopy",
+            "has_psychopy_data",
         ],
     ]
     register_tickets(
@@ -1295,15 +1311,15 @@ def combine_tickets_into_jira(
             "event_date",
             "passedscreen",
             "counterbalance_1st",
-            "Qint",
+            "has_qint_data",
             "ravlt_collectyn",
-            "TLBX",
+            "has_tlbx_data",
             "nih_toolbox_collectyn",
             "nih_toolbox_upload_typo",
-            "ASA24",
+            "has_asa24_data",
             "asa24yn",
             "asa24id",
-            "Actigraphy",
+            "has_actigraphy_data",
             "actigraphy_collectyn",
             "vms_collectyn",
             "legacy_yn",
