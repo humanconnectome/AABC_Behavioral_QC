@@ -57,11 +57,10 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
     return pd.DataFrame(r.json())
 
 
-def idvisits(aabc_arms_df: pd.DataFrame, keep_cols: List[str]) -> pd.DataFrame:
+def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
     """Prepares a dataframe by doing 3 things:
-    1. Keeping only the columns specified in keep_cols
-    2. Forward filling information (site, subject) from registration event to all other events
-    3. Mapping the raw `redcap_event_name` to `redcap_event`
+    1. Forward filling information (site, subject) from registration event to all other events
+    2. Mapping the raw `redcap_event_name` to `redcap_event`
 
     Args:
         aabc_arms_df: Dataframe fresh from redcap
@@ -70,7 +69,7 @@ def idvisits(aabc_arms_df: pd.DataFrame, keep_cols: List[str]) -> pd.DataFrame:
     Returns:
         A modified dataframe
     """
-    df = aabc_arms_df[keep_cols].copy()
+    df = aabc_arms_df.copy()
     # convert empty strings to NaN
     df.site = df.site.where(df.site != "")
     # Now forward fill the fresh NaNs

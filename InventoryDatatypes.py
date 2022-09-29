@@ -156,6 +156,7 @@ def remove_test_subjects(df: pd.DataFrame, field: str) -> pd.DataFrame:
 aabc_inventory = remove_test_subjects(
     aabc_inventory_including_test_subjects, study_primary_key_field
 )
+aabc_inventory = functions.idvisits(aabc_inventory)
 
 
 def is_register_event(df: pd.DataFrame) -> pd.Series:
@@ -247,9 +248,11 @@ def code_block_1() -> pd.DataFrame:
 
     # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
     # idvisits rolls out the subject ids to all visits. get subects current visit for comparison with last visit
-    aabc_id_visits = functions.idvisits(
-        aabc_inventory,
-        keep_cols=[
+    aabc_id_visits = functions.idvisits(aabc_inventory)
+    aabc_id_visits = aabc_id_visits.sort_values(["study_id", "redcap_event_name"])
+    aabc_nonregister_visits = aabc_id_visits.loc[
+        ~is_register_event(aabc_id_visits),
+        [
             "study_id",
             "redcap_event_name",
             "site",
@@ -257,9 +260,7 @@ def code_block_1() -> pd.DataFrame:
             "v0_date",
             "event_date",
         ],
-    )
-    aabc_id_visits = aabc_id_visits.sort_values(["study_id", "redcap_event_name"])
-    aabc_nonregister_visits = aabc_id_visits.loc[~is_register_event(aabc_id_visits)]
+    ]
 
     # Increment the last visit by 1 to get the next visit
     next_visit = hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
@@ -555,8 +556,6 @@ def code_block_2():
         "asa24id",
     ]
 
-    aabc_inventory_2 = functions.idvisits(aabc_inventory, keep_cols=keeplist)
-
     # FLOW:
     # Qinteractive  order:
     # # 1. grab new stuff from box
@@ -606,7 +605,7 @@ def code_block_2():
     )
 
     aabc_inventory_3 = pd.merge(
-        aabc_inventory_2,
+        aabc_inventory[keeplist],
         invq.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
         on=["subject", "redcap_event"],
         how="outer",
