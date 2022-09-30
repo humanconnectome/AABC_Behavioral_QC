@@ -124,6 +124,7 @@ def parse_content(content):
 
 
 def send_frame(dataframe, tok):
+    return None
     data = {
         "token": tok,
         "content": "record",
