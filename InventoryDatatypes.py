@@ -608,10 +608,10 @@ def code_block_2():
     return aabc_vs_qint, aabc_inventory_plus_qint
 
 
-aabc_inventory_3, aabc_inventory_4 = code_block_2()
+aabc_vs_qint, aabc_inventory_plus_qint = code_block_2()
 
 
-def code_block_3(aabc_inventory_3, aabc_inventory_4):
+def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
     # # 2. QC (after incorporating patches)
@@ -653,7 +653,7 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
 
     # fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
     # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
-    fix_typos = aabc_inventory_3.loc[aabc_inventory_3.nih_toolbox_upload_typo != ""][
+    fix_typos = aabc_vs_qint.loc[aabc_vs_qint.nih_toolbox_upload_typo != ""][
         ["subject", "redcap_event", "nih_toolbox_upload_typo"]
     ]
     fix_typos["PIN"] = fix_typos.subject + "_" + fix_typos.redcap_event
@@ -703,7 +703,7 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
     instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
     dupvar = "tlbxwin_dups_v2"
-    iset = aabc_inventory_3
+    iset = aabc_vs_qint
     dffull = functions.filterdupass(instrument, dupvar, iset, dffull)
 
     # find any non-identical duplicated Assessments still in data after patch
@@ -739,7 +739,7 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
 
     # now merge with inventory
     aabc_inventory_5 = pd.merge(
-        aabc_inventory_4,
+        aabc_inventory_plus_qint,
         df2[["subject", "redcap_event", "PIN"]],
         on=["subject", "redcap_event"],
         how="outer",
@@ -790,7 +790,7 @@ def code_block_3(aabc_inventory_3, aabc_inventory_4):
     return aabc_inventory_5
 
 
-aabc_inventory_5 = code_block_3(aabc_inventory_3, aabc_inventory_4)
+aabc_inventory_5 = code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
 
 
 def code_block_4(aabc_inventory_5):
@@ -890,9 +890,10 @@ def code_block_5(aabc_inventory_6):
         )
 
     ActD = pd.DataFrame(actdata, columns=["PIN"])
-    inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left", indicator=True)
+    inventoryaabc6 = pd.merge(
+        aabc_inventory_6, ActD, on="PIN", how="left", indicator=True
+    )
     inventoryaabc6["has_actigraphy_data"] = inventoryaabc6._merge != "left_only"
-
 
     # Missing?
     missingAct = inventoryaabc6.loc[
