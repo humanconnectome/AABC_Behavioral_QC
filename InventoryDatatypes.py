@@ -881,12 +881,13 @@ def code_block_5(aabc_inventory_6):
         actdata = actdata + list(actsubs)  # list(set(actsubs))
 
     # Duplicates?
-    if [
+    duplicated_actigraphy_records = [
         item for item, count in collections.Counter(actdata).items() if count > 1
-    ] != "":
+    ]
+    if duplicated_actigraphy_records != "":
         print(
             "Duplicated Actigraphy Record Found:",
-            [item for item, count in collections.Counter(actdata).items() if count > 1],
+            duplicated_actigraphy_records,
         )
 
     ActD = pd.DataFrame(actdata, columns=["PIN"])
