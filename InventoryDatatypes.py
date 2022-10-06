@@ -161,6 +161,31 @@ aabc_registration_data = aabc_inventory.loc[
 ]
 
 
+def cat_toolbox_score_files(proj):
+    return functions.run_ssh_cmd(
+        "plenzini@login3.chpc.wustl.edu",
+        f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
+    )
+
+proj = "AABC_WU_ITK"
+print(
+    f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;'
+)
+
+def cat_toolbox_rawdata_files(proj):
+    return functions.run_ssh_cmd(
+        "plenzini@login3.chpc.wustl.edu",
+        f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;',
+    )
+
+
+def list_psychopy_subjects(proj):
+    return functions.run_ssh_cmd(
+        "plenzini@login3.chpc.wustl.edu",
+        f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
+    )
+
+
 def code_block_1() -> pd.DataFrame:
     # Merge to compare AABC ids against HCA ids
     #  - also check legacy variable flags and actual event in which participant has been enrolled.
@@ -621,22 +646,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     ##FIRST THE RAW DATA FILES
-    rawd4 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-    )
-    rawd1 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-    )
-    rawd3 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-    )
-    rawd2 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;',
-    )
+    rawd4 = cat_toolbox_rawdata_files("AABC_WU_ITK")
+    rawd1 = cat_toolbox_rawdata_files("AABC_MGH_ITK")
+    rawd3 = cat_toolbox_rawdata_files("AABC_UMN_ITK")
+    rawd2 = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
     # note that some of these won't work because UCLA hasn't started collecting data
     raw41 = functions.TLBXreshape(rawd4)
     raw11 = functions.TLBXreshape(rawd1)
@@ -661,22 +674,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     rf2.PIN = rf2.PIN.replace(fixes)
 
     # NOW THE SCORED DATA
-    results4 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-    )
-    results1 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-    )
-    results3 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-    )
-    results2 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-    )
+    results4 = cat_toolbox_score_files("AABC_WU_ITK")
+    results1 = cat_toolbox_score_files("AABC_MGH_ITK")
+    results3 = cat_toolbox_score_files("AABC_UMN_ITK")
+    results2 = cat_toolbox_score_files("AABC_UCLA_ITK")
 
     # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
     # still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
@@ -962,22 +963,10 @@ def code_block_6(inventoryaabc6):
 
     # just check for existence of PsychoPY in IntraDB
     # /ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
-    psychointradb4 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-    )
-    psychointradb3 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-    )
-    psychointradb2 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-    )
-    psychointradb1 = functions.run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
-        "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-    )
+    psychointradb4 = list_psychopy_subjects("AABC_WU_ITK")
+    psychointradb3 = list_psychopy_subjects("AABC_UMN_ITK")
+    psychointradb2 = list_psychopy_subjects("AABC_UCLA_ITK")
+    psychointradb1 = list_psychopy_subjects("AABC_MGH_ITK")
 
     df4 = pd.DataFrame(str.splitlines(psychointradb4))
     df4 = df4[0].str.split(",", expand=True)
