@@ -72,8 +72,9 @@ qlist1=pd.DataFrame()
 if not ft.empty:
     ft['reason']='Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list'
     ft[issueCode]='AE1001'
+    ft['datatype']='REDCap'
     ft['code']='RED'
-    qlist1=ft[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date']]
+    qlist1=ft[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','datatype']]
     for s in list(ft[study_id].unique()):
         print('CODE RED :',s,': Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list')
 
@@ -84,7 +85,8 @@ if not ft2.empty:
     ft2['reason']='Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list'
     ft2['code']='RED'
     ft2[issueCode] = 'AE1001'
-    qlist2 = ft2[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date']]
+    ft2['datatype']='REDCap'
+    qlist2 = ft2[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','datatype']]
     for s2 in list(ft2[study_id].unique()):
         print('CODE RED :',s2,': Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked')
 
@@ -110,7 +112,8 @@ if not wrongvisit.empty:
     wrongvisit['reason']='Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2'
     wrongvisit['code']='RED'
     wrongvisit['issueCode'] = 'AE1001'
-    qlist3 = wrongvisit[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','event_date']]
+    wrongvisit['datatype']='REDCap'
+    qlist3 = wrongvisit[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
     for s3 in list(wrongvisit[study_id].unique()):
         if s3 !='':
             print('CODE RED :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
@@ -122,7 +125,8 @@ if not missingsubids.empty:
     missingsubids['reason']='Subject ID is MISSING in AABC REDCap Database Record with study id'
     missingsubids['code']='RED'
     missingsubids['issueCode'] = 'AE1001'
-    qlist4 = missingsubids[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
+    missingsubids['datatype']='REDCap'
+    qlist4 = missingsubids[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
     for s4 in list(missingsubids.study_id.unique()):
         print('CODE ORANGE : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
 
@@ -132,8 +136,9 @@ qlist5=pd.DataFrame()
 if not tests.empty:
     tests['reason']='HOUSEKEEPING : Please delete test subject.  Use test database when practicing'
     tests['code']='HOUSEKEEPING'
+    tests['datatype']='REDCap'
     tests['issueCode'] = 'AE6001'
-    qlist5 = tests[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date']]
+    qlist5 = tests[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
     for s5 in list(tests[study_id].unique()):
         print('HOUSEKEEPING : Please delete test subject:', s5)
 
@@ -141,6 +146,8 @@ if not tests.empty:
 ###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist4,qlist5])
+Q1.loc[~(Q1.v0_date==''),'event_date']=Q1.v0_date
+
 #########################################################################################
 
 
@@ -291,6 +298,7 @@ q0=pd.DataFrame()
 if dups2.shape[0]>0:
     print("Duplicate Q-interactive records")
     print(dups2[['subjectid','visit']])
+    q0['datatype']='RAVLT'
     q0['reason']=['Duplicate Q-interactive records']
     q0['code']='ORANGE'
     q0['issueCode']='AE5001'
@@ -305,6 +313,7 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo']
     q1['code']='ORANGE'
     q1['issueCode']='AE1001'
+    q1['datatype']='RAVLT'
 
 #inventoryaabc2._merge.value_counts()
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
@@ -319,8 +328,9 @@ if missingQ.shape[0]>0:
     q2['reason']='Unable to locate Q-interactive data for this subject/visit'
     q2['code']='ORANGE'
     q2['issueCode']='AE4001'
+    q2['datatype']='RAVLT'
 
-Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date'])
+Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','datatype'])
 Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
@@ -431,6 +441,7 @@ if issues.shape[0]>0:
     t1=issues.copy()
     t1['code']='ORANGE'
     t1['issueCode']='AE5001'
+    t1['datatype']='TLBX'
     t1['reason']="Raw or Scored data not found (make sure you didn't export Narrow format)"
     print("Raw or Scored data not found (make sure you didn't export Narrow format)")
     print(issues[['PIN']])
@@ -463,6 +474,7 @@ if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
     t2['reason']='TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?'
     t2['code']='ORANGE'
     t2['issueCode']='AE1001'
+    t2['datatype']='TLBX'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event']])
 
@@ -477,10 +489,11 @@ if missingT.shape[0]>0:
     t3['reason']='Missing TLBX data'
     t3['code']='ORANGE'
     t3['issueCode']='AE2001'
+    t3['datatype']='TLBX'
     print("TLBX cannot be found for")
     print(missingT[['subject','redcap_event','site','event_date','nih_toolbox_collectyn']])
 
-T=pd.concat([t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode']]
+T=pd.concat([t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
 #merge with site num from inventory
 T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','redcap_event'],how='left')
 
@@ -523,9 +536,10 @@ if missingAD.shape[0]>0:
     a1=missingAD.copy()
     a1['reason']='Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit'
     a1['code']='GREEN'
+    a1['datatype']='ASA24'
     a1['issueCode']='AE2001'
     a1['subject_id']=a1['subject']
-a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date']]
+a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 #a1 is concatenated later with other q2 codes
 
 #################################################################################
@@ -582,9 +596,10 @@ if missingAct.shape[0]>0:
     a2=missingAct.copy()
     a2['reason']='Unable to locate Actigraphy data in Box for this subject/visit'
     a2['code']='YELLOW'
+    a2['datatype']='Actigraphy'
     a2['issueCode']='AE4001'
     a2['subject_id']=a2['subject']
-a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date']]
+a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 
 
@@ -665,6 +680,7 @@ if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     newp1=pd.DataFrame([item for item in list(p1[0]) if ('_A' in item or '_B' in item)])
     newp1['code']='ORANGE'
     newp1['issueCode']='AE4001'
+    newp1['datatype']='PsychoPy'
     newp1['reason']='A and/or B Psychopy Data Found in Box but not IntraDB'
 
 #p2=pd.DataFrame()
@@ -677,6 +693,7 @@ p2=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
     p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
     p2['code']='ORANGE'
+    p2['datatype']='PsychoPy'
     p2['issueCode']='AE4001'
     p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
@@ -686,7 +703,7 @@ p['PIN_AB']=p[0]
 p['subject_id']=p[0].str[:10]
 p['subject']=p[0].str[:10]
 pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
-pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','PIN_AB']]
+pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','PIN_AB','datatype']]
 
 #dont worry about duplicates in IntraDB - these will be filtered.
 #find subjects in AABC but not in IntraDB or BOX
@@ -703,11 +720,12 @@ if missingPY.shape[0]>0:
     print(missingPY[['subject','redcap_event','site','event_date','Psychopy']])
     peepy['reason']='PsychoPy cannot be found in BOX or IntraDB'
     peepy['code']='ORANGE'
+    peepy['datatype']='PsychoPy'
     peepy['issueCode']='AE4001'
 
 P=pd.concat([pwho,peepy])
 #IntraDB ID
-P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date']]
+P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 ##################################################################################
 #HOT FLASH DATA (not available yet)
@@ -732,10 +750,11 @@ if cb.shape[0]>0:
     print("Currently Missing Counterbalance:", cb)
     cb['reason']='Currently Missing Counterbalance'
     cb['code']='RED'
+    cb['datatype']='REDCap'
     cb['issueCode']='AE3001'
 #QC
-C=cb[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date']]
-
+C=cb[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','datatype']]
+C.rename(columns={'v0_date':'event_date'})
 
 
 summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
@@ -743,27 +762,30 @@ summv=summv.loc[~(summv.visit_summary_complete=='2')]
 if summv.shape[0]>0:
     summv['code']='GREEN'
     summv['issueCode']='AE2001'
+    summv['datatype']='REDCap'
     summv['reason']='Visit Summary Incomplete'
-    summv=summv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date']]
+    summv=summv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
     print("Visit Summary Incomplete:\n",summv)
 
 agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
 ag=agev.loc[agev.age_visit !='']
-agemv=ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=90 )].copy()
+agemv=ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=95 )].copy()
 if agemv.shape[0]>0:
     print("AGE OUTLIERS:\n",agemv)
     agemv['code']='RED'
     agemv['issueCode']='AE7001'
+    agemv['datatype']='REDCap'
     agemv['reason']='Age outlier. Please double check DOB and Event Date'
-    agemv=agemv[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date']]
+    agemv=agemv[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
 ageav=agev.loc[(agev.age_visit.astype(float).isnull()==True)]
 if ageav.shape[0]>0:
     print("Missing Age:\n",ageav)
     ageav['code']='RED'
+    ageav['datatype']='REDCap'
     ageav['issueCode']='AE3001'
     ageav['reason']='Missing Age. Please check DOB and Event Date'
-    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date']]
+    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 #inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
@@ -775,9 +797,10 @@ a=a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)].copy()
 if a.shape[0]>0:
     print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 37)])
     a['code']='RED'
+    a['datatype']='REDCap'
     a['reason']='BMI is an outlier.  Please double check height and weight'
     a['issueCode']='AE7001'
-    a=a[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date']]
+    a=a[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
 
 
 #missings
@@ -785,10 +808,11 @@ bmiv=bmiv.loc[bmiv.bmi=='']
 if bmiv.shape[0]>0:
     bmiv['code']='RED'
     bmiv['issueCode']='AE3001'
+    bmiv['datatype']='REDCap'
     bmiv['reason']='Missing Height or Weight (or there is another typo preventing BMI calculation)'
     #bmiv=bmiv.loc[(bmiv.age_visit.astype(float).isnull()==True)]
     print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
-    bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date']]
+    bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
 
 
 ##############################################################################
@@ -796,7 +820,7 @@ if bmiv.shape[0]>0:
 QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T)
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
-QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age']]
+QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']]
 QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
 
