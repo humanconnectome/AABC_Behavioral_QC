@@ -808,6 +808,8 @@ filteredQ.to_csv('FilteredQC4Jira.csv')
 ####### Download existing JIRA tickets and reduce QAAP accordingly
 ## create and upload new tickets.
 #
+
+
 ########################################################################
 #clean up the AABC inventory and upload to BOX for recruitment stats.
 inventoryaabc7.loc[inventoryaabc7.age=='','age']=inventoryaabc6.age_visit
