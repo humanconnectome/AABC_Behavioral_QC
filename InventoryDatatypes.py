@@ -655,15 +655,17 @@ df.PIN_AB=df.PIN_AB.str.replace('t','')
 psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
 #p1=pd.DataFrame()
 
-print('psychopy in BOX but not in IntraDB')
+print('A and or B psychopy in BOX but not in IntraDB')
 for i in psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique():
-    print(i)
+    if i.split(sep='_')[2]=='A' or i.split(sep='_')[2]=='B':
+        print(i)
 p1=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     p1 = pd.DataFrame(psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique())
-    p1['code']='ORANGE'
-    p1['issueCode']='AE4001'
-    p1['reason']='Psychopy Data Found in Box but not IntraDB'
+    newp1=pd.DataFrame([item for item in list(p1[0]) if ('_A' in item or '_B' in item)])
+    newp1['code']='ORANGE'
+    newp1['issueCode']='AE4001'
+    newp1['reason']='A and/or B Psychopy Data Found in Box but not IntraDB'
 
 #p2=pd.DataFrame()
 
@@ -678,7 +680,7 @@ if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
     p2['issueCode']='AE4001'
     p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
-p=pd.concat([p1,p2])#,columns='PIN_AB')
+p=pd.concat([newp1,p2])#,columns='PIN_AB')
 p['PIN']=p[0].str[:13]
 p['PIN_AB']=p[0]
 p['subject_id']=p[0].str[:10]
@@ -701,7 +703,7 @@ if missingPY.shape[0]>0:
     print(missingPY[['subject','redcap_event','site','event_date','Psychopy']])
     peepy['reason']='PsychoPy cannot be found in BOX or IntraDB'
     peepy['code']='ORANGE'
-    peepy['code']='AE4001'
+    peepy['issueCode']='AE4001'
 
 P=pd.concat([pwho,peepy])
 #IntraDB ID
@@ -795,15 +797,16 @@ QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T)
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age']]
-QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_29Sept2022.csv')
+QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
-##REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
-filteredQ.to_csv('FilteredQC4Jira.csv')
-#RED=issue_age>7
-#ORANGE=issues_age>18
-#YELLOW=issue_age>28
-#GREEN=issue_age>35
+
+###REDUCE by Color code.... need to be able to change these values.
+#filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
+#filteredQ.to_csv('FilteredQC4Jira.csv')
+##RED=issue_age>7
+##ORANGE=issues_age>18
+##YELLOW=issue_age>28
+##GREEN=issue_age>35
 
 ####### Download existing JIRA tickets and reduce QAAP accordingly
 ## create and upload new tickets.
