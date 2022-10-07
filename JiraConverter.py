@@ -60,7 +60,7 @@ def read_csv_cols(csv_path: str, cols: set) -> pd.DataFrame:
     if not actual.issuperset(cols):
         raise ValueError(f"File: {csv_path} is missing columns: {cols - actual}")
 
-    return df[cols].copy()
+    return df[list(cols)].copy()
 
 
 @click.command("cli", context_settings={"show_default": True}, help=__doc__)
@@ -89,6 +89,7 @@ def to_jira_df(
             "subject",
             "issueCode",
             "redcap_event",
+            "event_date",
             "datatype",
             "reason",
             "study_id",
