@@ -37,7 +37,7 @@ def print_error_codes(df: pd.DataFrame) -> None:
         print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
 
-def register_tickets(df, code: str, reason: str) -> None:
+def register_tickets(df, code: str, reason: str, error_code: str = "AE0000") -> None:
     """Register new tickets in the tickets dataframe
 
     Args:
@@ -48,6 +48,7 @@ def register_tickets(df, code: str, reason: str) -> None:
     """
     global tickets_dataframe
     n = df.copy()
+    n["issueCode"] = error_code
     n["code"] = code
     n["reason"] = reason
 
@@ -167,10 +168,12 @@ def cat_toolbox_score_files(proj):
         f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
     )
 
+
 proj = "AABC_WU_ITK"
 print(
     f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;'
 )
+
 
 def cat_toolbox_rawdata_files(proj):
     return functions.run_ssh_cmd(
@@ -234,6 +237,7 @@ def code_block_1() -> pd.DataFrame:
         qlist1,
         "RED",
         "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
+        "AE1001",
     )
 
     # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
@@ -244,6 +248,7 @@ def code_block_1() -> pd.DataFrame:
         qlist2,
         "RED",
         "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
+        "AE1001",
     )
 
     # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
@@ -292,6 +297,7 @@ def code_block_1() -> pd.DataFrame:
         qlist3,
         "RED",
         "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
+        "AE1001",
     )
 
     # check to make sure that the subject id is not missing.
@@ -315,6 +321,7 @@ def code_block_1() -> pd.DataFrame:
         qlist4,
         "ORANGE",
         "Subject ID is MISSING in AABC REDCap Database Record with study id",
+        "AE1001",
     )
 
     # test subjects that need to be deleted
@@ -335,6 +342,7 @@ def code_block_1() -> pd.DataFrame:
         test_subjects,
         "HOUSEKEEPING",
         "HOUSEKEEPING : Please delete test subject.  Use test database when practicing",
+        "AE6001",
     )
 
 
@@ -597,6 +605,7 @@ def code_block_2():
         dups2,
         "ORANGE",
         "Duplicate Q-interactive records",
+        "AE5001",
     )
 
     aabc_vs_qint = pd.merge(
@@ -613,6 +622,7 @@ def code_block_2():
         qint_only[["subject", "redcap_event"]],
         "ORANGE",
         "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
+        "AE1001",
     )
 
     aabc_inventory_plus_qint = aabc_vs_qint.loc[
@@ -628,6 +638,7 @@ def code_block_2():
         missingQ,
         "ORANGE",
         "Unable to locate Q-interactive data for this subject/visit",
+        "AE1001",
     )
 
     return aabc_vs_qint, aabc_inventory_plus_qint
@@ -725,6 +736,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
         issues,
         "ORANGE",
         "Raw or Scored data not found (make sure you didn't export Narrow format)",
+        "AE5001",
     )
 
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
@@ -757,6 +769,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
         t2,
         "ORANGE",
         "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?",
+        "AE1001",
     )
 
     aabc_inventory_5 = aabc_inventory_5.loc[
@@ -786,7 +799,12 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # "PIN",
     # "reason",
     # "code",
-    register_tickets(t3, "ORANGE", "Missing TLBX data")
+    register_tickets(
+        t3,
+        "ORANGE",
+        "Missing TLBX data",
+        "AE2001",
+    )
 
     return aabc_inventory_5
 
@@ -842,6 +860,7 @@ def code_block_4(aabc_inventory_5):
         a1,
         "GREEN",
         "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
+        "AE2001",
     )
     return aabc_inventory_6
 
@@ -917,7 +936,10 @@ def code_block_5(aabc_inventory_6):
         ]
     ]
     register_tickets(
-        a2, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit"
+        a2,
+        "YELLOW",
+        "Unable to locate Actigraphy data in Box for this subject/visit",
+        "AE4001",
     )
 
     return inventoryaabc6
@@ -1056,6 +1078,7 @@ def code_block_6(inventoryaabc6):
         missingPY,
         "ORANGE",
         "PsychoPy cannot be found in BOX or IntraDB",
+        "AE4001",
     )
     return inventoryaabc7
 
@@ -1093,7 +1116,7 @@ def code_block_7(inventoryaabc7):
             "passedscreen",
         ],
     ]
-    register_tickets(cb, "RED", "Currently Missing Counterbalance")
+    register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
 
     summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
         [
@@ -1106,11 +1129,7 @@ def code_block_7(inventoryaabc7):
         ]
     ]
     summv = summv.loc[~(summv.visit_summary_complete == "2")]
-    register_tickets(
-        summv,
-        "GREEN",
-        "Visit Summary Incomplete",
-    )
+    register_tickets(summv, "GREEN", "Visit Summary Incomplete", "AE2001")
 
 
 code_block_7(inventoryaabc7)
@@ -1145,9 +1164,7 @@ def code_block_8(inventoryaabc7):
         ],
     ]
     register_tickets(
-        agemv,
-        "RED",
-        "Age outlier. Please double check DOB and Event Date",
+        agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001"
     )
 
     ageav = agev.loc[
@@ -1164,9 +1181,7 @@ def code_block_8(inventoryaabc7):
         ],
     ]
     register_tickets(
-        ageav,
-        "RED",
-        "Missing Age. Please check DOB and Event Date",
+        ageav, "RED", "Missing Age. Please check DOB and Event Date", "AE3001"
     )
 
 
@@ -1193,9 +1208,7 @@ def code_block_9(inventoryaabc7):
         ],
     ]
     register_tickets(
-        a,
-        "RED",
-        "BMI is an outlier.  Please double check height and weight",
+        a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
     )
 
     # missings
@@ -1213,6 +1226,7 @@ def code_block_9(inventoryaabc7):
         bmiv,
         "RED",
         "Missing Height or Weight (or there is another typo preventing BMI calculation)",
+        "AE3001",
     )
 
 
