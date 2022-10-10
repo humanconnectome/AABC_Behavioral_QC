@@ -72,7 +72,7 @@ def rename_col(df, preferred_field_name, current_field_name):
 
 
 ## get the HCA inventory for ID checking with AABC
-csv_file_hca_inventory = box.downloadFile(config["hcainventory"])
+csv_file_hca_inventory = box.download_file(config["hcainventory"])
 hca_inventory = pd.read_csv(csv_file_hca_inventory)
 hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
 
@@ -441,7 +441,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
             for i in range(0, db2go.shape[0]):
                 redid = vect[i]
                 fid = db2go.iloc[i][["fileid"]][0]
-                t = box.getFileById(fid)
+                t = box.get_file_by_id(fid)
                 created = t.get().created_at
                 fname = db2go.iloc[i][["filename"]][0]
                 subjid = fname[fname.find("HCA") : 10]
@@ -884,7 +884,7 @@ def code_block_5(aabc_inventory_6):
         for fid in dbitems.fileid:
             try:
                 patrn = "Identity"
-                f = box.downloadFile(fid, download_dir="tmp", override_if_exists=False)
+                f = box.download_file(fid, download_dir="tmp", override_if_exists=False)
                 print(f)
                 file_one = open(f, "r")
                 variable = file_one.readline(1)
