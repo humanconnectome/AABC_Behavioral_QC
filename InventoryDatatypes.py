@@ -111,7 +111,7 @@ def get_aabc_arms_report() -> pd.DataFrame:
         token=api_key["aabcarms"],
         report_id="51031",
     )
-    df = functions.get_frame(
+    df = functions.memo_get_frame(
         api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request
     )
     return df
@@ -171,7 +171,7 @@ aabc_registration_data = aabc_inventory.loc[
 
 
 def cat_toolbox_score_files(proj):
-    return functions.run_ssh_cmd(
+    return functions.memo_run_ssh_cmd(
         "plenzini@login3.chpc.wustl.edu",
         f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
     )
@@ -184,14 +184,14 @@ print(
 
 
 def cat_toolbox_rawdata_files(proj):
-    return functions.run_ssh_cmd(
+    return functions.memo_run_ssh_cmd(
         "plenzini@login3.chpc.wustl.edu",
         f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;',
     )
 
 
 def list_psychopy_subjects(proj):
-    return functions.run_ssh_cmd(
+    return functions.memo_run_ssh_cmd(
         "plenzini@login3.chpc.wustl.edu",
         f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
     )
@@ -589,7 +589,7 @@ def code_block_2():
         token=api_key["qint"],
         report_id="51037",
     )
-    qint_df = functions.get_frame(
+    qint_df = functions.memo_get_frame(
         api_url=config["Redcap"]["api_url10"], data=qint_report
     )
 
@@ -597,7 +597,7 @@ def code_block_2():
 
     # QC checks
     # now check
-    qint_df2 = functions.get_frame(
+    qint_df2 = functions.memo_get_frame(
         api_url=config["Redcap"]["api_url10"], data=qint_report
     )
     qint_df2 = qint_df2[["id", "site", "subjectid", "visit"]].copy()
