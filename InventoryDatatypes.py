@@ -1,9 +1,15 @@
 import collections
+import io
 import re
 from datetime import date
 import pandas as pd
 
-from ccf.box import LifespanBox
+from ccfbox import (
+    LifespanBox,
+    CachedBoxFileReader,
+    CachedBoxMetadata,
+    CachedBoxListOfFiles,
+)
 import functions
 from config import LoadSettings
 
@@ -11,6 +17,9 @@ config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
 api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
+memo_box = CachedBoxFileReader(box=box)
+memo_box_meta = CachedBoxMetadata(box=box)
+memo_box_list_of_files = CachedBoxListOfFiles(box=box)
 
 
 tickets_dataframe = pd.DataFrame(
@@ -72,8 +81,7 @@ def rename_col(df, preferred_field_name, current_field_name):
 
 
 ## get the HCA inventory for ID checking with AABC
-csv_file_hca_inventory = box.download_file(config["hcainventory"])
-hca_inventory = pd.read_csv(csv_file_hca_inventory)
+hca_inventory = memo_box.read_csv(config["hcainventory"])
 hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
 
 # dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
@@ -441,8 +449,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
             for i in range(0, db2go.shape[0]):
                 redid = vect[i]
                 fid = db2go.iloc[i][["fileid"]][0]
-                t = box.get_file_by_id(fid)
-                created = t.get().created_at
+                created = memo_box_meta(fid).created_at
                 fname = db2go.iloc[i][["filename"]][0]
                 subjid = fname[fname.find("HCA") : 10]
                 fsha = db2go.iloc[i][["sha1"]][0]
@@ -453,7 +460,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                 print("subject id:", subjid)
                 print("Redcap id:", redid)
                 # pushrow=getrow(fid,fname)
-                content = box.read_text(fid)
+                content = memo_box.read_text(fid)
                 assessment = "RAVLT"
                 if "RAVLT-Alternate Form C" in content:
                     form = "Form C"
@@ -514,8 +521,7 @@ def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
         A dataframe with filename, fileid, sha1 for all files in the folder(s)
 
     """
-    filelist = box.list_of_files(box_folder_ids)
-    return pd.DataFrame(filelist).transpose()
+    return memo_box_list_of_files(box_folder_ids)
 
 
 def code_block_2():
@@ -829,7 +835,7 @@ def code_block_4(aabc_inventory_5):
         dbitems = list_files_in_box_folders(box_folder_id)
         for f in dbitems.fileid:
             print(f)
-            k = box.read_csv(f)
+            k = memo_box.read_csv(f)
             anydata.update(k.UserName)
 
     AD = pd.DataFrame(anydata, columns=["asa24id"])
@@ -884,20 +890,18 @@ def code_block_5(aabc_inventory_6):
         for fid in dbitems.fileid:
             try:
                 patrn = "Identity"
-                f = box.download_file(fid, download_dir="tmp", override_if_exists=False)
-                print(f)
-                file_one = open(f, "r")
+                file_one: io.BytesIO = memo_box(fid)
                 variable = file_one.readline(1)
                 if not variable == "":
                     for l in file_one.readlines():
                         if re.search(patrn, l):
                             hcaid = ""
                             hcaid = l.strip("\n").replace('"', "").split(",")[1]
-                            print("Inner", f, "has", hcaid)
+                            print("Inner", fid, "has", hcaid)
                             actsubs = actsubs + [hcaid]
                 file_one.close()
             except:
-                print("Something the matter with file", f)
+                print("Something the matter with file", fid)
         actdata = actdata + list(actsubs)  # list(set(actsubs))
 
     # Duplicates?

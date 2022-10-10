@@ -8,8 +8,8 @@ from boxsdk import JWTAuth, OAuth2, Client
 from boxsdk.object.file import File
 from boxsdk.object.item import Item
 
-from .memoizable import Memoizable
-from .config import LoadSettings
+from memoizable import Memoizable
+from config import LoadSettings
 
 config = LoadSettings()
 
@@ -311,7 +311,7 @@ class LifespanBox:
         return raw
 
 
-class CachedBox(Memoizable):
+class CachedBoxFileReader(Memoizable):
     def __init__(
         self,
         cache_file=".box_cache",
