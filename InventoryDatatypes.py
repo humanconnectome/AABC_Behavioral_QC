@@ -277,7 +277,7 @@ def code_block_1() -> pd.DataFrame:
         # was in actual but not expected
         (hca_expected_vs_aabc_actual._merge == "right_only")
         # and was not a phone call event
-        & (hca_expected_vs_aabc_actual.redcap_event != "phone_call_arm_13")
+        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13")
     ]
     qlist3 = wrong_visit[
         [
