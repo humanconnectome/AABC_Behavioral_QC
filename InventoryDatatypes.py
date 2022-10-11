@@ -26,7 +26,6 @@ from functions import (
     cat_toolbox_score_files,
     cat_toolbox_rawdata_files,
     list_psychopy_subjects,
-    list_files_in_box_folders,
 )
 from config import LoadSettings
 
@@ -74,7 +73,7 @@ hca_last_visits = (
 
 
 # download the inventory report from AABC for comparison
-aabc_inventory_including_test_subjects = get_aabc_arms_report()
+aabc_inventory_including_test_subjects = get_aabc_arms_report(api_key["aabcarms"])
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
@@ -1246,3 +1245,16 @@ combine_tickets_into_jira(
     inventoryaabc7,
     inventoryaabc6,
 )
+
+
+def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
+    """List filename, fileid, sha1 for all files in specific box folders
+
+    Args:
+        *box_folder_ids: The box id for the folder of interest
+
+    Returns:
+        A dataframe with filename, fileid, sha1 for all files in the folder(s)
+
+    """
+    return memo_box_list_of_files(box_folder_ids)

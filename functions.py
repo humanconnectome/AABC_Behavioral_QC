@@ -1,16 +1,14 @@
 import subprocess
 from typing import List
+from memoizable import Memoizable
 
 import pandas as pd
 import requests
-from subprocess import Popen, PIPE
 
-from InventoryDatatypes import api_key, config, memo_box_list_of_files
 from config import *
 
 
 ## get configuration files
-from memoizable import Memoizable
 
 config = LoadSettings()
 
@@ -271,14 +269,14 @@ def rename_col(df, preferred_field_name, current_field_name):
         df.rename(columns={current_field_name: preferred_field_name}, inplace=True)
 
 
-def get_aabc_arms_report() -> pd.DataFrame:
+def get_aabc_arms_report(token) -> pd.DataFrame:
     """Get the AABC arms report from REDCap
 
     Returns:
         A dataframe of the report
     """
     aabc_arms_report_request = params_request_report(
-        token=api_key["aabcarms"],
+        token=token,
         report_id="51031",
     )
     df = memo_get_frame(
@@ -331,16 +329,3 @@ def list_psychopy_subjects(proj):
         "chpc3",
         f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
     )
-
-
-def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
-    """List filename, fileid, sha1 for all files in specific box folders
-
-    Args:
-        *box_folder_ids: The box id for the folder of interest
-
-    Returns:
-        A dataframe with filename, fileid, sha1 for all files in the folder(s)
-
-    """
-    return memo_box_list_of_files(box_folder_ids)
