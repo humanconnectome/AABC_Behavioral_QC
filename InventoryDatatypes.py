@@ -172,7 +172,7 @@ aabc_registration_data = aabc_inventory.loc[
 
 def cat_toolbox_score_files(proj):
     return functions.memo_run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
+        "chpc3",
         f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
     )
 
@@ -185,14 +185,14 @@ print(
 
 def cat_toolbox_rawdata_files(proj):
     return functions.memo_run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
+        "chpc3",
         f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;',
     )
 
 
 def list_psychopy_subjects(proj):
     return functions.memo_run_ssh_cmd(
-        "plenzini@login3.chpc.wustl.edu",
+        "chpc3",
         f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
     )
 
