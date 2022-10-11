@@ -311,6 +311,19 @@ def remove_test_subjects(df: pd.DataFrame, field: str) -> pd.DataFrame:
     return df.loc[~df[field].str.contains("test", na=False, case=False)].copy()
 
 
+def is_v_event(df: pd.DataFrame, field: str = "redcap_event_name") -> pd.Series:
+    """Check if "v" is in the field.
+
+    Args:
+        df: Dataframe to use
+        field: Default is "redcap_event_name" #TODO: probably needs to be removed, used only once
+
+    Returns:
+        A series of booleans
+    """
+    return df[field].str.contains("v", na=False, case=False)
+
+
 def is_register_event(df: pd.DataFrame) -> pd.Series:
     """Check if the event is the register event
 
@@ -522,7 +535,7 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
 
 def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint):
     missingQ = aabc_inventory_plus_qint.loc[
-        aabc_vs_qint.redcap_event_name.str.contains("v") & ~aabc_vs_qint.has_qint_data,
+        is_v_event(aabc_vs_qint) & ~aabc_vs_qint.has_qint_data,
         ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
     ]
     register_tickets(
@@ -586,8 +599,7 @@ def qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5):
 def qc_missing_tlbx_data(aabc_inventory_5):
     # Look for missing IDs
     missingT = aabc_inventory_5.loc[
-        aabc_inventory_5.redcap_event_name.str.contains("v")
-        & ~aabc_inventory_5.has_tlbx_data
+        is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data
     ]
     t3 = missingT[
         [
@@ -608,8 +620,7 @@ def qc_missing_tlbx_data(aabc_inventory_5):
 
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
     missingAD = aabc_inventory_6.loc[
-        aabc_inventory_6.redcap_event_name.str.contains("v")
-        & ~aabc_inventory_6.has_asa24_data
+        is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data
     ]
     missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
     a1 = missingAD[
@@ -639,8 +650,7 @@ def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
 def qc_missing_actigraphy_data_in_box(inventoryaabc6):
     # Missing?
     missingAct = inventoryaabc6.loc[
-        inventoryaabc6.redcap_event_name.str.contains("v")
-        & ~inventoryaabc6.has_actigraphy_data
+        is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data
     ]
     missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
     a2 = missingAct[
@@ -666,8 +676,7 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
 
 def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
     missingPY = inventoryaabc7.loc[
-        inventoryaabc7.redcap_event_name.str.contains("v")
-        & ~inventoryaabc7.has_psychopy_data,
+        is_v_event(inventoryaabc7) & ~inventoryaabc7.has_psychopy_data,
         [
             "subject",
             "redcap_event",
@@ -705,7 +714,7 @@ def qc_redcap_missing_counterbalance(inventoryaabc7):
 
 
 def qc_visit_summary_incomplete(inventoryaabc7):
-    summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
+    summv = inventoryaabc7.loc[is_v_event(inventoryaabc7)][
         [
             "study_id",
             "site",

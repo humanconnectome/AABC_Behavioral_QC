@@ -43,6 +43,7 @@ from functions import (
     qc_age_outlier,
     qc_missing_weight_or_height,
     qc_bmi_outlier,
+    is_v_event,
 )
 from config import LoadSettings
 
@@ -632,7 +633,7 @@ def code_block_6(inventoryaabc6):
     p["subject_id"] = p[0].str[:10]
     p["subject"] = p[0].str[:10]
     pwho = pd.merge(
-        inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains("V")].drop(
+        inventoryaabc6.loc[is_v_event(inventoryaabc6, "redcap_event")].drop(
             columns=["subject_id", "subject"]
         ),
         p,
@@ -700,7 +701,7 @@ code_block_7(inventoryaabc7)
 def code_block_8(inventoryaabc7):
 
     agev = inventoryaabc7.loc[
-        inventoryaabc7.redcap_event_name.str.contains("v"),
+        is_v_event(inventoryaabc7),
         [
             "redcap_event",
             "study_id",
@@ -724,8 +725,9 @@ def code_block_9(inventoryaabc7):
 
     # calculate BMI: weight (lb) / [height (in)]2 x 703
     # inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
-    bmiv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
-        ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"]
+    bmiv = inventoryaabc7.loc[
+        is_v_event(inventoryaabc7),
+        ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
     ].copy()
     qc_bmi_outlier(bmiv)
 
