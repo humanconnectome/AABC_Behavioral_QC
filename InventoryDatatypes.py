@@ -118,19 +118,17 @@ def code_block_1(
         # was in actual but not expected
         (hca_expected_vs_aabc_actual._merge == "right_only")
         # and was not a phone call event
-        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13")
-    ]
-    qlist3 = wrong_visit[
+        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13"),
         [
             "subject_id",
             "study_id",
             "redcap_event_name",
             "site",
             "event_date",
-        ]
+        ],
     ]
     register_tickets(
-        qlist3,
+        wrong_visit,
         "RED",
         "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
         "AE1001",
