@@ -437,3 +437,27 @@ def qc_subjects_found_in_aabc_not_in_hca(
         "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
         "AE1001",
     )
+
+
+def qc_subject_id_is_not_missing(aabc_inventory):
+    missing_sub_ids = aabc_inventory.loc[
+        is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")
+    ]
+    qlist4 = missing_sub_ids[
+        [
+            "subject_id",
+            "study_id",
+            "redcap_event_name",
+            "site",
+            "reason",
+            "code",
+            "v0_date",
+            "event_date",
+        ]
+    ]
+    register_tickets(
+        qlist4,
+        "ORANGE",
+        "Subject ID is MISSING in AABC REDCap Database Record with study id",
+        "AE1001",
+    )

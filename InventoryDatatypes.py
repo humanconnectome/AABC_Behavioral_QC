@@ -28,6 +28,7 @@ from functions import (
     list_psychopy_subjects,
     qc_detect_test_subjects_in_production_database,
     qc_subjects_found_in_aabc_not_in_hca,
+    qc_subject_id_is_not_missing,
 )
 from config import LoadSettings
 
@@ -136,27 +137,7 @@ def code_block_1(
     )
 
     # check to make sure that the subject id is not missing.
-    missing_sub_ids = aabc_inventory.loc[
-        is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")
-    ]
-    qlist4 = missing_sub_ids[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-        ]
-    ]
-    register_tickets(
-        qlist4,
-        "ORANGE",
-        "Subject ID is MISSING in AABC REDCap Database Record with study id",
-        "AE1001",
-    )
+    qc_subject_id_is_not_missing(aabc_inventory)
 
 
 code_block_1(aabc_inventory, hca_inventory)
