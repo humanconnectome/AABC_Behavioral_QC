@@ -27,6 +27,7 @@ from functions import (
     cat_toolbox_rawdata_files,
     list_psychopy_subjects,
     qc_detect_test_subjects_in_production_database,
+    qc_subjects_found_in_aabc_not_in_hca,
 )
 from config import LoadSettings
 
@@ -70,79 +71,10 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
 aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
 
 
-def code_block_1() -> pd.DataFrame:
-    aabc_registration_data = aabc_inventory.loc[
-        # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
-        is_register_event(aabc_inventory),
-        # fields of interest from form one
-        [
-            "study_id",
-            "redcap_event_name",
-            "subject_id",
-            "legacy_yn",
-            "site",
-            "v0_date",
-        ],
-    ]
-    # Merge to compare AABC ids against HCA ids
-    #  - also check legacy variable flags and actual event in which participant has been enrolled.
-    hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
-    hca_vs_aabc = pd.merge(
-        hca_unique_subject_ids,
-        aabc_registration_data,
-        left_on="subject",
-        right_on="subject_id",
-        how="outer",
-        indicator=True,
-    )
-    legacy_arms = [
-        "register_arm_1",
-        "register_arm_2",
-        "register_arm_3",
-        "register_arm_4",
-        "register_arm_5",
-        "register_arm_6",
-        "register_arm_7",
-        "register_arm_8",
-    ]
-
-    # Boolean filters
-    is_legacy_id = hca_vs_aabc.redcap_event_name.isin(legacy_arms) | (
-        hca_vs_aabc.legacy_yn == "1"
-    )
-    is_in_aabc_not_in_hca = hca_vs_aabc._merge == "right_only"
-    is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
-
-    # First batch of flags: Look for legacy IDs that don't actually exist in HCA
-    # send these to Angela for emergency correction:
-    cols_for_troubleshooting = [
-        "subject_id",
-        "study_id",
-        "redcap_event_name",
-        "site",
-        "v0_date",
-    ]
-    qlist1 = hca_vs_aabc.loc[
-        is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc["subject_id"].notnull(),
-        cols_for_troubleshooting,
-    ]
-    register_tickets(
-        qlist1,
-        "RED",
-        "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
-        "AE1001",
-    )
-
-    # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-    qlist2 = hca_vs_aabc.loc[
-        is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting
-    ]
-    register_tickets(
-        qlist2,
-        "RED",
-        "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
-        "AE1001",
-    )
+def code_block_1(
+    aabc_inventory: pd.DataFrame, hca_inventory: pd.DataFrame
+) -> pd.DataFrame:
+    qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
 
     # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
     aabc_id_visits = aabc_inventory.sort_values(["study_id", "redcap_event_name"])
@@ -227,7 +159,7 @@ def code_block_1() -> pd.DataFrame:
     )
 
 
-code_block_1()
+code_block_1(aabc_inventory, hca_inventory)
 
 
 def cron_job_1(qint_df: pd.DataFrame) -> None:
