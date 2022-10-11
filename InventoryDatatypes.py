@@ -731,6 +731,29 @@ def combine_tickets_into_jira(
     ## create and upload new tickets.
     #
     ########################################################################
+    cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7)
+
+    # TO DO
+    # HARMONIZE Event Names
+    # Add filenames to TLBX data
+    # SEND INVENTORY, REDCAPs, and TLBX to PreRelease BOX
+    # HCA drop confusing variables
+    # inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
+    ##upload
+
+    #    Check IntraDB for file and IDs therein - read and apply patch
+    # Actigraphy
+    #    Check IntraDB for file and IDs therein - read and apply patch
+    # VNS
+    #   Check IntraDB for file and IDs therein - read and apply patch
+    # ASR Spanish
+    #    Searcj for spanish language ASR, and upload subset of questions to REDCap.
+    #    Check that this has been done
+    # Moca
+    #    Look for missing MOCA, check for file, and ping RA to upload.
+
+
+def cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7):
     # clean up the AABC inventory and upload to BOX for recruitment stats.
     inventoryaabc7.loc[inventoryaabc7.age == "", "age"] = inventoryaabc6.age_visit
     inventoryaabc7.loc[
@@ -767,25 +790,6 @@ def combine_tickets_into_jira(
             "visit_summary_complete",
         ]
     ].to_csv("Inventory_Beta.csv", index=False)
-
-    # TO DO
-    # HARMONIZE Event Names
-    # Add filenames to TLBX data
-    # SEND INVENTORY, REDCAPs, and TLBX to PreRelease BOX
-    # HCA drop confusing variables
-    # inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
-    ##upload
-
-    #    Check IntraDB for file and IDs therein - read and apply patch
-    # Actigraphy
-    #    Check IntraDB for file and IDs therein - read and apply patch
-    # VNS
-    #   Check IntraDB for file and IDs therein - read and apply patch
-    # ASR Spanish
-    #    Searcj for spanish language ASR, and upload subset of questions to REDCap.
-    #    Check that this has been done
-    # Moca
-    #    Look for missing MOCA, check for file, and ping RA to upload.
 
 
 combine_tickets_into_jira(
