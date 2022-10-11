@@ -682,8 +682,7 @@ def code_block_6(inventoryaabc6):
 vinventoryaabc7 = code_block_6(inventoryaabc6)
 
 
-def code_block_8(vinventoryaabc7):
-
+def qc_age_in_v_events(vinventoryaabc7):
     agev = vinventoryaabc7[
         [
             "redcap_event",
@@ -697,26 +696,21 @@ def code_block_8(vinventoryaabc7):
         ],
     ]
     qc_age_outlier(agev)
-
     qc_missing_age(agev)
 
 
-code_block_8(vinventoryaabc7)
+qc_age_in_v_events(vinventoryaabc7)
 
 
-def code_block_9(vinventoryaabc7):
-
-    # calculate BMI: weight (lb) / [height (in)]2 x 703
-    # inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
+def qc_bmi_in_v_events(vinventoryaabc7):
     bmiv = vinventoryaabc7[
         ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
     ].copy()
     qc_bmi_outlier(bmiv)
-
     qc_missing_weight_or_height(bmiv)
 
 
-code_block_9(vinventoryaabc7)
+qc_bmi_in_v_events(vinventoryaabc7)
 
 
 def combine_tickets_into_jira(
