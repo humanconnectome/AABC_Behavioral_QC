@@ -464,10 +464,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
 
     qc_missing_tlbx_data(aabc_inventory_5)
 
-    return aabc_inventory_5
+    code_block_4(aabc_inventory_5)
 
 
-aabc_inventory_5 = code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
+code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
 
 
 def code_block_4(aabc_inventory_5):
@@ -494,10 +494,7 @@ def code_block_4(aabc_inventory_5):
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left")
     aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
     qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
-    return aabc_inventory_6
-
-
-aabc_inventory_6 = code_block_4(aabc_inventory_5)
+    code_block_5(aabc_inventory_6)
 
 
 def code_block_5(aabc_inventory_6):
@@ -548,10 +545,7 @@ def code_block_5(aabc_inventory_6):
 
     qc_missing_actigraphy_data_in_box(inventoryaabc6)
 
-    return inventoryaabc6
-
-
-inventoryaabc6 = code_block_5(aabc_inventory_6)
+    code_block_6(inventoryaabc6)
 
 
 def code_block_6(inventoryaabc6):
@@ -675,9 +669,6 @@ def code_block_6(inventoryaabc6):
     qc_visit_summary_incomplete(vinventoryaabc7)
     qc_age_in_v_events(vinventoryaabc7)
     qc_bmi_in_v_events(vinventoryaabc7)
-
-
-code_block_6(inventoryaabc6)
 
 
 # TO DO
