@@ -19,10 +19,8 @@ from functions import (
     TLBXreshape,
     send_frame,
     concat,
-    register_tickets,
     get_aabc_arms_report,
     remove_test_subjects,
-    is_register_event,
     cat_toolbox_score_files,
     cat_toolbox_rawdata_files,
     list_psychopy_subjects,
@@ -38,6 +36,13 @@ from functions import (
     qc_missing_tlbx_data,
     qc_unable_to_locate_asa24_id_in_redcap_or_box,
     qc_missing_actigraphy_data_in_box,
+    qc_psychopy_not_found_in_box_or_intradb,
+    qc_redcap_missing_counterbalance,
+    qc_visit_summary_incomplete,
+    qc_missing_age,
+    qc_age_outlier,
+    qc_missing_weight_or_height,
+    qc_bmi_outlier,
 )
 from config import LoadSettings
 
@@ -659,27 +664,7 @@ def code_block_6(inventoryaabc6):
         inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True
     )
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
-    missingPY = inventoryaabc7.loc[
-        inventoryaabc7.redcap_event_name.str.contains("v")
-        & ~inventoryaabc7.has_psychopy_data,
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-            "has_psychopy_data",
-        ],
-    ]
-    register_tickets(
-        missingPY,
-        "ORANGE",
-        "PsychoPy cannot be found in BOX or IntraDB",
-        "AE4001",
-    )
+    qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7)
     return inventoryaabc7
 
 
@@ -704,32 +689,9 @@ def code_block_7(inventoryaabc7):
     pd.set_option("display.width", 1000)
     pd.options.display.width = 1000
 
-    cb = inventoryaabc7.loc[
-        is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == ""),
-        [
-            "site",
-            "study_id",
-            "redcap_event",
-            "redcap_event_name",
-            "subject",
-            "v0_date",
-            "passedscreen",
-        ],
-    ]
-    register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
+    qc_redcap_missing_counterbalance(inventoryaabc7)
 
-    summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
-        [
-            "study_id",
-            "site",
-            "subject",
-            "redcap_event",
-            "visit_summary_complete",
-            "event_date",
-        ]
-    ]
-    summv = summv.loc[~(summv.visit_summary_complete == "2")]
-    register_tickets(summv, "GREEN", "Visit Summary Incomplete", "AE2001")
+    qc_visit_summary_incomplete(inventoryaabc7)
 
 
 code_block_7(inventoryaabc7)
@@ -737,7 +699,8 @@ code_block_7(inventoryaabc7)
 
 def code_block_8(inventoryaabc7):
 
-    agev = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
+    agev = inventoryaabc7.loc[
+        inventoryaabc7.redcap_event_name.str.contains("v"),
         [
             "redcap_event",
             "study_id",
@@ -747,42 +710,11 @@ def code_block_8(inventoryaabc7):
             "age_visit",
             "event_date",
             "v0_date",
-        ]
-    ]
-    ag = agev.loc[agev.age_visit != ""]
-    agemv = ag.loc[
-        (ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-            "v0_date",
         ],
     ]
-    register_tickets(
-        agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001"
-    )
+    qc_age_outlier(agev)
 
-    ageav = agev.loc[
-        (agev.age_visit.astype(float).isnull() == True),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-            "v0_date",
-        ],
-    ]
-    register_tickets(
-        ageav, "RED", "Missing Age. Please check DOB and Event Date", "AE3001"
-    )
+    qc_missing_age(agev)
 
 
 code_block_8(inventoryaabc7)
@@ -795,39 +727,9 @@ def code_block_9(inventoryaabc7):
     bmiv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
         ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"]
     ].copy()
-    # outliers
-    a = bmiv.loc[bmiv.bmi != ""].copy()
-    a = a.loc[
-        (a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "event_date",
-        ],
-    ]
-    register_tickets(
-        a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
-    )
+    qc_bmi_outlier(bmiv)
 
-    # missings
-    bmiv = bmiv.loc[
-        bmiv.bmi == "",
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "event_date",
-        ],
-    ]
-    register_tickets(
-        bmiv,
-        "RED",
-        "Missing Height or Weight (or there is another typo preventing BMI calculation)",
-        "AE3001",
-    )
+    qc_missing_weight_or_height(bmiv)
 
 
 code_block_9(inventoryaabc7)

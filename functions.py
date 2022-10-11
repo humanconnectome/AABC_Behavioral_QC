@@ -662,3 +662,135 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
         "Unable to locate Actigraphy data in Box for this subject/visit",
         "AE4001",
     )
+
+
+def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
+    missingPY = inventoryaabc7.loc[
+        inventoryaabc7.redcap_event_name.str.contains("v")
+        & ~inventoryaabc7.has_psychopy_data,
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "reason",
+            "code",
+            "v0_date",
+            "event_date",
+            "has_psychopy_data",
+        ],
+    ]
+    register_tickets(
+        missingPY,
+        "ORANGE",
+        "PsychoPy cannot be found in BOX or IntraDB",
+        "AE4001",
+    )
+
+
+def qc_redcap_missing_counterbalance(inventoryaabc7):
+    cb = inventoryaabc7.loc[
+        is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == ""),
+        [
+            "site",
+            "study_id",
+            "redcap_event",
+            "redcap_event_name",
+            "subject",
+            "v0_date",
+            "passedscreen",
+        ],
+    ]
+    register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
+
+
+def qc_visit_summary_incomplete(inventoryaabc7):
+    summv = inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains("v")][
+        [
+            "study_id",
+            "site",
+            "subject",
+            "redcap_event",
+            "visit_summary_complete",
+            "event_date",
+        ]
+    ]
+    summv = summv.loc[~(summv.visit_summary_complete == "2")]
+    register_tickets(summv, "GREEN", "Visit Summary Incomplete", "AE2001")
+
+
+def qc_missing_age(agev):
+    ageav2 = agev.loc[
+        (agev.age_visit.astype(float).isnull() == True),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "reason",
+            "code",
+            "event_date",
+            "v0_date",
+        ],
+    ]
+    register_tickets(
+        ageav2, "RED", "Missing Age. Please check DOB and Event Date", "AE3001"
+    )
+
+
+def qc_age_outlier(agev):
+    ag = agev.loc[agev.age_visit != ""]
+    agemv = ag.loc[
+        (ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "reason",
+            "code",
+            "event_date",
+            "v0_date",
+        ],
+    ]
+    register_tickets(
+        agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001"
+    )
+
+
+def qc_missing_weight_or_height(bmiv):
+    # missings
+    bmiv2 = bmiv.loc[
+        bmiv.bmi == "",
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        bmiv2,
+        "RED",
+        "Missing Height or Weight (or there is another typo preventing BMI calculation)",
+        "AE3001",
+    )
+
+
+def qc_bmi_outlier(bmiv):
+    # outliers
+    a = bmiv.loc[bmiv.bmi != ""].copy()
+    a = a.loc[
+        (a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37),
+        [
+            "subject",
+            "redcap_event",
+            "study_id",
+            "site",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
+    )
