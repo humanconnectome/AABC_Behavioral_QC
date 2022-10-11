@@ -75,11 +75,8 @@ hca_last_visits = (
 # download the inventory report from AABC for comparison
 aabc_inventory_including_test_subjects = get_aabc_arms_report(api_key["aabcarms"])
 
-# trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
-study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
-
 aabc_inventory = remove_test_subjects(
-    aabc_inventory_including_test_subjects, study_primary_key_field
+    aabc_inventory_including_test_subjects, "subject_id"
 )
 aabc_inventory = idvisits(aabc_inventory)
 
@@ -90,7 +87,7 @@ aabc_registration_data = aabc_inventory.loc[
     [
         "study_id",
         "redcap_event_name",
-        study_primary_key_field,
+        "subject_id",
         "legacy_yn",
         "site",
         "v0_date",
@@ -105,7 +102,7 @@ def code_block_1() -> pd.DataFrame:
         hca_unique_subject_ids,
         aabc_registration_data,
         left_on="subject",
-        right_on=study_primary_key_field,
+        right_on="subject_id",
         how="outer",
         indicator=True,
     )
@@ -137,9 +134,7 @@ def code_block_1() -> pd.DataFrame:
         "v0_date",
     ]
     qlist1 = hca_vs_aabc.loc[
-        is_in_aabc_not_in_hca
-        & is_legacy_id
-        & hca_vs_aabc[study_primary_key_field].notnull(),
+        is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc["subject_id"].notnull(),
         cols_for_troubleshooting,
     ]
     register_tickets(
@@ -211,8 +206,7 @@ def code_block_1() -> pd.DataFrame:
 
     # check to make sure that the subject id is not missing.
     missing_sub_ids = aabc_inventory.loc[
-        is_register_event(aabc_inventory)
-        & (aabc_inventory[study_primary_key_field] == "")
+        is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")
     ]
     qlist4 = missing_sub_ids[
         [
@@ -235,7 +229,7 @@ def code_block_1() -> pd.DataFrame:
 
     # test subjects that need to be deleted
     test_subjects = aabc_inventory_including_test_subjects.loc[
-        aabc_inventory_including_test_subjects[study_primary_key_field].str.contains(
+        aabc_inventory_including_test_subjects["subject_id"].str.contains(
             "test", case=False
         ),
         [
