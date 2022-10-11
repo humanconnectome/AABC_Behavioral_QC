@@ -44,6 +44,9 @@ from functions import (
     qc_missing_weight_or_height,
     qc_bmi_outlier,
     is_v_event,
+    qc_hot_flash_data,
+    qc_vns_data,
+    qc_bunk_ids_in_psychopy_and_actigraphy,
 )
 from config import LoadSettings
 
@@ -668,34 +671,15 @@ def code_block_6(inventoryaabc6):
     vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
     qc_psychopy_not_found_in_box_or_intradb(vinventoryaabc7)
     qc_redcap_missing_counterbalance(inventoryaabc7)
+    qc_hot_flash_data()
+    qc_vns_data()
+    qc_bunk_ids_in_psychopy_and_actigraphy()
+    qc_visit_summary_incomplete(vinventoryaabc7)
+
     return vinventoryaabc7
 
 
 vinventoryaabc7 = code_block_6(inventoryaabc6)
-
-
-def code_block_7(vinventoryaabc7):
-
-    ##################################################################################
-    # HOT FLASH DATA (not available yet)
-
-    ###################################################################################
-    # VNS (not available yet)
-
-    ###################################################################################
-    # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
-    ###################################################################################
-
-    ###################################################################################
-    # NOW CHECK key REDCap AABC variables for completeness (counterbalance, inventory completeness, age, bmi and soon to be more)
-    # inventory_complete
-    pd.set_option("display.width", 1000)
-    pd.options.display.width = 1000
-
-    qc_visit_summary_incomplete(vinventoryaabc7)
-
-
-code_block_7(vinventoryaabc7)
 
 
 def code_block_8(vinventoryaabc7):

@@ -803,3 +803,18 @@ def qc_bmi_outlier(bmiv):
     register_tickets(
         a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
     )
+
+
+def qc_hot_flash_data():
+    # TODO: qc hot flash data (data is not yet available)
+    pass
+
+
+def qc_vns_data():
+    # TODO: qc vns data (data is not yet available)
+    pass
+
+
+def qc_bunk_ids_in_psychopy_and_actigraphy():
+    # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
+    pass
