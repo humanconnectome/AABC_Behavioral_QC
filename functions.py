@@ -461,3 +461,60 @@ def qc_subject_id_is_not_missing(aabc_inventory):
         "Subject ID is MISSING in AABC REDCap Database Record with study id",
         "AE1001",
     )
+
+
+def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
+    # if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
+    aabc_id_visits = aabc_inventory.sort_values(["study_id", "redcap_event_name"])
+    aabc_nonregister_visits = aabc_id_visits.loc[
+        ~is_register_event(aabc_id_visits),
+        [
+            "study_id",
+            "redcap_event_name",
+            "site",
+            "subject_id",
+            "v0_date",
+            "event_date",
+        ],
+    ]
+    # dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
+    # - to check participant is not enrolled in wrong arm
+    # - to check participant is starting correct next visit
+    hca_last_visits = (
+        hca_inventory[["subject", "redcap_event"]]
+        .loc[hca_inventory.redcap_event.isin(["V1", "V2"])]
+        .sort_values("redcap_event")
+        .drop_duplicates(subset="subject", keep="last")
+    )
+    # Increment the last visit by 1 to get the next visit
+    next_visit = hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
+    hca_last_visits["next_visit2"] = "V" + next_visit.astype(str)
+    hca_last_visits2 = hca_last_visits.drop(columns=["redcap_event"])
+    # check that current visit in AABC is the last visit in HCA + 1
+    hca_expected_vs_aabc_actual = pd.merge(
+        hca_last_visits2,
+        aabc_nonregister_visits,
+        left_on=["subject", "next_visit2"],
+        right_on=["subject", "redcap_event"],
+        how="right",
+        indicator=True,
+    )
+    wrong_visit = hca_expected_vs_aabc_actual.loc[
+        # was in actual but not expected
+        (hca_expected_vs_aabc_actual._merge == "right_only")
+        # and was not a phone call event
+        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13"),
+        [
+            "subject_id",
+            "study_id",
+            "redcap_event_name",
+            "site",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        wrong_visit,
+        "RED",
+        "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
+        "AE1001",
+    )
