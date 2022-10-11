@@ -75,6 +75,7 @@ hca_last_visits = (
 
 # download the inventory report from AABC for comparison
 aabc_inventory_including_test_subjects = get_aabc_arms_report(api_key["aabcarms"])
+qc_detect_test_subjects_in_production_database(aabc_inventory_including_test_subjects)
 
 aabc_inventory = remove_test_subjects(
     aabc_inventory_including_test_subjects, "subject_id"
@@ -226,9 +227,6 @@ def code_block_1() -> pd.DataFrame:
         "ORANGE",
         "Subject ID is MISSING in AABC REDCap Database Record with study id",
         "AE1001",
-    )
-    qc_detect_test_subjects_in_production_database(
-        aabc_inventory_including_test_subjects
     )
 
 
