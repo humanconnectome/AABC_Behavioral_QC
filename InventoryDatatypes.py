@@ -98,11 +98,6 @@ aabc_registration_data = aabc_inventory.loc[
     ],
 ]
 
-proj = "AABC_WU_ITK"
-print(
-    f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;'
-)
-
 
 def code_block_1() -> pd.DataFrame:
     # Merge to compare AABC ids against HCA ids
