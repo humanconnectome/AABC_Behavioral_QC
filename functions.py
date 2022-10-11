@@ -329,3 +329,24 @@ def list_psychopy_subjects(proj):
         "chpc3",
         f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
     )
+
+
+def qc_detect_test_subjects_in_production_database(prod_df: pd.DataFrame) -> None:
+    """Detects test subjects in production database and raises a ticket if found"""
+    test_subjects = prod_df.loc[
+        prod_df["subject_id"].str.contains("test", case=False),
+        [
+            "subject_id",
+            "study_id",
+            "redcap_event_name",
+            "site",
+            "v0_date",
+            "event_date",
+        ],
+    ]
+    register_tickets(
+        test_subjects,
+        "HOUSEKEEPING",
+        "HOUSEKEEPING : Please delete test subject.  Use test database when practicing",
+        "AE6001",
+    )

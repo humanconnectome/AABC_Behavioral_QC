@@ -26,6 +26,7 @@ from functions import (
     cat_toolbox_score_files,
     cat_toolbox_rawdata_files,
     list_psychopy_subjects,
+    qc_detect_test_subjects_in_production_database,
 )
 from config import LoadSettings
 
@@ -226,26 +227,8 @@ def code_block_1() -> pd.DataFrame:
         "Subject ID is MISSING in AABC REDCap Database Record with study id",
         "AE1001",
     )
-
-    # test subjects that need to be deleted
-    test_subjects = aabc_inventory_including_test_subjects.loc[
-        aabc_inventory_including_test_subjects["subject_id"].str.contains(
-            "test", case=False
-        ),
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "v0_date",
-            "event_date",
-        ],
-    ]
-    register_tickets(
-        test_subjects,
-        "HOUSEKEEPING",
-        "HOUSEKEEPING : Please delete test subject.  Use test database when practicing",
-        "AE6001",
+    qc_detect_test_subjects_in_production_database(
+        aabc_inventory_including_test_subjects
     )
 
 
