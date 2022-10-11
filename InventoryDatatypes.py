@@ -82,22 +82,21 @@ aabc_inventory = remove_test_subjects(
 )
 aabc_inventory = idvisits(aabc_inventory)
 
-aabc_registration_data = aabc_inventory.loc[
-    # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
-    is_register_event(aabc_inventory),
-    # fields of interest from form one
-    [
-        "study_id",
-        "redcap_event_name",
-        "subject_id",
-        "legacy_yn",
-        "site",
-        "v0_date",
-    ],
-]
-
 
 def code_block_1() -> pd.DataFrame:
+    aabc_registration_data = aabc_inventory.loc[
+        # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
+        is_register_event(aabc_inventory),
+        # fields of interest from form one
+        [
+            "study_id",
+            "redcap_event_name",
+            "subject_id",
+            "legacy_yn",
+            "site",
+            "v0_date",
+        ],
+    ]
     # Merge to compare AABC ids against HCA ids
     #  - also check legacy variable flags and actual event in which participant has been enrolled.
     hca_vs_aabc = pd.merge(
