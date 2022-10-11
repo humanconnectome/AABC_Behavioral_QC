@@ -552,3 +552,113 @@ def qc_duplicate_qint_records(qint_df):
         "Duplicate Q-interactive records",
         "AE5001",
     )
+
+
+def qc_raw_or_scored_data_not_found(dffull, rf2):
+    # QC check:
+    # Either scored or raw is missing in format expected:
+    formats = pd.merge(
+        dffull.PIN.drop_duplicates(), rf2, how="outer", on="PIN", indicator=True
+    )[["PIN", "_merge"]]
+    issues = formats.loc[~(formats._merge == "both")]
+    register_tickets(
+        issues,
+        "ORANGE",
+        "Raw or Scored data not found (make sure you didn't export Narrow format)",
+        "AE5001",
+    )
+
+
+def qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5):
+    # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
+    # turn this into a ticket
+    t2 = pre_aabc_inventory_5.loc[
+        pre_aabc_inventory_5._merge == "right_only", ["PIN", "subject", "redcap_event"]
+    ]
+    register_tickets(
+        t2,
+        "ORANGE",
+        "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?",
+        "AE1001",
+    )
+
+
+def qc_missing_tlbx_data(aabc_inventory_5):
+    # Look for missing IDs
+    missingT = aabc_inventory_5.loc[
+        aabc_inventory_5.redcap_event_name.str.contains("v")
+        & ~aabc_inventory_5.has_tlbx_data
+    ]
+    t3 = missingT[
+        [
+            "subject",
+            "redcap_event",
+            "site",
+            "event_date",
+            "nih_toolbox_collectyn",
+        ]
+    ]
+    register_tickets(
+        t3,
+        "ORANGE",
+        "Missing TLBX data",
+        "AE2001",
+    )
+
+
+def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
+    missingAD = aabc_inventory_6.loc[
+        aabc_inventory_6.redcap_event_name.str.contains("v")
+        & ~aabc_inventory_6.has_asa24_data
+    ]
+    missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
+    a1 = missingAD[
+        [
+            "subject_id",
+            "subject",
+            "study_id",
+            "redcap_event",
+            "redcap_event_name",
+            "site",
+            "reason",
+            "code",
+            "v0_date",
+            "event_date",
+            "asa24yn",
+            "asa24id",
+        ]
+    ]
+    register_tickets(
+        a1,
+        "GREEN",
+        "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
+        "AE2001",
+    )
+
+
+def qc_missing_actigraphy_data_in_box(inventoryaabc6):
+    # Missing?
+    missingAct = inventoryaabc6.loc[
+        inventoryaabc6.redcap_event_name.str.contains("v")
+        & ~inventoryaabc6.has_actigraphy_data
+    ]
+    missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
+    a2 = missingAct[
+        [
+            "subject_id",
+            "subject",
+            "redcap_event",
+            "study_id",
+            "redcap_event_name",
+            "site",
+            "v0_date",
+            "event_date",
+            "actigraphy_collectyn",
+        ]
+    ]
+    register_tickets(
+        a2,
+        "YELLOW",
+        "Unable to locate Actigraphy data in Box for this subject/visit",
+        "AE4001",
+    )
