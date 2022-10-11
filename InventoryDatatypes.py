@@ -73,18 +73,9 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
 aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
 
 
-def code_block_1(
-    aabc_inventory: pd.DataFrame, hca_inventory: pd.DataFrame
-) -> pd.DataFrame:
-    qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
-
-    qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
-
-    # check to make sure that the subject id is not missing.
-    qc_subject_id_is_not_missing(aabc_inventory)
-
-
-code_block_1(aabc_inventory, hca_inventory)
+qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
+qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
+qc_subject_id_is_not_missing(aabc_inventory)
 
 
 def cron_job_1(qint_df: pd.DataFrame) -> None:
