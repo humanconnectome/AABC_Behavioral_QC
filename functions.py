@@ -11,6 +11,18 @@ from config import *
 ## get configuration files
 
 config = LoadSettings()
+tickets_dataframe = pd.DataFrame(
+    columns=[
+        "subject_id",
+        "study_id",
+        "redcap_event_name",
+        "site",
+        "reason",
+        "code",
+        "v0_date",
+        "event_date",
+    ]
+)
 
 # functions
 def params_request_records(token):

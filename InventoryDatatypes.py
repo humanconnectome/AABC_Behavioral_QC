@@ -39,19 +39,6 @@ memo_box_meta = CachedBoxMetadata(box=box)
 memo_box_list_of_files = CachedBoxListOfFiles(box=box)
 
 
-tickets_dataframe = pd.DataFrame(
-    columns=[
-        "subject_id",
-        "study_id",
-        "redcap_event_name",
-        "site",
-        "reason",
-        "code",
-        "v0_date",
-        "event_date",
-    ]
-)
-
 ## get the HCA inventory for ID checking with AABC
 hca_inventory = memo_box.read_csv(config["hcainventory"])
 hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
