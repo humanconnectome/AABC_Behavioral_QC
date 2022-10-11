@@ -30,6 +30,9 @@ from functions import (
     qc_subjects_found_in_aabc_not_in_hca,
     qc_subject_id_is_not_missing,
     qc_subject_initiating_wrong_visit_sequence,
+    qc_unable_to_locate_qint_data,
+    qc_has_qint_but_id_visit_not_found_in_aabc,
+    qc_duplicate_qint_records,
 )
 from config import LoadSettings
 
@@ -308,15 +311,7 @@ def code_block_2(aabc_inventory, qint_api_token):
     qint_df2["redcap_event"] = "V" + qint_df2.visit
     qint_df2 = remove_test_subjects(qint_df2, "subjectid")
     # Before merging, check for duplicates that haven't been given the 'unusable' flag
-    dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
-    dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
-
-    register_tickets(
-        dups2,
-        "ORANGE",
-        "Duplicate Q-interactive records",
-        "AE5001",
-    )
+    qc_duplicate_qint_records(qint_df)
 
     aabc_vs_qint = pd.merge(
         aabc_inventory[keeplist],
@@ -326,30 +321,12 @@ def code_block_2(aabc_inventory, qint_api_token):
         indicator=True,
     )
     aabc_vs_qint["has_qint_data"] = aabc_vs_qint._merge != "left_only"
-
-    qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
-    register_tickets(
-        qint_only[["subject", "redcap_event"]],
-        "ORANGE",
-        "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
-        "AE1001",
-    )
+    qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint)
 
     aabc_inventory_plus_qint = aabc_vs_qint.loc[
         aabc_vs_qint._merge != "right_only"
     ].drop(columns=["_merge"])
-
-    missingQ = aabc_inventory_plus_qint.loc[
-        aabc_vs_qint.redcap_event_name.str.contains("v") & ~aabc_vs_qint.has_qint_data,
-        ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
-    ]
-
-    register_tickets(
-        missingQ,
-        "ORANGE",
-        "Unable to locate Q-interactive data for this subject/visit",
-        "AE1001",
-    )
+    qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint)
 
     return aabc_vs_qint, aabc_inventory_plus_qint
 

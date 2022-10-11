@@ -518,3 +518,37 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
         "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
         "AE1001",
     )
+
+
+def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint):
+    missingQ = aabc_inventory_plus_qint.loc[
+        aabc_vs_qint.redcap_event_name.str.contains("v") & ~aabc_vs_qint.has_qint_data,
+        ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
+    ]
+    register_tickets(
+        missingQ,
+        "ORANGE",
+        "Unable to locate Q-interactive data for this subject/visit",
+        "AE1001",
+    )
+
+
+def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
+    qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
+    register_tickets(
+        qint_only[["subject", "redcap_event"]],
+        "ORANGE",
+        "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
+        "AE1001",
+    )
+
+
+def qc_duplicate_qint_records(qint_df):
+    dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
+    dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
+    register_tickets(
+        dups2,
+        "ORANGE",
+        "Duplicate Q-interactive records",
+        "AE5001",
+    )
