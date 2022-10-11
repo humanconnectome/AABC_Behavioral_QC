@@ -1,4 +1,5 @@
 import subprocess
+from datetime import date
 from typing import List
 
 from memoizable import Memoizable
@@ -262,6 +263,8 @@ def register_tickets(df, code: str, reason: str, error_code: str = "AE0000") -> 
     n["issueCode"] = error_code
     n["code"] = code
     n["reason"] = reason
+    today = pd.to_datetime(date.today().strftime("%Y-%m-%d"))
+    n["issue_age"] = today - pd.to_datetime(n.event_date)
 
     rename_col(n, "subject_id", "subject")
     rename_col(n, "redcap_event_name", "redcap_event")
@@ -843,3 +846,42 @@ def qc_bmi_in_v_events(vinventoryaabc7):
     ].copy()
     qc_bmi_outlier(bmiv)
     qc_missing_weight_or_height(bmiv)
+
+
+def cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7):
+    # clean up the AABC inventory and upload to BOX for recruitment stats.
+    inventoryaabc7.loc[inventoryaabc7.age == "", "age"] = inventoryaabc6.age_visit
+    inventoryaabc7.loc[
+        inventoryaabc7.event_date == "", "event_date"
+    ] = inventoryaabc7.v0_date
+    inventoryaabc7 = inventoryaabc7.sort_values(["redcap_event", "event_date"])
+    inventoryaabc7[
+        [
+            "study_id",
+            "redcap_event_name",
+            "redcap_event",
+            "subject",
+            "site",
+            "age",
+            "sex",
+            "event_date",
+            "passedscreen",
+            "counterbalance_1st",
+            "has_qint_data",
+            "ravlt_collectyn",
+            "has_tlbx_data",
+            "nih_toolbox_collectyn",
+            "nih_toolbox_upload_typo",
+            "has_asa24_data",
+            "asa24yn",
+            "asa24id",
+            "has_actigraphy_data",
+            "actigraphy_collectyn",
+            "vms_collectyn",
+            "legacy_yn",
+            "psuedo_guid",
+            "ethnic",
+            "racial",
+            "visit_summary_complete",
+        ]
+    ].to_csv("Inventory_Beta.csv", index=False)

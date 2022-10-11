@@ -1,7 +1,6 @@
 import collections
 import io
 import re
-from datetime import date
 import pandas as pd
 
 from ccfbox import (
@@ -18,7 +17,6 @@ from functions import (
     params_request_report,
     TLBXreshape,
     send_frame,
-    concat,
     get_aabc_arms_report,
     remove_test_subjects,
     cat_toolbox_score_files,
@@ -45,6 +43,7 @@ from functions import (
     qc_bunk_ids_in_psychopy_and_actigraphy,
     qc_age_in_v_events,
     qc_bmi_in_v_events,
+    cron_clean_up_aabc_inventory_for_recruitment_stats,
 )
 from config import LoadSettings
 
@@ -666,6 +665,7 @@ def code_block_6(inventoryaabc6):
         inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True
     )
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
+    cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7)
     vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
     qc_psychopy_not_found_in_box_or_intradb(vinventoryaabc7)
     qc_redcap_missing_counterbalance(inventoryaabc7)
@@ -680,134 +680,24 @@ def code_block_6(inventoryaabc6):
 code_block_6(inventoryaabc6)
 
 
-def combine_tickets_into_jira(
-    Q1,
-    Q2,
-    a1,
-    a2,
-    P,
-    C,
-    summv,
-    agemv,
-    ageav,
-    a,
-    bmiv,
-    T,
-    inventoryaabc7,
-    inventoryaabc6,
-):
-    ##############################################################################
-    # all the flags for JIRA together
-    QAAP = concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
-    QAAP["QCdate"] = date.today().strftime("%Y-%m-%d")
-    QAAP["issue_age"] = pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
-    QAAP = QAAP[
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-            "issue_age",
-        ]
-    ]
-    QAAP.sort_values(["site", "issue_age"], ascending=False).to_csv("test.csv")
+# TO DO
+# HARMONIZE Event Names
+# Add filenames to TLBX data
+# SEND INVENTORY, REDCAPs, and TLBX to PreRelease BOX
+# HCA drop confusing variables
+# inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
+##upload
 
-    ##REDUCE by Color code.... need to be able to change these values.
-    filteredQ = QAAP.loc[
-        ((QAAP.code == "RED") & (QAAP.issue_age.dt.days > 7))
-        | ((QAAP.code == "ORANGE") & (QAAP.issue_age.dt.days > 18))
-        | ((QAAP.code == "GREEN") & (QAAP.issue_age.dt.days > 28))
-        | ((QAAP.code == "YELLOW") & (QAAP.issue_age.dt.days > 35))
-    ]
-    # RED=issue_age>7
-    # ORANGE=issues_age>18
-    # YELLOW=issue_age>28
-    # GREEN=issue_age>35
-
-    ####### Download existing JIRA tickets and reduce QAAP accordingly
-    ## create and upload new tickets.
-    #
-    ########################################################################
-    cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7)
-
-    # TO DO
-    # HARMONIZE Event Names
-    # Add filenames to TLBX data
-    # SEND INVENTORY, REDCAPs, and TLBX to PreRelease BOX
-    # HCA drop confusing variables
-    # inventoryaabc5.to_csv('Inventory_Beta.csv',index=False)
-    ##upload
-
-    #    Check IntraDB for file and IDs therein - read and apply patch
-    # Actigraphy
-    #    Check IntraDB for file and IDs therein - read and apply patch
-    # VNS
-    #   Check IntraDB for file and IDs therein - read and apply patch
-    # ASR Spanish
-    #    Searcj for spanish language ASR, and upload subset of questions to REDCap.
-    #    Check that this has been done
-    # Moca
-    #    Look for missing MOCA, check for file, and ping RA to upload.
-
-
-def cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7):
-    # clean up the AABC inventory and upload to BOX for recruitment stats.
-    inventoryaabc7.loc[inventoryaabc7.age == "", "age"] = inventoryaabc6.age_visit
-    inventoryaabc7.loc[
-        inventoryaabc7.event_date == "", "event_date"
-    ] = inventoryaabc7.v0_date
-    inventoryaabc7 = inventoryaabc7.sort_values(["redcap_event", "event_date"])
-    inventoryaabc7[
-        [
-            "study_id",
-            "redcap_event_name",
-            "redcap_event",
-            "subject",
-            "site",
-            "age",
-            "sex",
-            "event_date",
-            "passedscreen",
-            "counterbalance_1st",
-            "has_qint_data",
-            "ravlt_collectyn",
-            "has_tlbx_data",
-            "nih_toolbox_collectyn",
-            "nih_toolbox_upload_typo",
-            "has_asa24_data",
-            "asa24yn",
-            "asa24id",
-            "has_actigraphy_data",
-            "actigraphy_collectyn",
-            "vms_collectyn",
-            "legacy_yn",
-            "psuedo_guid",
-            "ethnic",
-            "racial",
-            "visit_summary_complete",
-        ]
-    ].to_csv("Inventory_Beta.csv", index=False)
-
-
-combine_tickets_into_jira(
-    Q1,
-    Q2,
-    a1,
-    a2,
-    P,
-    C,
-    summv,
-    agemv,
-    ageav,
-    a,
-    bmiv,
-    T,
-    inventoryaabc7,
-    inventoryaabc6,
-)
+#    Check IntraDB for file and IDs therein - read and apply patch
+# Actigraphy
+#    Check IntraDB for file and IDs therein - read and apply patch
+# VNS
+#   Check IntraDB for file and IDs therein - read and apply patch
+# ASR Spanish
+#    Searcj for spanish language ASR, and upload subset of questions to REDCap.
+#    Check that this has been done
+# Moca
+#    Look for missing MOCA, check for file, and ping RA to upload.
 
 
 def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
