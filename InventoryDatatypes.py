@@ -10,7 +10,24 @@ from ccfbox import (
     CachedBoxMetadata,
     CachedBoxListOfFiles,
 )
-import functions
+from functions import (
+    memo_get_frame,
+    idvisits,
+    filterdupass,
+    parse_content,
+    params_request_report,
+    TLBXreshape,
+    send_frame,
+    concat,
+    register_tickets,
+    get_aabc_arms_report,
+    remove_test_subjects,
+    is_register_event,
+    cat_toolbox_score_files,
+    cat_toolbox_rawdata_files,
+    list_psychopy_subjects,
+    list_files_in_box_folders,
+)
 from config import LoadSettings
 
 config = LoadSettings()
@@ -35,51 +52,6 @@ tickets_dataframe = pd.DataFrame(
     ]
 )
 
-
-def print_error_codes(df: pd.DataFrame) -> None:
-    """Print error codes from a dataframe
-
-    Args:
-        df: dataframe to print error codes from
-    """
-    for row in df.itertuples():
-        print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
-
-
-def register_tickets(df, code: str, reason: str, error_code: str = "AE0000") -> None:
-    """Register new tickets in the tickets dataframe
-
-    Args:
-        df: The dataframe containing all the rows to register
-        code: The code for the ticket
-        reason: The description of the error
-
-    """
-    global tickets_dataframe
-    n = df.copy()
-    n["issueCode"] = error_code
-    n["code"] = code
-    n["reason"] = reason
-
-    rename_col(n, "subject_id", "subject")
-    rename_col(n, "redcap_event_name", "redcap_event")
-
-    print_error_codes(n)
-    tickets_dataframe = pd.concat([tickets_dataframe, n], ignore_index=True)
-
-
-def rename_col(df, preferred_field_name, current_field_name):
-    """Rename a column in a dataframe
-
-    Args:
-        df: dataframe to rename column in
-        preferred_field_name: the preferred name for the column
-        current_field_name: the current name for the column
-    """
-    if preferred_field_name not in df.columns and current_field_name in df.columns:
-        df.rename(columns={current_field_name: preferred_field_name}, inplace=True)
-
-
 ## get the HCA inventory for ID checking with AABC
 hca_inventory = memo_box.read_csv(config["hcainventory"])
 hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
@@ -101,59 +73,16 @@ hca_last_visits = (
 # Test that #visits in HCA corresponds with cohort in AABC
 
 
-def get_aabc_arms_report() -> pd.DataFrame:
-    """Get the AABC arms report from REDCap
-
-    Returns:
-        A dataframe of the report
-    """
-    aabc_arms_report_request = functions.params_request_report(
-        token=api_key["aabcarms"],
-        report_id="51031",
-    )
-    df = functions.memo_get_frame(
-        api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request
-    )
-    return df
-
-
 # download the inventory report from AABC for comparison
 aabc_inventory_including_test_subjects = get_aabc_arms_report()
 
 # trying to set study_id from config file, but have been sloppy...there are instances where the actual subject_id has been coded below
 study_primary_key_field = config["Redcap"]["datasources"]["aabcarms"]["redcapidvar"]
 
-
-def remove_test_subjects(df: pd.DataFrame, field: str) -> pd.DataFrame:
-    """Remove test subjects from a dataframe
-
-    Args:
-        df: dataframe to remove test subjects from
-        field: field to check for test subjects
-
-    Returns:
-        A dataframe with test subjects removed
-    """
-    return df.loc[~df[field].str.contains("test", na=False, case=False)].copy()
-
-
 aabc_inventory = remove_test_subjects(
     aabc_inventory_including_test_subjects, study_primary_key_field
 )
-aabc_inventory = functions.idvisits(aabc_inventory)
-
-
-def is_register_event(df: pd.DataFrame) -> pd.Series:
-    """Check if the event is the register event
-
-    Args:
-        df: dataframe to check
-
-    Returns:
-        A series of booleans
-    """
-    return df.redcap_event_name.str.contains("register", case=False, na=False)
-
+aabc_inventory = idvisits(aabc_inventory)
 
 aabc_registration_data = aabc_inventory.loc[
     # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
@@ -169,32 +98,10 @@ aabc_registration_data = aabc_inventory.loc[
     ],
 ]
 
-
-def cat_toolbox_score_files(proj):
-    return functions.memo_run_ssh_cmd(
-        "chpc3",
-        f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
-    )
-
-
 proj = "AABC_WU_ITK"
 print(
     f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;'
 )
-
-
-def cat_toolbox_rawdata_files(proj):
-    return functions.memo_run_ssh_cmd(
-        "chpc3",
-        f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;',
-    )
-
-
-def list_psychopy_subjects(proj):
-    return functions.memo_run_ssh_cmd(
-        "chpc3",
-        f"ls /ceph/intradb/archive/{proj}/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u",
-    )
 
 
 def code_block_1() -> pd.DataFrame:
@@ -472,7 +379,7 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                 a = fname.replace("AV", "").find("V")
                 visit = fname[a + 1]
                 # visit=visits[-1]
-                row = functions.parse_content(content)
+                row = parse_content(content)
                 df = pd.DataFrame([row], columns=ravlt_form_fields)
                 # print(df)
                 firstvars = pd.DataFrame(
@@ -505,23 +412,10 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
                     print(list(rows2push.subjectid))
 
             if not rows2push.empty:
-                functions.send_frame(
+                send_frame(
                     dataframe=rows2push,
                     tok=api_key["qint"],
                 )
-
-
-def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
-    """List filename, fileid, sha1 for all files in specific box folders
-
-    Args:
-        *box_folder_ids: The box id for the folder of interest
-
-    Returns:
-        A dataframe with filename, fileid, sha1 for all files in the folder(s)
-
-    """
-    return memo_box_list_of_files(box_folder_ids)
 
 
 def code_block_2():
@@ -585,21 +479,17 @@ def code_block_2():
     #    if dup, set one to unususable and explain
 
     # current Qint Redcap:
-    qint_report = functions.params_request_report(
+    qint_report = params_request_report(
         token=api_key["qint"],
         report_id="51037",
     )
-    qint_df = functions.memo_get_frame(
-        api_url=config["Redcap"]["api_url10"], data=qint_report
-    )
+    qint_df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
 
     cron_job_1(qint_df)
 
     # QC checks
     # now check
-    qint_df2 = functions.memo_get_frame(
-        api_url=config["Redcap"]["api_url10"], data=qint_report
-    )
+    qint_df2 = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
     qint_df2 = qint_df2[["id", "site", "subjectid", "visit"]].copy()
     qint_df2["redcap_event"] = "V" + qint_df2.visit
     qint_df2 = remove_test_subjects(qint_df2, "subjectid")
@@ -668,10 +558,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     rawd3 = cat_toolbox_rawdata_files("AABC_UMN_ITK")
     rawd2 = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
     # note that some of these won't work because UCLA hasn't started collecting data
-    raw41 = functions.TLBXreshape(rawd4)
-    raw11 = functions.TLBXreshape(rawd1)
-    raw31 = functions.TLBXreshape(rawd3)
-    raw21 = functions.TLBXreshape(rawd2)
+    raw41 = TLBXreshape(rawd4)
+    raw11 = TLBXreshape(rawd1)
+    raw31 = TLBXreshape(rawd3)
+    raw21 = TLBXreshape(rawd2)
 
     # remove files known to be duds.
     rf2 = pd.concat([raw41, raw31, raw21, raw11])
@@ -703,10 +593,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
     # note that some of these won't work because UCLA hasn't started collecting data
-    dffull1 = functions.TLBXreshape(results1)
-    dffull2 = functions.TLBXreshape(results2)
-    dffull3 = functions.TLBXreshape(results3)
-    dffull4 = functions.TLBXreshape(results4)
+    dffull1 = TLBXreshape(results1)
+    dffull2 = TLBXreshape(results2)
+    dffull3 = TLBXreshape(results3)
+    dffull4 = TLBXreshape(results4)
 
     ##fixtypos in Scores file now
     dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])
@@ -722,7 +612,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
     dupvar = "tlbxwin_dups_v2"
     iset = aabc_vs_qint
-    dffull = functions.filterdupass(instrument, dupvar, iset, dffull)
+    dffull = filterdupass(instrument, dupvar, iset, dffull)
 
     # find any non-identical duplicated Assessments still in data after patch
     dupass = dffull.loc[dffull.duplicated(subset=["PIN", "Inst"], keep=False)][
@@ -1255,7 +1145,7 @@ def combine_tickets_into_jira(
 ):
     ##############################################################################
     # all the flags for JIRA together
-    QAAP = functions.concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
+    QAAP = concat(Q1, Q2, a1, a2, P, C, summv, agemv, ageav, a, bmiv, T)
     QAAP["QCdate"] = date.today().strftime("%Y-%m-%d")
     QAAP["issue_age"] = pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date)
     QAAP = QAAP[
