@@ -78,7 +78,7 @@ qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
 qc_subject_id_is_not_missing(aabc_inventory)
 
 
-def cron_job_1(qint_df: pd.DataFrame) -> None:
+def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
     # the variables that make up the 'common' form in the Qinteractive database.
     common_form_fields = [
         "id",
@@ -228,11 +228,11 @@ def cron_job_1(qint_df: pd.DataFrame) -> None:
             if not rows2push.empty:
                 send_frame(
                     dataframe=rows2push,
-                    tok=api_key["qint"],
+                    tok=qint_api_token,
                 )
 
 
-def code_block_2():
+def code_block_2(aabc_inventory, qint_api_token):
     #########################################################################################
     # PHASE 1 Test that all dataypes expected are present
     # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
@@ -294,12 +294,12 @@ def code_block_2():
 
     # current Qint Redcap:
     qint_report = params_request_report(
-        token=api_key["qint"],
+        token=qint_api_token,
         report_id="51037",
     )
     qint_df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
 
-    cron_job_1(qint_df)
+    cron_job_1(qint_df, qint_api_token)
 
     # QC checks
     # now check
@@ -354,7 +354,7 @@ def code_block_2():
     return aabc_vs_qint, aabc_inventory_plus_qint
 
 
-aabc_vs_qint, aabc_inventory_plus_qint = code_block_2()
+aabc_vs_qint, aabc_inventory_plus_qint = code_block_2(aabc_inventory, api_key["qint"])
 
 
 def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
