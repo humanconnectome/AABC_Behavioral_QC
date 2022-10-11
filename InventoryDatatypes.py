@@ -665,14 +665,16 @@ def code_block_6(inventoryaabc6):
         inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True
     )
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
-    qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7)
-    return inventoryaabc7
+    vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
+    qc_psychopy_not_found_in_box_or_intradb(vinventoryaabc7)
+    qc_redcap_missing_counterbalance(inventoryaabc7)
+    return vinventoryaabc7
 
 
-inventoryaabc7 = code_block_6(inventoryaabc6)
+vinventoryaabc7 = code_block_6(inventoryaabc6)
 
 
-def code_block_7(inventoryaabc7):
+def code_block_7(vinventoryaabc7):
 
     ##################################################################################
     # HOT FLASH DATA (not available yet)
@@ -690,18 +692,15 @@ def code_block_7(inventoryaabc7):
     pd.set_option("display.width", 1000)
     pd.options.display.width = 1000
 
-    qc_redcap_missing_counterbalance(inventoryaabc7)
-
-    qc_visit_summary_incomplete(inventoryaabc7)
+    qc_visit_summary_incomplete(vinventoryaabc7)
 
 
-code_block_7(inventoryaabc7)
+code_block_7(vinventoryaabc7)
 
 
-def code_block_8(inventoryaabc7):
+def code_block_8(vinventoryaabc7):
 
-    agev = inventoryaabc7.loc[
-        is_v_event(inventoryaabc7),
+    agev = vinventoryaabc7[
         [
             "redcap_event",
             "study_id",
@@ -718,15 +717,14 @@ def code_block_8(inventoryaabc7):
     qc_missing_age(agev)
 
 
-code_block_8(inventoryaabc7)
+code_block_8(vinventoryaabc7)
 
 
-def code_block_9(inventoryaabc7):
+def code_block_9(vinventoryaabc7):
 
     # calculate BMI: weight (lb) / [height (in)]2 x 703
     # inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
-    bmiv = inventoryaabc7.loc[
-        is_v_event(inventoryaabc7),
+    bmiv = vinventoryaabc7[
         ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
     ].copy()
     qc_bmi_outlier(bmiv)
@@ -734,7 +732,7 @@ def code_block_9(inventoryaabc7):
     qc_missing_weight_or_height(bmiv)
 
 
-code_block_9(inventoryaabc7)
+code_block_9(vinventoryaabc7)
 
 
 def combine_tickets_into_jira(

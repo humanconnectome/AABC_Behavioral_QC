@@ -676,7 +676,7 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
 
 def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
     missingPY = inventoryaabc7.loc[
-        is_v_event(inventoryaabc7) & ~inventoryaabc7.has_psychopy_data,
+        ~inventoryaabc7.has_psychopy_data,
         [
             "subject",
             "redcap_event",
@@ -713,8 +713,8 @@ def qc_redcap_missing_counterbalance(inventoryaabc7):
     register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
 
 
-def qc_visit_summary_incomplete(inventoryaabc7):
-    summv = inventoryaabc7.loc[is_v_event(inventoryaabc7)][
+def qc_visit_summary_incomplete(vinventoryaabc7):
+    summv = vinventoryaabc7[
         [
             "study_id",
             "site",
