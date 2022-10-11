@@ -41,17 +41,6 @@ memo_box_list_of_files = CachedBoxListOfFiles(box=box)
 
 ## get the HCA inventory for ID checking with AABC
 hca_inventory = memo_box.read_csv(config["hcainventory"])
-hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
-
-# dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
-# - to check participant is not enrolled in wrong arm
-# - to check participant is starting correct next visit
-hca_last_visits = (
-    hca_inventory[["subject", "redcap_event"]]
-    .loc[hca_inventory.redcap_event.isin(["V1", "V2"])]
-    .sort_values("redcap_event")
-    .drop_duplicates(subset="subject", keep="last")
-)
 
 
 #########################################################################################
@@ -97,6 +86,7 @@ def code_block_1() -> pd.DataFrame:
     ]
     # Merge to compare AABC ids against HCA ids
     #  - also check legacy variable flags and actual event in which participant has been enrolled.
+    hca_unique_subject_ids = hca_inventory.subject.drop_duplicates()
     hca_vs_aabc = pd.merge(
         hca_unique_subject_ids,
         aabc_registration_data,
@@ -167,6 +157,16 @@ def code_block_1() -> pd.DataFrame:
             "event_date",
         ],
     ]
+
+    # dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
+    # - to check participant is not enrolled in wrong arm
+    # - to check participant is starting correct next visit
+    hca_last_visits = (
+        hca_inventory[["subject", "redcap_event"]]
+        .loc[hca_inventory.redcap_event.isin(["V1", "V2"])]
+        .sort_values("redcap_event")
+        .drop_duplicates(subset="subject", keep="last")
+    )
 
     # Increment the last visit by 1 to get the next visit
     next_visit = hca_last_visits.redcap_event.str.replace("V", "").astype("int") + 1
