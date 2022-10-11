@@ -39,14 +39,12 @@ from functions import (
     qc_psychopy_not_found_in_box_or_intradb,
     qc_redcap_missing_counterbalance,
     qc_visit_summary_incomplete,
-    qc_missing_age,
-    qc_age_outlier,
-    qc_missing_weight_or_height,
-    qc_bmi_outlier,
     is_v_event,
     qc_hot_flash_data,
     qc_vns_data,
     qc_bunk_ids_in_psychopy_and_actigraphy,
+    qc_age_in_v_events,
+    qc_bmi_in_v_events,
 )
 from config import LoadSettings
 
@@ -675,42 +673,11 @@ def code_block_6(inventoryaabc6):
     qc_vns_data()
     qc_bunk_ids_in_psychopy_and_actigraphy()
     qc_visit_summary_incomplete(vinventoryaabc7)
-
-    return vinventoryaabc7
-
-
-vinventoryaabc7 = code_block_6(inventoryaabc6)
+    qc_age_in_v_events(vinventoryaabc7)
+    qc_bmi_in_v_events(vinventoryaabc7)
 
 
-def qc_age_in_v_events(vinventoryaabc7):
-    agev = vinventoryaabc7[
-        [
-            "redcap_event",
-            "study_id",
-            "site",
-            "subject",
-            "redcap_event_name",
-            "age_visit",
-            "event_date",
-            "v0_date",
-        ],
-    ]
-    qc_age_outlier(agev)
-    qc_missing_age(agev)
-
-
-qc_age_in_v_events(vinventoryaabc7)
-
-
-def qc_bmi_in_v_events(vinventoryaabc7):
-    bmiv = vinventoryaabc7[
-        ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
-    ].copy()
-    qc_bmi_outlier(bmiv)
-    qc_missing_weight_or_height(bmiv)
-
-
-qc_bmi_in_v_events(vinventoryaabc7)
+code_block_6(inventoryaabc6)
 
 
 def combine_tickets_into_jira(

@@ -818,3 +818,28 @@ def qc_vns_data():
 def qc_bunk_ids_in_psychopy_and_actigraphy():
     # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
     pass
+
+
+def qc_age_in_v_events(vinventoryaabc7):
+    agev = vinventoryaabc7[
+        [
+            "redcap_event",
+            "study_id",
+            "site",
+            "subject",
+            "redcap_event_name",
+            "age_visit",
+            "event_date",
+            "v0_date",
+        ],
+    ]
+    qc_age_outlier(agev)
+    qc_missing_age(agev)
+
+
+def qc_bmi_in_v_events(vinventoryaabc7):
+    bmiv = vinventoryaabc7[
+        ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
+    ].copy()
+    qc_bmi_outlier(bmiv)
+    qc_missing_weight_or_height(bmiv)
