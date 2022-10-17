@@ -201,22 +201,26 @@ columnnames = ['ravlt_pea_ravlt_sd_tc', 'ravlt_delay_scaled', 'ravlt_delay_compl
 qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51037')
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
-
+#no this is an error starting at the beginning
 #all box files - grab, transform, send
 folderqueue=['WU','UMN']#,'MGH','UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
 #import anything new by any definition (new name, new sha, new fileid)
+studyshortsum=0
+all2push=pd.DataFrame()
 for studyshort in folderqueue:
     folder = config['Redcap']['datasources']['qint']['BoxFolders'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
     sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
 
     filelist=box.list_of_files([folder])
+    print(filelist)
     db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
+    print(db)
     db.fileid=db.fileid.astype(int)
-
+    print(studyshort,":",db.shape[0],"records in BOX")
     #ones that already exist in q redcap
     cached_filelist=qintdf.copy()
     cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
@@ -229,13 +233,14 @@ for studyshort in folderqueue:
         print("NO NEW RECORDS from",studyshort,"TO ADD AT THIS TIME")
     if not db2go.empty:
         #initiate new ids
-        s = cached_filelist.id.astype('Int64').max() + 1
+        #NEED TO UPDATE CACHED_FILELIST.ID after every iteration.
+        s = cached_filelist.id.astype('Int64').max() + 1 + studyshortsum
         l=len(db2go)
         vect=[]
         for i in range(0,l):
             id=i+s
             vect=vect+[id]
-
+        studyshortsum=studyshortsum+l
         rows2push=pd.DataFrame(columns=firstvarcols+columnnames)
         for i in range(0,db2go.shape[0]):
             redid=vect[i]
@@ -277,8 +282,8 @@ for studyshort in folderqueue:
                 print("**************** Summary **********************")
                 print(len(rows2push.subjectid),"rows to push:")
                 print(list(rows2push.subjectid))
-
-if not rows2push.empty:
+    all2push=pd.concat([all2push,rows2push]).drop_duplicates()
+if not all2push.empty:
   send_frame(dataframe=rows2push, tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
 ####
 ###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
