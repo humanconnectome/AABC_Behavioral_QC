@@ -141,6 +141,7 @@ def filterdupass(instrument,dupvar,iset,dset):
     fixass['code']='orange'
     fixass['PIN']=fixass.subject + '_' + fixass.redcap_event
     fixass=fixass.loc[~(fixass[dupvar]=='')][['PIN',dupvar]]
+    fixass[dupvar]=fixass[dupvar].str.upper().str.replace('ASSESSMENT','').str.strip() #dont want to remove all alphanumeric...need more control over conventions
     fixass['Assessment Name']="Assessment " + fixass[dupvar]
     fixass['Inst']=instrument
     dset=pd.merge(dset,fixass,on=['PIN','Inst','Assessment Name'],how='left')
