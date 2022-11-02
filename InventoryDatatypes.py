@@ -65,7 +65,8 @@ hca_inventory = memo_box.read_csv(config["hcainventory"])
 # if Legacy, id exists in HCA and other subject id related tests:
 # Test that #visits in HCA corresponds with cohort in AABC
 def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
-    """Download the AABC inventory from RedCap. This does QC on the subject ids and returns only the cleaned up rows.
+    """Download the AABC inventory from RedCap.
+    This does QC on the subject ids and returns only the cleaned up rows (excludes test subjects).
 
     Args:
         redcap_api_token: API token for the AABC redcap project

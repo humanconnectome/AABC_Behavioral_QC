@@ -2,7 +2,7 @@ import subprocess
 from datetime import date
 from typing import List
 
-from memoizable import Memoizable
+from memofn import memofn
 
 import pandas as pd
 import requests
@@ -73,21 +73,7 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
     return pd.DataFrame(r.json())
 
 
-class RedcapFrameLoader(Memoizable):
-    def run(self, api_url: str, data: dict) -> pd.DataFrame:
-        """Get a dataframe from a Redcap API call
-
-        Args:
-            data: dict of parameters for the API call
-            api_url: url for the API call
-
-        Returns:
-            A dataframe of the results
-        """
-        return get_frame(api_url, data)
-
-
-memo_get_frame = RedcapFrameLoader(cache_file=".cache_redcap_frame", expire_in_days=1)
+memo_get_frame = memofn(get_frame, expire_in_days=1)
 
 
 def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
@@ -183,12 +169,7 @@ def run_ssh_cmd(host: str, cmd: str) -> str:
     )
 
 
-class SSHCmdRunner(Memoizable):
-    def run(self, host: str, cmd: str) -> str:
-        return run_ssh_cmd(host, cmd)
-
-
-memo_run_ssh_cmd = SSHCmdRunner(cache_file=".cache_ssh_cmd", expire_in_days=8)
+memo_run_ssh_cmd = memofn(run_ssh_cmd, expire_in_days=8)
 
 
 def get_list_from_excel_sheet(excel_file_path: str, sheet_name: str) -> List[str]:
