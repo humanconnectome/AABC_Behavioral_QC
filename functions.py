@@ -449,8 +449,6 @@ def qc_subject_id_is_not_missing(aabc_inventory):
             "study_id",
             "redcap_event_name",
             "site",
-            "reason",
-            "code",
             "v0_date",
             "event_date",
         ]
@@ -475,6 +473,8 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
             "subject_id",
             "v0_date",
             "event_date",
+            "subject",
+            "redcap_event",
         ],
     ]
     # dataframe contains the last visit (`redcap_event`) for each subject (`subject`). Will be used:
