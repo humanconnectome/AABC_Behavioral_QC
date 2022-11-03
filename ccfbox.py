@@ -212,23 +212,26 @@ class LifespanBox:
         """
         return self.get_file_by_id(file_id).get()
 
-    def read_file_in_memory(self, file_id: typing.Union[str, int]) -> io.BytesIO:
-        """Bypasses the local filesystem, returns an inmemory file handle"""
+    def read_file_in_memory(self, file_id: typing.Union[str, int]) -> File:
+        """Bypasses the local filesystem, returns an inmemory buffer"""
         print("Reading file in memory", file_id)
-        file = self.get_file_by_id(file_id)
-        return io.BytesIO(file.content())
+        return self.get_file_by_id(file_id).content()
+
+    def read_io(self, file_id: typing.Union[str, int]) -> io.BytesIO:
+        """Bypasses the local filesystem, returns an inmemory file handle"""
+        return io.BytesIO(self.read_file_in_memory(file_id))
 
     def read_csv(self, file_id):
         """Read a csv file into a pandas dataframe, without storing a cached version."""
-        return pd.read_csv(self.read_file_in_memory(file_id))
+        return pd.read_csv(self.read_io(file_id))
 
     def read_excel(self, file_id):
         """Read an excel file into a pandas dataframe, without storing a cached version."""
-        return pd.read_excel(self.read_file_in_memory(file_id))
+        return pd.read_excel(self.read_io(file_id))
 
     def read_text(self, file_id):
         """Read a text file into a string, without storing a cached version."""
-        f = self.get_file_by_id(file_id).content()
+        f = self.read_file_in_memory(file_id)
 
         try:
             return f.decode("UTF-16")
