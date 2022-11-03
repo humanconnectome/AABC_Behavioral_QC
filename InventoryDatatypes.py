@@ -60,6 +60,17 @@ box.list_of_files = memofn(box.list_of_files, expire_in_days=1, ignore_first_n_a
 ## get the HCA inventory for ID checking with AABC
 hca_inventory = box.read_csv(config["hcainventory"])
 
+def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
+    """List filename, fileid, sha1 for all files in specific box folders
+
+    Args:
+        *box_folder_ids: The box id for the folder of interest
+
+    Returns:
+        A dataframe with filename, fileid, sha1 for all files in the folder(s)
+
+    """
+    return pd.DataFrame(box.list_of_files(box_folder_ids).values())
 
 #########################################################################################
 # PHASE 0 TEST IDS AND ARMS
@@ -693,14 +704,3 @@ def code_block_6(inventoryaabc6):
 #    Look for missing MOCA, check for file, and ping RA to upload.
 
 
-def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
-    """List filename, fileid, sha1 for all files in specific box folders
-
-    Args:
-        *box_folder_ids: The box id for the folder of interest
-
-    Returns:
-        A dataframe with filename, fileid, sha1 for all files in the folder(s)
-
-    """
-    return pd.DataFrame(box.list_of_files(box_folder_ids).values())
