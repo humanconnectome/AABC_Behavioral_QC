@@ -60,6 +60,7 @@ box.list_of_files = memofn(box.list_of_files, expire_in_days=1, ignore_first_n_a
 ## get the HCA inventory for ID checking with AABC
 hca_inventory = box.read_csv(config["hcainventory"])
 
+
 def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
     """List filename, fileid, sha1 for all files in specific box folders
 
@@ -71,6 +72,7 @@ def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
 
     """
     return pd.DataFrame(box.list_of_files(box_folder_ids).values())
+
 
 #########################################################################################
 # PHASE 0 TEST IDS AND ARMS
@@ -185,14 +187,10 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))]
         if db2go.empty:
             print("NO NEW RECORDS from", site_accronym, "TO ADD AT THIS TIME")
-        if not db2go.empty:
+        else:
             # initiate new ids
             subject_id = cached_filelist.id.astype("Int64").max() + 1
-            l = len(db2go)
-            vect = []
-            for i in range(0, l):
-                id = i + subject_id
-                vect = vect + [id]
+            vect = [subject_id + i for i in range(len(db2go))]
 
             rows2push = pd.DataFrame(columns=common_form_fields + ravlt_form_fields)
             for i in range(0, db2go.shape[0]):
@@ -703,5 +701,3 @@ def code_block_6(inventoryaabc6):
 #    Check that this has been done
 # Moca
 #    Look for missing MOCA, check for file, and ping RA to upload.
-
-
