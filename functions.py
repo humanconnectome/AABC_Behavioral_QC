@@ -376,6 +376,7 @@ def qc_subjects_found_in_aabc_not_in_hca(
             "legacy_yn",
             "site",
             "v0_date",
+            "event_date",
         ],
     ]
     # Merge to compare AABC ids against HCA ids
@@ -413,6 +414,7 @@ def qc_subjects_found_in_aabc_not_in_hca(
         "redcap_event_name",
         "site",
         "v0_date",
+        "event_date",
     ]
     qlist1 = hca_vs_aabc.loc[
         is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc["subject_id"].notnull(),
