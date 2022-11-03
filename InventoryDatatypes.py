@@ -168,6 +168,7 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         ]
 
         db = list_files_in_box_folders(box_folder_id)
+        save_cache()
         db.fileid = db.fileid.astype(int)
 
         # ones that already exist in q redcap
