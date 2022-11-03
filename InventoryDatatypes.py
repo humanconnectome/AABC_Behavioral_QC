@@ -189,24 +189,18 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
             print("NO NEW RECORDS from", site_accronym, "TO ADD AT THIS TIME")
         else:
             # initiate new ids
-            subject_id = cached_filelist.id.astype("Int64").max() + 1
-            vect = [subject_id + i for i in range(len(db2go))]
+            next_subject_id = cached_filelist.id.astype("Int64").max() + 1
+            vect = [next_subject_id + i for i in range(len(db2go))]
 
             rows2push = pd.DataFrame(columns=common_form_fields + ravlt_form_fields)
-            for i in range(0, db2go.shape[0]):
+            for i in range(0, len(db2go)):
                 redid = vect[i]
-                fid = db2go.iloc[i][["fileid"]][0]
+                current_row = db2go.iloc[i]
+                fid = current_row.fileid
                 created = box.get_metadata_by_id(fid).created_at
-                fname = db2go.iloc[i][["filename"]][0]
+                fname = current_row.filename
                 subjid = fname[fname.find("HCA") : 10]
-                fsha = db2go.iloc[i][["sha1"]][0]
-                print(i)
-                print(db2go.iloc[i][["fileid"]][0])
-                print(db2go.iloc[i][["filename"]][0])
-                print(db2go.iloc[i][["sha1"]][0])
-                print("subject id:", subjid)
-                print("Redcap id:", redid)
-                # pushrow=getrow(fid,fname)
+                fsha = current_row.sha1
                 content = box.read_text(fid)
                 assessment = "RAVLT"
                 if "RAVLT-Alternate Form C" in content:
@@ -215,13 +209,10 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
                     form = "Form D"
                 if fname.find("Form B") > 0:
                     form = "Form B"
-                # visits = sorted(list(map(int,requests.findall('[vV](\d)', fname))))
                 a = fname.replace("AV", "").find("V")
                 visit = fname[a + 1]
-                # visit=visits[-1]
                 row = parse_content(content)
                 df = pd.DataFrame([row], columns=ravlt_form_fields)
-                # print(df)
                 firstvars = pd.DataFrame(
                     [
                         [

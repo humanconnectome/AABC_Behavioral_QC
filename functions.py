@@ -110,6 +110,75 @@ def concat(*args):
     return pd.concat([x for x in args if not x.empty], axis=0)
 
 
+example_content = """,,An asterisk represents scores that were derived from unresolved flagged items.
+,,A blank represents subtests that were not administered.
+,,A dash represents subtests that were administered but could not be scored.
+
+
+RAW SCORES
+
+Subtest,,Raw score
+RAVLT-Alternate Form C Short Delay,,45
+
+SCALED SCORES
+
+Subtest,,Scaled score
+RAVLT-Alternate Form C Short Delay,,-
+
+CONTEXTUAL EVENTS
+
+Subtest,Type,Total
+
+SUBTEST COMPLETION TIMES
+
+Subtest,,Completion Time (seconds)
+RAVLT-Alternate Form C Short Delay,,431
+
+RULES TRIGGERED
+
+Subtest,Type,Yes/No
+RAVLT-Alternate Form C Short Delay, Discontinue, No
+RAVLT-Alternate Form C Short Delay, Reverse, No
+
+
+Z SCORES
+
+Item,Score
+
+Z SCORES: ITEM LEVEL SCORES
+
+Item,Score
+
+ITEM-LEVEL RAW SCORES
+
+Item,,Raw score
+"RAVLT-Alternate Form C Short Delay Trial I",,4
+"RAVLT-Alternate Form C Short Delay Trial II",,9
+"RAVLT-Alternate Form C Short Delay Trial III",,8
+"RAVLT-Alternate Form C Short Delay Trial IV",,9
+"RAVLT-Alternate Form C Short Delay Trial V",,9
+"RAVLT-Alternate Form C Short Delay List B Trial",,2
+"RAVLT-Alternate Form C Short Delay Trial VI",,4
+
+Additional Measures (Primary and Combined and Process)
+
+Scoring Type,,Scores
+Trial 1 Free Recall Total Correct,,-
+Trial 2 Free Recall Total Correct,,-
+Trial 3 Free Recall Total Correct,,-
+Trial 4 Free Recall Total Correct,,-
+Short-Delay Free Recall Total Correct,,-
+Short Delay Free-Recall Intrusions,,0
+Short Delay Total Intrusions,,0
+Short Delay Total Repetitions,,2
+
+Composite Score
+
+Name,
+
+"""
+
+
 def parse_content(content):
     section_headers = [
         "Subtest,,Raw score",
