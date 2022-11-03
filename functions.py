@@ -67,6 +67,7 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
     Returns:
         A dataframe of the results
     """
+    print("Getting", data)
     r = requests.post(api_url, data=data)
     if r.status_code != 200:
         print(f"HTTP Status: {r.status_code}")

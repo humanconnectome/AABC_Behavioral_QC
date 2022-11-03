@@ -1,14 +1,12 @@
+from memofn import load_cache, save_cache, memofn
+
+load_cache(".cache_memofn")
 import collections
 import io
 import re
 import pandas as pd
 
-from ccfbox import (
-    LifespanBox,
-    CachedBoxFileReader,
-    CachedBoxMetadata,
-    CachedBoxListOfFiles,
-)
+from ccfbox import LifespanBox
 from functions import (
     memo_get_frame,
     idvisits,
@@ -51,13 +49,16 @@ config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
 api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
-memo_box = CachedBoxFileReader(box=box)
-memo_box_meta = CachedBoxMetadata(box=box)
-memo_box_list_of_files = CachedBoxListOfFiles(box=box)
-
+box.read_file_in_memory = memofn(
+    box.read_file_in_memory, expire_in_days=1, ignore_first_n_args=0
+)
+box.get_metadata_by_id = memofn(
+    box.get_metadata_by_id, expire_in_days=1, ignore_first_n_args=0
+)
+box.list_of_files = memofn(box.list_of_files, expire_in_days=1, ignore_first_n_args=0)
 
 ## get the HCA inventory for ID checking with AABC
-hca_inventory = memo_box.read_csv(config["hcainventory"])
+hca_inventory = box.read_csv(config["hcainventory"])
 
 
 #########################################################################################
@@ -86,7 +87,7 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
 
 
 aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
-
+save_cache()
 
 qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
 qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
@@ -185,7 +186,7 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
             for i in range(0, db2go.shape[0]):
                 redid = vect[i]
                 fid = db2go.iloc[i][["fileid"]][0]
-                created = memo_box_meta(fid).created_at
+                created = box.get_metadata_by_id(fid).created_at
                 fname = db2go.iloc[i][["filename"]][0]
                 subjid = fname[fname.find("HCA") : 10]
                 fsha = db2go.iloc[i][["sha1"]][0]
@@ -196,7 +197,7 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
                 print("subject id:", subjid)
                 print("Redcap id:", redid)
                 # pushrow=getrow(fid,fname)
-                content = memo_box.read_text(fid)
+                content = box.read_text(fid)
                 assessment = "RAVLT"
                 if "RAVLT-Alternate Form C" in content:
                     form = "Form C"
@@ -488,7 +489,7 @@ def code_block_4(aabc_inventory_5):
         dbitems = list_files_in_box_folders(box_folder_id)
         for f in dbitems.fileid:
             print(f)
-            k = memo_box.read_csv(f)
+            k = box.read_csv(f)
             anydata.update(k.UserName)
 
     AD = pd.DataFrame(anydata, columns=["asa24id"])
@@ -514,7 +515,7 @@ def code_block_5(aabc_inventory_6):
         for fid in dbitems.fileid:
             try:
                 patrn = "Identity"
-                file_one: io.BytesIO = memo_box(fid)
+                file_one: io.BytesIO = box.read_file_in_memory(fid)
                 variable = file_one.readline(1)
                 if not variable == "":
                     for l in file_one.readlines():
@@ -702,4 +703,4 @@ def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
         A dataframe with filename, fileid, sha1 for all files in the folder(s)
 
     """
-    return memo_box_list_of_files(box_folder_ids)
+    return pd.DataFrame(box.list_of_files(box_folder_ids).values())

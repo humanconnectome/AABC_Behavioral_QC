@@ -200,8 +200,21 @@ class LifespanBox:
         """
         return self.client.file(file_id=str(file_id))
 
+    def get_metadata_by_id(self, file_id: typing.Union[str, int]) -> Item:
+        """
+        Get box file metadata.
+
+        Args:
+            file_id: Box file id
+
+        Returns:
+            Box file metadata
+        """
+        return self.get_file_by_id(file_id).get()
+
     def read_file_in_memory(self, file_id: typing.Union[str, int]) -> io.BytesIO:
         """Bypasses the local filesystem, returns an inmemory file handle"""
+        print("Reading file in memory", file_id)
         file = self.get_file_by_id(file_id)
         return io.BytesIO(file.content())
 
@@ -339,53 +352,3 @@ class CachedBoxFileReader(Memoizable):
     def read_text(self, text_file_id):
         """Read a text file into a string."""
         return self.__call__(text_file_id).getvalue().decode("utf-8")
-
-
-class CachedBoxMetadata(Memoizable):
-    def __init__(
-        self,
-        cache_file=".box_metadata_cache",
-        expire_in_days=1,
-        box: LifespanBox = None,
-        **kwargs
-    ):
-        self.box = box
-        self.kwargs = kwargs
-        super().__init__(cache_file=cache_file, expire_in_days=expire_in_days)
-
-    def run(self, file_id: typing.Union[int, str]) -> Item:
-        if self.box is None:
-            self.box = LifespanBox(**self.kwargs)
-        file = self.box.get_file_by_id(file_id)
-        meta = file.get()
-        return meta
-
-
-class CachedBoxListOfFiles(Memoizable):
-    def __init__(
-        self,
-        cache_file=".box_list_of_files_cache",
-        expire_in_days=1,
-        box: LifespanBox = None,
-        **kwargs
-    ):
-        self.box = box
-        self.kwargs = kwargs
-        super().__init__(cache_file=cache_file, expire_in_days=expire_in_days)
-
-    def run(
-        self,
-        folder_ids: typing.List[typing.Union[int, str]],
-        includes_file_extension: str = ".csv",
-        search_subfolders: bool = True,
-    ) -> pd.DataFrame:
-        if self.box is None:
-            self.box = LifespanBox(**self.kwargs)
-
-        filelist = self.box.list_of_files(
-            folder_ids,
-            includes_file_extension,
-            search_subfolders,
-        )
-
-        return pd.DataFrame(filelist).transpose()
