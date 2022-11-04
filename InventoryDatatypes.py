@@ -409,12 +409,8 @@ results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
 results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
 
-# THERE ARE TWO 'NIGHTMARE' SUBJECTS HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3 and HCA7802172_V3 (both should be V2)...FIX before 2023
-#still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
-#this is close, but wont work for case of multipe PINs in a single file
-#find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
-#cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
-
+#  TWO 'NIGHTMARE' SUBJECTS so far.  Removed bad data by hand from IntraDB.  fixed, uploaded bad data (provenance) to REDCap.  Uploaded corrected data to IntraDB
+#  HCA8596099_V3 and HCA7802172_V3 (both should be V2).  Typo listed as 'NIGHTMARE' in the visit summary.
 
 dffull1=TLBXreshape(results1)
 dffull2=TLBXreshape(results2)
@@ -816,9 +812,9 @@ bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['bm
 #outliers
 #add in check against the extreme value confirmation and then relax the extremes
 a=bmiv.loc[bmiv.bmi !=''].copy()
-a=a.loc[(a.bmi.astype('float')<=19) | (a.bmi.astype('float')>=37)].copy()
+a=a.loc[(a.bmi.astype('float')<=17.0) | (a.bmi.astype('float')>=41)].copy()
 if a.shape[0]>0:
-    print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 37)])
+    print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 41)])
     a['code']='RED'
     a['datatype']='REDCap'
     a['reason']='BMI is an outlier.  Please double check height and weight'
