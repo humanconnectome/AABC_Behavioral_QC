@@ -5,6 +5,9 @@ import collections
 import io
 import re
 import pandas as pd
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 from ccfbox import LifespanBox
 from functions import (
