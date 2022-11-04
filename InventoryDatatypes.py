@@ -187,42 +187,41 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         data_access_group_name = ds_vars["aabcarms"][site_accronym]["dag"]
         site_number = ds_vars["aabcarms"][site_accronym]["sitenum"]
 
-        db = list_files_in_box_folders(box_folder_id)
-        save_cache()
-        db.fileid = db.fileid.astype(int)
+        box_filelist = list_files_in_box_folders(box_folder_id)
+        box_filelist.fileid = box_filelist.fileid.astype(int)
 
         # find the new ones that need to be pulled in
-        new_file_ids = pd.merge(db, cached_filelist.fileid, on="fileid", how="left", indicator=True)
+        new_file_ids = pd.merge(box_filelist, cached_filelist.fileid, on="fileid", how="left", indicator=True)
         new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(columns=["_merge"])
-        db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))].copy()
+        new_files = box_filelist.loc[box_filelist.fileid.isin(list(new_file_ids.fileid))].copy()
 
         # Short-circuit #1: No new records to add
-        if db2go.empty:
+        if new_files.empty:
             print("NO NEW RECORDS from", site_accronym, "TO ADD AT THIS TIME")
             continue
 
         # initiate new ids
         next_id = cached_filelist.id.astype("Int64").max() + 1
 
-        db2go["id"] = range(next_id, next_id + len(db2go))
-        db2go["redcap_data_access_group"] = data_access_group_name
-        db2go["site"] = site_number
-        db2go["created"] = db2go.fileid.apply(box_file_created_at)
-        db2go["content"] = db2go.fileid.apply(box.read_text)
+        new_files["id"] = range(next_id, next_id + len(new_files))
+        new_files["redcap_data_access_group"] = data_access_group_name
+        new_files["site"] = site_number
+        new_files["created"] = new_files.fileid.apply(box_file_created_at)
+        new_files["content"] = new_files.fileid.apply(box.read_text)
         save_cache()
-        db2go["form"] = db2go.apply(ravlt_form_heuristic, axis=1)
-        db2go["assessment"] = "RAVLT"
-        db2go["q_unusable"] = ""
-        db2go["unusable_specify"] = ""
-        db2go["common_complete"] = ""
-        db2go["ravlt_two"] = ""
+        new_files["form"] = new_files.apply(ravlt_form_heuristic, axis=1)
+        new_files["assessment"] = "RAVLT"
+        new_files["q_unusable"] = ""
+        new_files["unusable_specify"] = ""
+        new_files["common_complete"] = ""
+        new_files["ravlt_two"] = ""
 
-        id_visit = db2go.filename.str.extract("(?P<subjectid>HCA\d+)_V(?P<visit>\d)")
+        id_visit = new_files.filename.str.extract("(?P<subjectid>HCA\d+)_V(?P<visit>\d)")
 
-        ravlt = db2go.content.apply(lambda x: pd.Series(parse_content(x), index=ravlt_form_fields))
+        ravlt = new_files.content.apply(lambda x: pd.Series(parse_content(x), index=ravlt_form_fields))
 
         # Horizontally concatenate the dataframes
-        rows2push = pd.concat([db2go, ravlt, id_visit], axis=1)
+        rows2push = pd.concat([new_files, ravlt, id_visit], axis=1)
 
         # Reorder the columns
         rows2push = rows2push[common_form_fields + ravlt_form_fields].copy()
