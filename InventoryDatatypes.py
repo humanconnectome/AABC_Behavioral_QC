@@ -55,6 +55,8 @@ box = LifespanBox(cache="./tmp")
 box.read_file_in_memory = memofn(
     box.read_file_in_memory, expire_in_days=1, ignore_first_n_args=0
 )
+
+
 @memofn(expire_in_days=1)
 def box_file_created_at(fileid):
     return box.get_metadata_by_id(fileid).created_at
@@ -112,6 +114,18 @@ qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
 qc_subject_id_is_not_missing(aabc_inventory)
 
 
+def ravlt_form_heuristic(row):
+    if "RAVLT-Alternate Form C" in row.content:
+        form = "Form C"
+    elif "RAVLT-Alternate Form D" in row.content:
+        form = "Form D"
+    elif "Form B" in row.filename:
+        form = "Form B"
+    else:
+        raise ValueError("Form not found")
+    return form
+
+
 def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
     # the variables that make up the 'common' form in the Qinteractive database.
     common_form_fields = [
@@ -163,24 +177,21 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
     ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
     # this is currently taing too much time to iterate through box
     # import anything new by any definition (new name, new sha, new fileid)
+
+    # Files that already exist in Q Redcap
+    cached_filelist = qint_df.copy()
+    cached_filelist.fileid = cached_filelist.fileid.astype("Int64")
+
+    ds_vars = config["Redcap"]["datasources"]
+    accumulator = []
     for site_accronym in folder_queue:
-        box_folder_id = config["Redcap"]["datasources"]["qint"]["BoxFolders"][
-            site_accronym
-        ]
-        data_access_group_name = config["Redcap"]["datasources"]["aabcarms"][
-            site_accronym
-        ]["dag"]
-        site_number = config["Redcap"]["datasources"]["aabcarms"][site_accronym][
-            "sitenum"
-        ]
+        box_folder_id = ds_vars["qint"]["BoxFolders"][site_accronym]
+        data_access_group_name = ds_vars["aabcarms"][site_accronym]["dag"]
+        site_number = ds_vars["aabcarms"][site_accronym]["sitenum"]
 
         db = list_files_in_box_folders(box_folder_id)
         save_cache()
         db.fileid = db.fileid.astype(int)
-
-        # ones that already exist in q redcap
-        cached_filelist = qint_df.copy()
-        cached_filelist.fileid = cached_filelist.fileid.astype("Int64")
 
         # find the new ones that need to be pulled in
         new_file_ids = pd.merge(
@@ -189,69 +200,48 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(
             columns=["_merge"]
         )
-        db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))]
+        db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))].copy()
+
+        # Short-circuit #1: No new records to add
         if db2go.empty:
             print("NO NEW RECORDS from", site_accronym, "TO ADD AT THIS TIME")
-        else:
-            # initiate new ids
-            next_subject_id = cached_filelist.id.astype("Int64").max() + 1
-            vect = [next_subject_id + i for i in range(len(db2go))]
+            continue
 
-            rows2push = pd.DataFrame(columns=common_form_fields + ravlt_form_fields)
-            for i in range(0, len(db2go)):
-                redid = vect[i]
-                current_row = db2go.iloc[i]
-                fid = current_row.fileid
-                created = box.get_metadata_by_id(fid).created_at
-                fname = current_row.filename
-                subjid = fname[fname.find("HCA") : 10]
-                fsha = current_row.sha1
-                content = box.read_text(fid)
-                assessment = "RAVLT"
-                if "RAVLT-Alternate Form C" in content:
-                    form = "Form C"
-                if "RAVLT-Alternate Form D" in content:
-                    form = "Form D"
-                if fname.find("Form B") > 0:
-                    form = "Form B"
-                a = fname.replace("AV", "").find("V")
-                visit = fname[a + 1]
-                row = parse_content(content)
-                df = pd.DataFrame([row], columns=ravlt_form_fields)
-                firstvars = pd.DataFrame(
-                    [
-                        [
-                            redid,
-                            data_access_group_name,
-                            site_number,
-                            subjid,
-                            fid,
-                            fname,
-                            fsha,
-                            created,
-                            assessment,
-                            visit,
-                            form,
-                            "",
-                            "",
-                            "",
-                            "",
-                        ]
-                    ],
-                    columns=common_form_fields,
-                )
-                pushrow = pd.concat([firstvars, df], axis=1)
-                rows2push = pd.concat([rows2push, pushrow], axis=0)
-                if len(rows2push.subjectid) > 0:
-                    print("**************** Summary **********************")
-                    print(len(rows2push.subjectid), "rows to push:")
-                    print(list(rows2push.subjectid))
+        # initiate new ids
+        next_id = cached_filelist.id.astype("Int64").max() + 1
 
-            if not rows2push.empty:
-                send_frame(
-                    dataframe=rows2push,
-                    tok=qint_api_token,
-                )
+        db2go["id"] = range(next_id, next_id + len(db2go))
+        db2go["redcap_data_access_group"] = data_access_group_name
+        db2go["site"] = site_number
+        db2go["created"] = db2go.fileid.apply(box_file_created_at)
+        db2go["content"] = db2go.fileid.apply(box.read_text)
+        save_cache()
+        db2go["form"] = db2go.apply(ravlt_form_heuristic, axis=1)
+        db2go["assessment"] = "RAVLT"
+        db2go["q_unusable"] = ""
+        db2go["unusable_specify"] = ""
+        db2go["common_complete"] = ""
+        db2go["ravlt_two"] = ""
+
+        id_visit = db2go.filename.str.extract("(?P<subjectid>HCA\d+)_V(?P<visit>\d)")
+
+        ravlt = db2go.content.apply(
+            lambda x: pd.Series(parse_content(x), index=ravlt_form_fields)
+        )
+
+        # Horizontally concatenate the dataframes
+        rows2push = pd.concat([db2go, ravlt, id_visit], axis=1)
+
+        # Reorder the columns
+        rows2push = rows2push[common_form_fields + ravlt_form_fields].copy()
+        accumulator.append(rows2push)
+
+    if accumulator:
+        df = pd.concat(accumulator)
+        send_frame(
+            dataframe=df,
+            tok=qint_api_token,
+        )
 
 
 def code_block_2(aabc_inventory, qint_api_token):
