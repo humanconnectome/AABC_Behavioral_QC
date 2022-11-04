@@ -253,6 +253,8 @@ def code_block_2(aabc_inventory, qint_api_token):
         "site",
         "passedscreen",
         "subject_id",
+        "subject",
+        "redcap_event",
         "counterbalance_1st",
         "counterbalance_2nd",
         "height_ft",
