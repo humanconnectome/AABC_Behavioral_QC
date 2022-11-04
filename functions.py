@@ -597,7 +597,7 @@ def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
 
 def qc_duplicate_qint_records(qint_df):
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
-    dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
+    dups2 = dups.loc[dups.q_unusable.isnull()]  # or '', not sure
     register_tickets(dups2, "ORANGE", "Duplicate Q-interactive records", "AE5001")
 
 
