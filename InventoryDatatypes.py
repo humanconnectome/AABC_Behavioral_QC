@@ -16,7 +16,7 @@ from functions import (
     filterdupass,
     parse_content,
     params_request_report,
-    TLBXreshape,
+    toolbox_to_dataframe,
     send_frame,
     get_aabc_arms_report,
     remove_test_subjects,
@@ -347,11 +347,13 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     rawd1 = cat_toolbox_rawdata_files("AABC_MGH_ITK")
     rawd3 = cat_toolbox_rawdata_files("AABC_UMN_ITK")
     rawd2 = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
+    save_cache()
     # note that some of these won't work because UCLA hasn't started collecting data
-    raw41 = TLBXreshape(rawd4)
-    raw11 = TLBXreshape(rawd1)
-    raw31 = TLBXreshape(rawd3)
-    raw21 = TLBXreshape(rawd2)
+    raw41 = toolbox_to_dataframe(rawd4)
+    raw11 = toolbox_to_dataframe(rawd1)
+    raw31 = toolbox_to_dataframe(rawd3)
+    raw21 = toolbox_to_dataframe(rawd2)
+    save_cache()
 
     # remove files known to be duds.
     rf2 = pd.concat([raw41, raw31, raw21, raw11])
@@ -383,10 +385,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
     # note that some of these won't work because UCLA hasn't started collecting data
-    dffull1 = TLBXreshape(results1)
-    dffull2 = TLBXreshape(results2)
-    dffull3 = TLBXreshape(results3)
-    dffull4 = TLBXreshape(results4)
+    dffull1 = toolbox_to_dataframe(results1)
+    dffull2 = toolbox_to_dataframe(results2)
+    dffull3 = toolbox_to_dataframe(results3)
+    dffull4 = toolbox_to_dataframe(results4)
 
     ##fixtypos in Scores file now
     dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])

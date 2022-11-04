@@ -250,13 +250,19 @@ def get_list_from_excel_sheet(excel_file_path: str, sheet_name: str) -> List[str
     return df.field_name.to_list()
 
 
-def TLBXreshape(results1):
-    df = pd.DataFrame(str.splitlines(results1))
-    df = df[0].str.split(",", expand=True)
-    cols = df.loc[df[0] == "PIN"].values.tolist()
-    df2 = df.loc[~(df[0] == "PIN")]
-    df2.columns = cols[0]
-    return df2
+@memofn(expire_in_days=8)
+def toolbox_to_dataframe(text_content):
+    csv = [line.split(",") for line in text_content.strip().splitlines()]
+    df = pd.DataFrame(csv)
+
+    # First row always contains headers
+    # Promote it to column names
+    df.columns = df.iloc[0]
+
+    # Drop all rows with headers
+    df = df.loc[df.PIN != "PIN"]
+
+    return df
 
 
 def filterdupass(instrument, dupvar, iset, dset):
