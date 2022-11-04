@@ -354,6 +354,15 @@ def fetch_toolbox_data() -> pd.DataFrame:
     return pd.concat([df_wu, df_umn, df_ucla, df_mgh])
 
 
+def gen_fixtypos_map(aabc_vs_qint):
+    # TODO: NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
+    # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
+    fix_typos = aabc_vs_qint.loc[aabc_vs_qint.nih_toolbox_upload_typo != ""]
+    correct_pin = fix_typos.subject + "_" + fix_typos.redcap_event
+    fixtypos_map = dict(zip(fix_typos.nih_toolbox_upload_typo, correct_pin))
+    return fixtypos_map
+
+
 def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
@@ -363,23 +372,17 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    rf2 = fetch_toolbox_data()
+    toolbox_df = fetch_toolbox_data()
 
     # remove files known to be duds.
-    rf2 = remove_test_subjects(rf2, "PIN")
-    rf2 = rf2.loc[~(rf2.PIN.str.upper() == "ABC123")]
+    toolbox_df = remove_test_subjects(toolbox_df, "PIN")
+    toolbox_df = toolbox_df.loc[toolbox_df.PIN.str.upper() != "ABC123"].copy()
 
     # drop duplicates for purpose of generating QC flags.
-    rf2 = rf2.drop_duplicates(subset="PIN").copy()
+    toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
 
-    # fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
-    # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
-    fix_typos = aabc_vs_qint.loc[aabc_vs_qint.nih_toolbox_upload_typo != ""][
-        ["subject", "redcap_event", "nih_toolbox_upload_typo"]
-    ]
-    fix_typos["PIN"] = fix_typos.subject + "_" + fix_typos.redcap_event
-    fixes = dict(zip(fix_typos.nih_toolbox_upload_typo, fix_typos.PIN))
-    rf2.PIN = rf2.PIN.replace(fixes)
+    fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
+    toolbox_df.PIN.replace(fix_typos_map, inplace=True)
 
     # NOW THE SCORED DATA
     results4 = cat_toolbox_score_files("AABC_WU_ITK")
@@ -405,7 +408,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     dffull = remove_test_subjects(dffull, "PIN")
     dffull = dffull.loc[~(dffull.PIN.str.upper() == "ABC123")]
 
-    dffull.PIN = dffull.PIN.replace(fixes)
+    dffull.PIN.replace(fix_typos_map, inplace=True)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
@@ -421,7 +424,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
 
     # TURN THIS INTO A TICKET
 
-    qc_raw_or_scored_data_not_found(dffull, rf2)
+    qc_raw_or_scored_data_not_found(dffull, toolbox_df)
 
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
