@@ -333,6 +333,27 @@ def code_block_2(aabc_inventory, qint_api_token):
 aabc_vs_qint, aabc_inventory_plus_qint = code_block_2(aabc_inventory, api_key["qint"])
 
 
+def fetch_toolbox_data() -> pd.DataFrame:
+    """Get DataFrame containing toolbox data from raw files for all sites
+
+    Returns:
+        dataframe of toolbox data
+    """
+    raw_wu = cat_toolbox_rawdata_files("AABC_WU_ITK")
+    raw_mgh = cat_toolbox_rawdata_files("AABC_MGH_ITK")
+    raw_umn = cat_toolbox_rawdata_files("AABC_UMN_ITK")
+    raw_ucla = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
+    save_cache()
+
+    df_wu = toolbox_to_dataframe(raw_wu)
+    df_mgh = toolbox_to_dataframe(raw_mgh)
+    df_umn = toolbox_to_dataframe(raw_umn)
+    df_ucla = toolbox_to_dataframe(raw_ucla)
+    save_cache()
+
+    return pd.concat([df_wu, df_umn, df_ucla, df_mgh])
+
+
 def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
@@ -342,21 +363,9 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    ##FIRST THE RAW DATA FILES
-    rawd4 = cat_toolbox_rawdata_files("AABC_WU_ITK")
-    rawd1 = cat_toolbox_rawdata_files("AABC_MGH_ITK")
-    rawd3 = cat_toolbox_rawdata_files("AABC_UMN_ITK")
-    rawd2 = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
-    save_cache()
-    # note that some of these won't work because UCLA hasn't started collecting data
-    raw41 = toolbox_to_dataframe(rawd4)
-    raw11 = toolbox_to_dataframe(rawd1)
-    raw31 = toolbox_to_dataframe(rawd3)
-    raw21 = toolbox_to_dataframe(rawd2)
-    save_cache()
+    rf2 = fetch_toolbox_data()
 
     # remove files known to be duds.
-    rf2 = pd.concat([raw41, raw31, raw21, raw11])
     rf2 = remove_test_subjects(rf2, "PIN")
     rf2 = rf2.loc[~(rf2.PIN.str.upper() == "ABC123")]
 
