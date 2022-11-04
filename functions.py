@@ -100,9 +100,7 @@ def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
     df["subject"] = df.subject_id.where(df.subject_id != "")
     df.subject = df.subject.ffill()
 
-    df["redcap_event"] = df.redcap_event_name.replace(
-        config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"]
-    )
+    df["redcap_event"] = df.redcap_event_name.replace(config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"])
     return df
 
 
@@ -232,11 +230,7 @@ def send_frame(dataframe, tok):
 
 def run_ssh_cmd(host: str, cmd: str) -> str:
     cmds = ["ssh", "-t", host, cmd]
-    return (
-        subprocess.check_output(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        .decode("utf-8")
-        .strip()
-    )
+    return subprocess.check_output(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE).decode("utf-8").strip()
 
 
 memo_run_ssh_cmd = memofn(run_ssh_cmd, expire_in_days=8)
@@ -346,9 +340,7 @@ def get_aabc_arms_report(token) -> pd.DataFrame:
         token=token,
         report_id="51031",
     )
-    df = memo_get_frame(
-        api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request
-    )
+    df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request)
     return df
 
 
@@ -411,7 +403,9 @@ def list_psychopy_subjects(proj):
     )
 
 
-def qc_detect_test_subjects_in_production_database(prod_df: pd.DataFrame) -> None:
+def qc_detect_test_subjects_in_production_database(
+    prod_df: pd.DataFrame,
+) -> None:
     """Detects test subjects in production database and raises a ticket if found"""
     test_subjects = prod_df.loc[
         prod_df["subject_id"].str.contains("test", case=False),
@@ -432,9 +426,7 @@ def qc_detect_test_subjects_in_production_database(prod_df: pd.DataFrame) -> Non
     )
 
 
-def qc_subjects_found_in_aabc_not_in_hca(
-    aabc_inventory: pd.DataFrame, hca_inventory: pd.DataFrame
-) -> None:
+def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inventory: pd.DataFrame) -> None:
     aabc_registration_data = aabc_inventory.loc[
         # Redcap only stores form one data (ids and legacy information) in the initial "register" event (V0)
         is_register_event(aabc_inventory),
@@ -471,9 +463,7 @@ def qc_subjects_found_in_aabc_not_in_hca(
         "register_arm_8",
     ]
     # Boolean filters
-    is_legacy_id = hca_vs_aabc.redcap_event_name.isin(legacy_arms) | (
-        hca_vs_aabc.legacy_yn == "1"
-    )
+    is_legacy_id = hca_vs_aabc.redcap_event_name.isin(legacy_arms) | (hca_vs_aabc.legacy_yn == "1")
     is_in_aabc_not_in_hca = hca_vs_aabc._merge == "right_only"
     is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
     # First batch of flags: Look for legacy IDs that don't actually exist in HCA
@@ -497,9 +487,7 @@ def qc_subjects_found_in_aabc_not_in_hca(
         "AE1001",
     )
     # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-    qlist2 = hca_vs_aabc.loc[
-        is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting
-    ]
+    qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting]
     register_tickets(
         qlist2,
         "RED",
@@ -509,9 +497,7 @@ def qc_subjects_found_in_aabc_not_in_hca(
 
 
 def qc_subject_id_is_not_missing(aabc_inventory):
-    missing_sub_ids = aabc_inventory.loc[
-        is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")
-    ]
+    missing_sub_ids = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")]
     qlist4 = missing_sub_ids[
         [
             "subject_id",
@@ -522,12 +508,7 @@ def qc_subject_id_is_not_missing(aabc_inventory):
             "event_date",
         ]
     ]
-    register_tickets(
-        qlist4,
-        "ORANGE",
-        "Subject ID is MISSING in AABC REDCap Database Record with study id",
-        "AE1001",
-    )
+    register_tickets(qlist4, "ORANGE", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001")
 
 
 def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
@@ -592,14 +573,16 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
 def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint):
     missingQ = aabc_inventory_plus_qint.loc[
         is_v_event(aabc_vs_qint) & ~aabc_vs_qint.has_qint_data,
-        ["subject_id", "study_id", "subject", "redcap_event", "site", "event_date"],
+        [
+            "subject_id",
+            "study_id",
+            "subject",
+            "redcap_event",
+            "site",
+            "event_date",
+        ],
     ]
-    register_tickets(
-        missingQ,
-        "ORANGE",
-        "Unable to locate Q-interactive data for this subject/visit",
-        "AE1001",
-    )
+    register_tickets(missingQ, "ORANGE", "Unable to locate Q-interactive data for this subject/visit", "AE1001")
 
 
 def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
@@ -615,26 +598,16 @@ def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
 def qc_duplicate_qint_records(qint_df):
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
     dups2 = dups.loc[~(dups.q_unusable.isnull() == False)]  # or '', not sure
-    register_tickets(
-        dups2,
-        "ORANGE",
-        "Duplicate Q-interactive records",
-        "AE5001",
-    )
+    register_tickets(dups2, "ORANGE", "Duplicate Q-interactive records", "AE5001")
 
 
 def qc_raw_or_scored_data_not_found(dffull, rf2):
     # QC check:
     # Either scored or raw is missing in format expected:
-    formats = pd.merge(
-        dffull.PIN.drop_duplicates(), rf2, how="outer", on="PIN", indicator=True
-    )[["PIN", "_merge"]]
+    formats = pd.merge(dffull.PIN.drop_duplicates(), rf2, how="outer", on="PIN", indicator=True)[["PIN", "_merge"]]
     issues = formats.loc[~(formats._merge == "both")]
     register_tickets(
-        issues,
-        "ORANGE",
-        "Raw or Scored data not found (make sure you didn't export Narrow format)",
-        "AE5001",
+        issues, "ORANGE", "Raw or Scored data not found (make sure you didn't export Narrow format)", "AE5001"
     )
 
 
@@ -642,42 +615,21 @@ def qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5):
     # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
     # turn this into a ticket
     t2 = pre_aabc_inventory_5.loc[
-        pre_aabc_inventory_5._merge == "right_only", ["PIN", "subject", "redcap_event"]
+        pre_aabc_inventory_5._merge == "right_only",
+        ["PIN", "subject", "redcap_event"],
     ]
-    register_tickets(
-        t2,
-        "ORANGE",
-        "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?",
-        "AE1001",
-    )
+    register_tickets(t2, "ORANGE", "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?", "AE1001")
 
 
 def qc_missing_tlbx_data(aabc_inventory_5):
     # Look for missing IDs
-    missingT = aabc_inventory_5.loc[
-        is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data
-    ]
-    t3 = missingT[
-        [
-            "subject",
-            "redcap_event",
-            "site",
-            "event_date",
-            "nih_toolbox_collectyn",
-        ]
-    ]
-    register_tickets(
-        t3,
-        "ORANGE",
-        "Missing TLBX data",
-        "AE2001",
-    )
+    missingT = aabc_inventory_5.loc[is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data]
+    t3 = missingT[["subject", "redcap_event", "site", "event_date", "nih_toolbox_collectyn"]]
+    register_tickets(t3, "ORANGE", "Missing TLBX data", "AE2001")
 
 
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
-    missingAD = aabc_inventory_6.loc[
-        is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data
-    ]
+    missingAD = aabc_inventory_6.loc[is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data]
     missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
     a1 = missingAD[
         [
@@ -696,18 +648,13 @@ def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
         ]
     ]
     register_tickets(
-        a1,
-        "GREEN",
-        "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
-        "AE2001",
+        a1, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
     )
 
 
 def qc_missing_actigraphy_data_in_box(inventoryaabc6):
     # Missing?
-    missingAct = inventoryaabc6.loc[
-        is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data
-    ]
+    missingAct = inventoryaabc6.loc[is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data]
     missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
     a2 = missingAct[
         [
@@ -722,12 +669,7 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
             "actigraphy_collectyn",
         ]
     ]
-    register_tickets(
-        a2,
-        "YELLOW",
-        "Unable to locate Actigraphy data in Box for this subject/visit",
-        "AE4001",
-    )
+    register_tickets(a2, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001")
 
 
 def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
@@ -745,12 +687,7 @@ def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
             "has_psychopy_data",
         ],
     ]
-    register_tickets(
-        missingPY,
-        "ORANGE",
-        "PsychoPy cannot be found in BOX or IntraDB",
-        "AE4001",
-    )
+    register_tickets(missingPY, "ORANGE", "PsychoPy cannot be found in BOX or IntraDB", "AE4001")
 
 
 def qc_redcap_missing_counterbalance(inventoryaabc7):
@@ -798,9 +735,7 @@ def qc_missing_age(agev):
             "v0_date",
         ],
     ]
-    register_tickets(
-        ageav2, "RED", "Missing Age. Please check DOB and Event Date", "AE3001"
-    )
+    register_tickets(ageav2, "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
 
 
 def qc_age_outlier(agev):
@@ -818,9 +753,7 @@ def qc_age_outlier(agev):
             "v0_date",
         ],
     ]
-    register_tickets(
-        agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001"
-    )
+    register_tickets(agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
 
 
 def qc_missing_weight_or_height(bmiv):
@@ -836,10 +769,7 @@ def qc_missing_weight_or_height(bmiv):
         ],
     ]
     register_tickets(
-        bmiv2,
-        "RED",
-        "Missing Height or Weight (or there is another typo preventing BMI calculation)",
-        "AE3001",
+        bmiv2, "RED", "Missing Height or Weight (or there is another typo preventing BMI calculation)", "AE3001"
     )
 
 
@@ -856,9 +786,7 @@ def qc_bmi_outlier(bmiv):
             "event_date",
         ],
     ]
-    register_tickets(
-        a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
-    )
+    register_tickets(a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001")
 
 
 def qc_hot_flash_data():
@@ -904,9 +832,7 @@ def qc_bmi_in_v_events(vinventoryaabc7):
 def cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7):
     # clean up the AABC inventory and upload to BOX for recruitment stats.
     inventoryaabc7.loc[inventoryaabc7.age == "", "age"] = inventoryaabc6.age_visit
-    inventoryaabc7.loc[
-        inventoryaabc7.event_date == "", "event_date"
-    ] = inventoryaabc7.v0_date
+    inventoryaabc7.loc[inventoryaabc7.event_date == "", "event_date"] = inventoryaabc7.v0_date
     inventoryaabc7 = inventoryaabc7.sort_values(["redcap_event", "event_date"])
     inventoryaabc7[
         [

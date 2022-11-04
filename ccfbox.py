@@ -94,9 +94,7 @@ class LifespanBox:
 
             result.update(files)
             if search_subfolders:
-                result.update(
-                    self.list_of_files(folder_ids, includes_file_extension, True)
-                )
+                result.update(self.list_of_files(folder_ids, includes_file_extension, True))
 
         return result
 
@@ -328,13 +326,7 @@ class LifespanBox:
 
 
 class CachedBoxFileReader(Memoizable):
-    def __init__(
-        self,
-        cache_file=".box_cache",
-        expire_in_days=1,
-        box: LifespanBox = None,
-        **kwargs
-    ):
+    def __init__(self, cache_file=".box_cache", expire_in_days=1, box: LifespanBox = None, **kwargs):
         self.box = box
         self.kwargs = kwargs
         super().__init__(cache_file=cache_file, expire_in_days=expire_in_days)

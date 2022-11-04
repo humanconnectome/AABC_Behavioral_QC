@@ -172,11 +172,7 @@ class Qint:
 
             x.visit = x.visit.astype(float).astype("Int64")
             # fix matrix completion and delay completion times
-            time_field = (
-                "ravlt_delay_completion"
-                if item == "ravlt"
-                else item.lower() + "_matrix_completion"
-            )
+            time_field = "ravlt_delay_completion" if item == "ravlt" else item.lower() + "_matrix_completion"
             time_field = x[time_field]
             # if "null", make NaN
             time_field.replace("null", nan, inplace=True)

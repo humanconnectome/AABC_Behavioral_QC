@@ -52,9 +52,7 @@ config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
 api_key = secret.set_index("source")["api_key"].to_dict()
 box = LifespanBox(cache="./tmp")
-box.read_file_in_memory = memofn(
-    box.read_file_in_memory, expire_in_days=1, ignore_first_n_args=0
-)
+box.read_file_in_memory = memofn(box.read_file_in_memory, expire_in_days=1, ignore_first_n_args=0)
 
 
 @memofn(expire_in_days=1)
@@ -96,12 +94,8 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
         A dataframe with the AABC inventory of participants
     """
     aabc_inventory_including_test_subjects = get_aabc_arms_report(redcap_api_token)
-    qc_detect_test_subjects_in_production_database(
-        aabc_inventory_including_test_subjects
-    )
-    aabc_inventory = remove_test_subjects(
-        aabc_inventory_including_test_subjects, "subject_id"
-    )
+    qc_detect_test_subjects_in_production_database(aabc_inventory_including_test_subjects)
+    aabc_inventory = remove_test_subjects(aabc_inventory_including_test_subjects, "subject_id")
     aabc_inventory = idvisits(aabc_inventory)
     return aabc_inventory
 
@@ -194,12 +188,8 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         db.fileid = db.fileid.astype(int)
 
         # find the new ones that need to be pulled in
-        new_file_ids = pd.merge(
-            db, cached_filelist.fileid, on="fileid", how="left", indicator=True
-        )
-        new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(
-            columns=["_merge"]
-        )
+        new_file_ids = pd.merge(db, cached_filelist.fileid, on="fileid", how="left", indicator=True)
+        new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(columns=["_merge"])
         db2go = db.loc[db.fileid.isin(list(new_file_ids.fileid))].copy()
 
         # Short-circuit #1: No new records to add
@@ -225,9 +215,7 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
 
         id_visit = db2go.filename.str.extract("(?P<subjectid>HCA\d+)_V(?P<visit>\d)")
 
-        ravlt = db2go.content.apply(
-            lambda x: pd.Series(parse_content(x), index=ravlt_form_fields)
-        )
+        ravlt = db2go.content.apply(lambda x: pd.Series(parse_content(x), index=ravlt_form_fields))
 
         # Horizontally concatenate the dataframes
         rows2push = pd.concat([db2go, ravlt, id_visit], axis=1)
@@ -332,9 +320,7 @@ def code_block_2(aabc_inventory, qint_api_token):
     aabc_vs_qint["has_qint_data"] = aabc_vs_qint._merge != "left_only"
     qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint)
 
-    aabc_inventory_plus_qint = aabc_vs_qint.loc[
-        aabc_vs_qint._merge != "right_only"
-    ].drop(columns=["_merge"])
+    aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].drop(columns=["_merge"])
     qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint)
 
     return aabc_vs_qint, aabc_inventory_plus_qint
@@ -415,9 +401,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     dffull = filterdupass(instrument, dupvar, iset, dffull)
 
     # find any non-identical duplicated Assessments still in data after patch
-    dupass = dffull.loc[dffull.duplicated(subset=["PIN", "Inst"], keep=False)][
-        ["PIN", "Assessment Name", "Inst"]
-    ]
+    dupass = dffull.loc[dffull.duplicated(subset=["PIN", "Inst"], keep=False)][["PIN", "Assessment Name", "Inst"]]
     dupass = dupass.loc[~(dupass.Inst.str.upper().str.contains("ASSESSMENT"))]
 
     # TURN THIS INTO A TICKET
@@ -447,9 +431,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
 
     qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5)
 
-    aabc_inventory_5 = pre_aabc_inventory_5.loc[
-        pre_aabc_inventory_5._merge != "right_only"
-    ].drop(columns=["_merge"])
+    aabc_inventory_5 = pre_aabc_inventory_5.loc[pre_aabc_inventory_5._merge != "right_only"].drop(columns=["_merge"])
     # TODO: Make sure these columns are available in dataframes sent to the ticketing system
     # "subject",
     # "study_id",
@@ -526,9 +508,7 @@ def code_block_5(aabc_inventory_6):
         actdata = actdata + list(actsubs)  # list(set(actsubs))
 
     # Duplicates?
-    duplicated_actigraphy_records = [
-        item for item, count in collections.Counter(actdata).items() if count > 1
-    ]
+    duplicated_actigraphy_records = [item for item, count in collections.Counter(actdata).items() if count > 1]
     if duplicated_actigraphy_records != "":
         print(
             "Duplicated Actigraphy Record Found:",
@@ -536,9 +516,7 @@ def code_block_5(aabc_inventory_6):
         )
 
     ActD = pd.DataFrame(actdata, columns=["PIN"])
-    inventoryaabc6 = pd.merge(
-        aabc_inventory_6, ActD, on="PIN", how="left", indicator=True
-    )
+    inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left", indicator=True)
     inventoryaabc6["has_actigraphy_data"] = inventoryaabc6._merge != "left_only"
 
     qc_missing_actigraphy_data_in_box(inventoryaabc6)
@@ -576,9 +554,7 @@ def code_block_6(inventoryaabc6):
 
     anydata.columns = ["subject", "redcap_event", "scan", "fname"]
     checkIDB = anydata[["subject", "redcap_event", "scan"]]
-    checkIDB["PIN_AB"] = (
-        checkIDB.subject + "_" + checkIDB.redcap_event + "_" + checkIDB.scan
-    )
+    checkIDB["PIN_AB"] = checkIDB.subject + "_" + checkIDB.redcap_event + "_" + checkIDB.scan
     ci = checkIDB.drop_duplicates(subset="PIN_AB")
 
     # just check for existence of PsychoPY in IntraDB
@@ -625,9 +601,7 @@ def code_block_6(inventoryaabc6):
     p["subject_id"] = p[0].str[:10]
     p["subject"] = p[0].str[:10]
     pwho = pd.merge(
-        inventoryaabc6.loc[is_v_event(inventoryaabc6, "redcap_event")].drop(
-            columns=["subject_id", "subject"]
-        ),
+        inventoryaabc6.loc[is_v_event(inventoryaabc6, "redcap_event")].drop(columns=["subject_id", "subject"]),
         p,
         on="PIN",
         how="right",
@@ -653,9 +627,7 @@ def code_block_6(inventoryaabc6):
     # find subjects in AABC but not in IntraDB or BOX
     PSY2 = psymiss.drop_duplicates(subset="subject")[["subject", "redcap_event"]]
     PSY2["has_psychopy_data"] = True
-    inventoryaabc7 = pd.merge(
-        inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True
-    )
+    inventoryaabc7 = pd.merge(inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True)
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
     cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7)
     vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()

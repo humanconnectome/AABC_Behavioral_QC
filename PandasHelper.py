@@ -50,9 +50,7 @@ def unequal_columns(left, right, on=None, left_columns=None, right_columns=None)
     return left_df, right_df
 
 
-def difference(
-    left, right, on=None, left_columns=None, right_columns=None, equal_names=True
-):
+def difference(left, right, on=None, left_columns=None, right_columns=None, equal_names=True):
     """
     difference Finds the set difference from left to right DataFrames and returns either a DataFrame or a boolean Series
 
@@ -73,9 +71,7 @@ def difference(
     if equal_names:
         left_data, right_data = in_common(left, right, on, left_columns, right_columns)
     else:
-        left_data, right_data = unequal_columns(
-            left, right, on, left_columns, right_columns
-        )
+        left_data, right_data = unequal_columns(left, right, on, left_columns, right_columns)
 
     a = set(map(tuple, left_data.values))
     b = set(map(tuple, right_data.values))
@@ -140,9 +136,7 @@ def intersection_both(
     else:
         neg = left_df.columns
 
-    result = left_df.append(right_df, sort=False).sort_values(
-        left_data.columns.to_list()
-    )
+    result = left_df.append(right_df, sort=False).sort_values(left_data.columns.to_list())
 
     return result.drop_duplicates(neg, keep=False) if drop_duplicates else result
 

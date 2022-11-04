@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "aabc-behavioral-qc"
+version = "0.1.0"
+description = "Quality Control for AABC's Behavioral Data"
+authors = ["Petra Lenzini <petra.lenzini@gmail.com", "Moises Baltazar <null@moisesb.com>"]
+readme = "README.md"
+packages = [{include = "aabc_behavioral_qc"}]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+ccf = {git = "https://github.com/humanconnectome/ccf_libs"}
+jira = "^3.4.1"
+memofn = "^0.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.10.0"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
