@@ -598,6 +598,8 @@ def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
 def qc_duplicate_qint_records(qint_df):
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
     dups2 = dups.loc[dups.q_unusable == ""]
+    # TODO: event_date is required, but need to double-check with Petra that this is acceptable date to use
+    dups2["event_date"] = dups2.created
     register_tickets(dups2, "ORANGE", "Duplicate Q-interactive records", "AE5001")
 
 
