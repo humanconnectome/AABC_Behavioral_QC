@@ -191,9 +191,8 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         box_filelist.fileid = box_filelist.fileid.astype(int)
 
         # find the new ones that need to be pulled in
-        new_file_ids = pd.merge(box_filelist, cached_filelist.fileid, on="fileid", how="left", indicator=True)
-        new_file_ids = new_file_ids.loc[new_file_ids._merge == "left_only"].drop(columns=["_merge"])
-        new_files = box_filelist.loc[box_filelist.fileid.isin(list(new_file_ids.fileid))].copy()
+        new_file_ids = set(box_filelist.fileid) - set(cached_filelist.fileid)
+        new_files = box_filelist.loc[box_filelist.fileid.isin(new_file_ids)].copy()
 
         # Short-circuit #1: No new records to add
         if new_files.empty:
