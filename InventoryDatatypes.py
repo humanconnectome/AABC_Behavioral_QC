@@ -55,9 +55,11 @@ box = LifespanBox(cache="./tmp")
 box.read_file_in_memory = memofn(
     box.read_file_in_memory, expire_in_days=1, ignore_first_n_args=0
 )
-box.get_metadata_by_id = memofn(
-    box.get_metadata_by_id, expire_in_days=1, ignore_first_n_args=0
-)
+@memofn(expire_in_days=1)
+def box_file_created_at(fileid):
+    return box.get_metadata_by_id(fileid).created_at
+
+
 box.list_of_files = memofn(box.list_of_files, expire_in_days=1, ignore_first_n_args=0)
 
 ## get the HCA inventory for ID checking with AABC
