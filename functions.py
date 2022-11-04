@@ -230,7 +230,7 @@ def send_frame(dataframe, tok):
 
 def run_ssh_cmd(host: str, cmd: str) -> str:
     cmds = ["ssh", "-t", host, cmd]
-    return subprocess.check_output(cmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE).decode("utf-8").strip()
+    return subprocess.check_output(cmds).decode("utf-8").strip()
 
 
 memo_run_ssh_cmd = memofn(run_ssh_cmd, expire_in_days=8)
