@@ -121,6 +121,15 @@ def ravlt_form_heuristic(row):
 
 
 def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
+    """
+    This function is a cron job that scans the box folders for new files and imports them into Qinteractive. Because of
+    the sheer number of requests it sends out, it can take a while to run. New files are defined as having a new fileid,
+    new sha1, or new filename.
+
+    Args:
+        qint_df: Current Qinteractive dataframe
+        qint_api_token: API token for Qinteractive
+    """
     # the variables that make up the 'common' form in the Qinteractive database.
     common_form_fields = [
         "id",
@@ -166,11 +175,6 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
 
     # all box files - grab, transform, send
     folder_queue = ["WU", "UMN"]  # ,'MGH','UCLA']
-
-    ######
-    ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
-    # this is currently taing too much time to iterate through box
-    # import anything new by any definition (new name, new sha, new fileid)
 
     # Files that already exist in Q Redcap
     cached_filelist = qint_df.copy()
