@@ -104,6 +104,7 @@ aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
 save_cache()
 
 qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
+# TODO: On airflow, every hour
 qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
 qc_subject_id_is_not_missing(aabc_inventory)
 
