@@ -276,12 +276,12 @@ def toolbox_to_dataframe(text_content: str) -> pd.DataFrame:
 
 def filterdupass(instrument, fieldX, right_df, left_df):
     nonempty_values = right_df[fieldX].notna() & (right_df[fieldX].str.strip() != "")
-    fixass = right_df.loc[nonempty_values].copy()
-    fixass["PIN"] = fixass.subject + "_" + fixass.redcap_event
-    fixass = fixass[["PIN", fieldX]].copy()
-    fixass["Assessment Name"] = "Assessment " + fixass[fieldX]
-    fixass["Inst"] = instrument
-    df = left_df.merge(fixass, on=["PIN", "Inst", "Assessment Name"], how="left")
+    fixed_values_df = right_df.loc[nonempty_values].copy()
+    fixed_values_df["PIN"] = fixed_values_df.subject + "_" + fixed_values_df.redcap_event
+    fixed_values_df = fixed_values_df[["PIN", fieldX]].copy()
+    fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[fieldX]
+    fixed_values_df["Inst"] = instrument
+    df = left_df.merge(fixed_values_df, on=["PIN", "Inst", "Assessment Name"], how="left")
     return df
 
 
