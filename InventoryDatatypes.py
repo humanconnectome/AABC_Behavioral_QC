@@ -1,3 +1,4 @@
+import typing
 from memofn import load_cache, save_cache, memofn
 
 load_cache(".cache_memofn")
@@ -330,25 +331,46 @@ def qint_code_block(aabc_inventory, qint_api_token):
 aabc_vs_qint, aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
 
 
+def generic_fetch_toolbox_data(specific_toolbox_fn: typing.Callable) -> pd.DataFrame:
+    """Fetches the csv files using the specific_toolbox_fn and returns a dataframe with the data
+
+    Args:
+        specific_toolbox_fn: a function that takes site and returns a single string with all the csv data
+
+    Returns:
+        A dataframe with the data from the csv files
+    """
+
+    def get_data(site):
+        raw_text = specific_toolbox_fn(site)
+        df = toolbox_to_dataframe(raw_text)
+        return df
+
+    df_wu = get_data("AABC_WU_ITK")
+    df_mgh = get_data("AABC_MGH_ITK")
+    df_umn = get_data("AABC_UMN_ITK")
+    df_ucla = get_data("AABC_UCLA_ITK")
+    save_cache()
+
+    return pd.concat([df_wu, df_umn, df_ucla, df_mgh])
+
+
 def fetch_toolbox_raw_data() -> pd.DataFrame:
     """Get DataFrame containing toolbox data from raw files for all sites
 
     Returns:
-        dataframe of toolbox data
+        dataframe of raw toolbox data
     """
-    raw_wu = cat_toolbox_rawdata_files("AABC_WU_ITK")
-    raw_mgh = cat_toolbox_rawdata_files("AABC_MGH_ITK")
-    raw_umn = cat_toolbox_rawdata_files("AABC_UMN_ITK")
-    raw_ucla = cat_toolbox_rawdata_files("AABC_UCLA_ITK")
-    save_cache()
+    return generic_fetch_toolbox_data(cat_toolbox_rawdata_files)
 
-    df_wu = toolbox_to_dataframe(raw_wu)
-    df_mgh = toolbox_to_dataframe(raw_mgh)
-    df_umn = toolbox_to_dataframe(raw_umn)
-    df_ucla = toolbox_to_dataframe(raw_ucla)
-    save_cache()
 
-    return pd.concat([df_wu, df_umn, df_ucla, df_mgh])
+def fetch_toolbox_score_data() -> pd.DataFrame:
+    """Get DataFrame containing toolbox data from score files for all sites
+
+    Returns:
+        dataframe of score toolbox data
+    """
+    return generic_fetch_toolbox_data(cat_toolbox_score_files)
 
 
 def gen_fixtypos_map(aabc_vs_qint):
@@ -379,26 +401,14 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
 
     # NOW THE SCORED DATA
-    results4 = cat_toolbox_score_files("AABC_WU_ITK")
-    results1 = cat_toolbox_score_files("AABC_MGH_ITK")
-    results3 = cat_toolbox_score_files("AABC_UMN_ITK")
-    results2 = cat_toolbox_score_files("AABC_UCLA_ITK")
-
     # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
     # still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
     # this is close, but wont work for case of multipe PINs in a single file
     # find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
     # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
-    # note that some of these won't work because UCLA hasn't started collecting data
-    dffull1 = toolbox_to_dataframe(results1)
-    dffull2 = toolbox_to_dataframe(results2)
-    dffull3 = toolbox_to_dataframe(results3)
-    dffull4 = toolbox_to_dataframe(results4)
-
     ##fixtypos in Scores file now
-    dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])
-    dffull = dffull.copy()  # pd.concat([df11,df31])
+    dffull = fetch_toolbox_score_data()
     dffull = remove_test_subjects(dffull, "PIN")
     dffull.PIN.replace(fix_typos_map, inplace=True)
 
