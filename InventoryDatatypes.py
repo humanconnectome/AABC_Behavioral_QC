@@ -370,13 +370,12 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
 
     # remove files known to be duds.
     toolbox_df = remove_test_subjects(toolbox_df, "PIN")
-    toolbox_df = toolbox_df.loc[toolbox_df.PIN.str.upper() != "ABC123"].copy()
-
-    # drop duplicates for purpose of generating QC flags.
-    toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
 
     fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
     toolbox_df.PIN.replace(fix_typos_map, inplace=True)
+
+    # drop duplicates for purpose of generating QC flags.
+    toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
 
     # NOW THE SCORED DATA
     results4 = cat_toolbox_score_files("AABC_WU_ITK")
