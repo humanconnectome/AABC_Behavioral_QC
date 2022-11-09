@@ -405,10 +405,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
-    toolbox_df = fetch_toolbox_raw_data(fix_typos_map)
+    tb_raw_df = fetch_toolbox_raw_data(fix_typos_map)
 
     # drop duplicates for purpose of generating QC flags.
-    toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
+    tb_raw_df = tb_raw_df.drop_duplicates(subset="PIN").copy()
 
     # NOW THE SCORED DATA
     # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
@@ -416,9 +416,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # this is close, but wont work for case of multipe PINs in a single file
     # find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
     # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
-
-    ##fixtypos in Scores file now
-    dffull = fetch_toolbox_score_data(fix_typos_map)
+    tbx_score_df = fetch_toolbox_score_data(fix_typos_map)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
@@ -426,31 +424,33 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
     dupvar = "tlbxwin_dups_v2"
     iset = aabc_vs_qint
-    dffull = filterdupass(instrument, dupvar, iset, dffull)
+    tbx_score_df = filterdupass(instrument, dupvar, iset, tbx_score_df)
 
     # find any non-identical duplicated Assessments still in data after patch
-    dupass = dffull.loc[dffull.duplicated(subset=["PIN", "Inst"], keep=False)][["PIN", "Assessment Name", "Inst"]]
+    dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"], keep=False)][
+        ["PIN", "Assessment Name", "Inst"]
+    ]
     dupass = dupass.loc[~(dupass.Inst.str.upper().str.contains("ASSESSMENT"))]
 
     # TURN THIS INTO A TICKET
 
-    qc_raw_or_scored_data_not_found(dffull, toolbox_df)
+    qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
 
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
     # find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
-    dffull["Date"] = dffull.DateFinished.str.split(" ", expand=True)[0]
+    tbx_score_df["Date"] = tbx_score_df.DateFinished.str.split(" ", expand=True)[0]
 
     # add subject and visit
-    df2 = dffull.drop_duplicates(subset="PIN").copy()
-    df2["redcap_event"] = df2.PIN.str.split("_", expand=True)[1]
-    df2["subject"] = df2.PIN.str.split("_", expand=True)[0]
-    df2["redcap_event"] = df2.PIN.str.split("_", expand=True)[1]
+    scores2 = tbx_score_df.drop_duplicates(subset="PIN").copy()
+    scores2["redcap_event"] = scores2.PIN.str.split("_", expand=True)[1]
+    scores2["subject"] = scores2.PIN.str.split("_", expand=True)[0]
+    scores2["redcap_event"] = scores2.PIN.str.split("_", expand=True)[1]
 
     # now merge with inventory
     pre_aabc_inventory_5 = pd.merge(
         aabc_inventory_plus_qint,
-        df2[["subject", "redcap_event", "PIN"]],
+        scores2[["subject", "redcap_event", "PIN"]],
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
