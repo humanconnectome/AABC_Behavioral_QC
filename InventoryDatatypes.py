@@ -120,7 +120,7 @@ def ravlt_form_heuristic(row):
     return form
 
 
-def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
+def cron_job_qint(qint_df: pd.DataFrame, qint_api_token) -> None:
     """
     This function is a cron job that scans the box folders for new files and imports them into Qinteractive. Because of
     the sheer number of requests it sends out, it can take a while to run. New files are defined as having a new fileid,
@@ -238,11 +238,7 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
 # cron_job_qint(qint_df, qint_api_token)
 
 
-def code_block_2(aabc_inventory, qint_api_token):
-    #########################################################################################
-    # PHASE 1 Test that all dataypes expected are present
-    # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
-    # there are lots of variables in the inventory.  Don't need them all
+def qint_code_block(aabc_inventory, qint_api_token):
     keeplist = [
         "study_id",
         "redcap_event_name",
@@ -330,10 +326,10 @@ def code_block_2(aabc_inventory, qint_api_token):
     return aabc_vs_qint, aabc_inventory_plus_qint
 
 
-aabc_vs_qint, aabc_inventory_plus_qint = code_block_2(aabc_inventory, api_key["qint"])
+aabc_vs_qint, aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
 
 
-def fetch_toolbox_data() -> pd.DataFrame:
+def fetch_toolbox_raw_data() -> pd.DataFrame:
     """Get DataFrame containing toolbox data from raw files for all sites
 
     Returns:
@@ -372,7 +368,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    toolbox_df = fetch_toolbox_data()
+    toolbox_df = fetch_toolbox_raw_data()
 
     # remove files known to be duds.
     toolbox_df = remove_test_subjects(toolbox_df, "PIN")
