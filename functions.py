@@ -362,7 +362,11 @@ def remove_test_subjects(df: pd.DataFrame, field: str) -> pd.DataFrame:
     Returns:
         A dataframe with test subjects removed
     """
-    return df.loc[~df[field].str.contains("test", na=False, case=False)].copy()
+    return df.loc[
+        ~df[field].str.contains("test", na=False, case=False)
+        # looking for anything is a test but of the form "ABC123"
+        & (~df[field].str.contains("B"))
+    ].copy()
 
 
 def is_v_event(df: pd.DataFrame, field: str = "redcap_event_name") -> pd.Series:

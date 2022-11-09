@@ -406,8 +406,6 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     dffull = pd.concat([dffull1, dffull3, dffull2, dffull4])
     dffull = dffull.copy()  # pd.concat([df11,df31])
     dffull = remove_test_subjects(dffull, "PIN")
-    dffull = dffull.loc[~(dffull.PIN.str.upper() == "ABC123")]
-
     dffull.PIN.replace(fix_typos_map, inplace=True)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
