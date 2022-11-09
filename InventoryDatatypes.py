@@ -351,8 +351,6 @@ def fetch_toolbox_raw_data() -> pd.DataFrame:
 
 
 def gen_fixtypos_map(aabc_vs_qint):
-    # TODO: NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
-    # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
     fix_typos = aabc_vs_qint.loc[aabc_vs_qint.nih_toolbox_upload_typo != ""]
     correct_pin = fix_typos.subject + "_" + fix_typos.redcap_event
     fixtypos_map = dict(zip(fix_typos.nih_toolbox_upload_typo, correct_pin))
