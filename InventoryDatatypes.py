@@ -421,10 +421,9 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
     # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
-    instrument = "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
-    dupvar = "tlbxwin_dups_v2"
-    iset = aabc_vs_qint
-    tbx_score_df = filterdupass(instrument, dupvar, iset, tbx_score_df)
+    tbx_score_df = filterdupass(
+        "NIH Toolbox Words-In-Noise Test Age 6+ v2.1", "tlbxwin_dups_v2", aabc_vs_qint, tbx_score_df
+    )
 
     # find any non-identical duplicated Assessments still in data after patch
     dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"], keep=False)][
