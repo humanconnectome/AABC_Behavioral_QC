@@ -415,17 +415,7 @@ def qc_detect_test_subjects_in_production_database(
     prod_df: pd.DataFrame,
 ) -> None:
     """Detects test subjects in production database and raises a ticket if found"""
-    test_subjects = prod_df.loc[
-        prod_df["subject_id"].str.contains("test", case=False),
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "v0_date",
-            "event_date",
-        ],
-    ]
+    test_subjects = prod_df.loc[prod_df["subject_id"].str.contains("test", case=False)]
     register_tickets(
         test_subjects,
         "HOUSEKEEPING",
@@ -474,19 +464,9 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     is_legacy_id = hca_vs_aabc.redcap_event_name.isin(legacy_arms) | (hca_vs_aabc.legacy_yn == "1")
     is_in_aabc_not_in_hca = hca_vs_aabc._merge == "right_only"
     is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
-    # First batch of flags: Look for legacy IDs that don't actually exist in HCA
-    # send these to Angela for emergency correction:
-    cols_for_troubleshooting = [
-        "subject_id",
-        "study_id",
-        "redcap_event_name",
-        "site",
-        "v0_date",
-        "event_date",
-    ]
+
     qlist1 = hca_vs_aabc.loc[
         is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc["subject_id"].notnull(),
-        cols_for_troubleshooting,
     ]
     register_tickets(
         qlist1,
@@ -495,7 +475,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
         "AE1001",
     )
     # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
-    qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id, cols_for_troubleshooting]
+    qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
     register_tickets(
         qlist2,
         "RED",
@@ -505,17 +485,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
 
 
 def qc_subject_id_is_not_missing(aabc_inventory):
-    missing_sub_ids = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")]
-    qlist4 = missing_sub_ids[
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "v0_date",
-            "event_date",
-        ]
-    ]
+    qlist4 = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")]
     register_tickets(qlist4, "ORANGE", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001")
 
 
@@ -561,14 +531,7 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
         # was in actual but not expected
         (hca_expected_vs_aabc_actual._merge == "right_only")
         # and was not a phone call event
-        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13"),
-        [
-            "subject_id",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "event_date",
-        ],
+        & (hca_expected_vs_aabc_actual.redcap_event_name != "phone_call_arm_13")
     ]
     register_tickets(
         wrong_visit,

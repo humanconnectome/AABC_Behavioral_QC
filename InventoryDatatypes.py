@@ -450,16 +450,6 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5)
 
     aabc_inventory_5 = pre_aabc_inventory_5.loc[pre_aabc_inventory_5._merge != "right_only"].drop(columns=["_merge"])
-    # TODO: Make sure these columns are available in dataframes sent to the ticketing system
-    # "subject",
-    # "study_id",
-    # "redcap_event_name",
-    # "redcap_event",
-    # "event_date",
-    # "PIN",
-    # "reason",
-    # "code",
-
     qc_missing_tlbx_data(aabc_inventory_5)
 
     code_block_4(aabc_inventory_5)
