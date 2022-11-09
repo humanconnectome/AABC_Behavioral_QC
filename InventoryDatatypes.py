@@ -33,7 +33,7 @@ from functions import (
     qc_duplicate_qint_records,
     qc_raw_or_scored_data_not_found,
     qc_toolbox_pins_not_in_aabc,
-    qc_missing_tlbx_data,
+    qc_missing_toolbox_data,
     qc_unable_to_locate_asa24_id_in_redcap_or_box,
     qc_missing_actigraphy_data_in_box,
     qc_psychopy_not_found_in_box_or_intradb,
@@ -462,10 +462,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     aabc_inventory_5 = aabc_qint_tlbx.loc[~in_tlbx_only]
 
     # create a field specifying whether the subject has toolbox scores data
-    aabc_inventory_5["has_tlxb_data"] = aabc_inventory_5._merge == "both"
+    aabc_inventory_5["has_tlbx_data"] = aabc_inventory_5._merge == "both"
     aabc_inventory_5.drop(columns=["_merge"], inplace=True)
 
-    qc_missing_tlbx_data(aabc_inventory_5)
+    qc_missing_toolbox_data(aabc_inventory_5)
 
     code_block_4(aabc_inventory_5)
 

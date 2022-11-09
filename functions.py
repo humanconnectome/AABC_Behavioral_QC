@@ -594,17 +594,19 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
     )
 
 
-def qc_toolbox_pins_not_in_aabc(t2):
+def qc_toolbox_pins_not_in_aabc(missing_pins_in_aabc_df):
     # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
     # turn this into a ticket
-    register_tickets(t2, "ORANGE", "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?", "AE1001")
+    register_tickets(
+        missing_pins_in_aabc_df, "ORANGE", "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?", "AE1001"
+    )
 
 
-def qc_missing_tlbx_data(aabc_inventory_5):
+def qc_missing_toolbox_data(aabc_inventory_5):
     # Look for missing IDs
-    missingT = aabc_inventory_5.loc[is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data]
-    t3 = missingT[["subject", "redcap_event", "site", "event_date", "nih_toolbox_collectyn"]]
-    register_tickets(t3, "ORANGE", "Missing TLBX data", "AE2001")
+    missing_toolbox_df = aabc_inventory_5.loc[is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data]
+    missing_toolbox_df = missing_toolbox_df[["subject", "redcap_event", "site", "event_date", "nih_toolbox_collectyn"]]
+    register_tickets(missing_toolbox_df, "ORANGE", "Missing TLBX data", "AE2001")
 
 
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
