@@ -559,7 +559,6 @@ def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint):
     missingQ = aabc_inventory_plus_qint.loc[
         is_v_event(aabc_vs_qint) & ~aabc_vs_qint.has_qint_data,
         [
-            "subject_id",
             "study_id",
             "subject",
             "redcap_event",
