@@ -275,21 +275,7 @@ def toolbox_to_dataframe(text_content: str) -> pd.DataFrame:
 
 
 def filterdupass(instrument, dupvar, iset, dset):
-    fixass = iset[
-        [
-            "subject",
-            "subject_id",
-            "study_id",
-            "redcap_event",
-            "redcap_event_name",
-            "site",
-            "v0_date",
-            "event_date",
-            dupvar,
-        ]
-    ].copy()
-    fixass["reason"] = "Duplicated Assessments"
-    fixass["code"] = "orange"
+    fixass = iset[["subject", "redcap_event", dupvar]].copy()
     fixass["PIN"] = fixass.subject + "_" + fixass.redcap_event
     fixass = fixass.loc[~(fixass[dupvar] == "")][["PIN", dupvar]]
     fixass["Assessment Name"] = "Assessment " + fixass[dupvar]
