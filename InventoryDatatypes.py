@@ -484,10 +484,10 @@ def code_block_4(aabc_inventory_5):
     anydata = set()
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
-        dbitems = list_files_in_box_folders(box_folder_id)
-        for f in dbitems.fileid:
-            print(f)
-            k = box.read_csv(f)
+        files_df = list_files_in_box_folders(box_folder_id)
+        save_cache()
+        for file_id in files_df.fileid:
+            k = box.read_csv(file_id)
             anydata.update(k.UserName)
 
     AD = pd.DataFrame(anydata, columns=["asa24id"])
