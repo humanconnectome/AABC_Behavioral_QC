@@ -478,7 +478,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
         "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
         "AE1001",
     )
-    # 2nd batch of flags: if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
+
     qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
     register_tickets(
         qlist2,
@@ -575,6 +575,8 @@ def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
 
 def qc_duplicate_qint_records(qint_df):
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
+    if dups.empty:
+        return
     dups2 = dups.loc[dups.q_unusable == ""]
     # TODO: event_date is required, but need to double-check with Petra that this is acceptable date to use
     dups2["event_date"] = dups2.created
