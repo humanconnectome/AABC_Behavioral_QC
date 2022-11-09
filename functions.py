@@ -274,14 +274,14 @@ def toolbox_to_dataframe(text_content: str) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def filterdupass(instrument, fieldX, right_df, left_df):
-    nonempty_values = right_df[fieldX].notna() & (right_df[fieldX].str.strip() != "")
-    fixed_values_df = right_df.loc[nonempty_values].copy()
+def filterdupass(main_df: pd.DataFrame, dups_df: pd.DataFrame, dups_field: str, instrument_name: str) -> pd.DataFrame:
+    nonempty_values = dups_df[dups_field].notna() & (dups_df[dups_field].str.strip() != "")
+    fixed_values_df = dups_df.loc[nonempty_values].copy()
     fixed_values_df["PIN"] = fixed_values_df.subject + "_" + fixed_values_df.redcap_event
-    fixed_values_df = fixed_values_df[["PIN", fieldX]].copy()
-    fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[fieldX]
-    fixed_values_df["Inst"] = instrument
-    df = left_df.merge(fixed_values_df, on=["PIN", "Inst", "Assessment Name"], how="left")
+    fixed_values_df["Inst"] = instrument_name
+    fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[dups_field]
+    subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field]]
+    df = main_df.merge(subset_df, on=["PIN", "Inst", "Assessment Name"], how="left")
     return df
 
 
