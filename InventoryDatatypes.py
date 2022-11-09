@@ -433,8 +433,8 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
         ["PIN", "Assessment Name", "Inst"]
     ]
     dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)]
-
-    # TURN THIS INTO A TICKET
+    # TODO:  Turn this into a ticket (current shape of df is 236x3, that's a lot of tickets)
+    dupass
 
     qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
 
