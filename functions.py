@@ -229,7 +229,7 @@ def send_frame(dataframe, tok):
 
 
 def run_ssh_cmd(host: str, cmd: str) -> str:
-    cmds = ["ssh", "-t", host, cmd]
+    cmds = ["ssh", host, cmd]
     return subprocess.check_output(cmds).decode("utf-8").strip()
 
 
