@@ -397,7 +397,7 @@ def is_register_event(df: pd.DataFrame) -> pd.Series:
 def cat_toolbox_score_files(proj):
     return memo_run_ssh_cmd(
         "chpc3",
-        f'cat /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u',
+        f'find /ceph/intradb/archive/{proj}/resources/toolbox_endpoint_data/*Scores* -type f ! \( -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {{}} \;',
     )
 
 
