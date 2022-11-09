@@ -300,15 +300,17 @@ def print_error_codes(df: pd.DataFrame) -> None:
         print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
 
-def register_tickets(df, code: str, reason: str, error_code: str = "AE0000") -> None:
+def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False) -> None:
     """Register new tickets in the tickets dataframe
 
     Args:
         df: The dataframe containing all the rows to register
         code: The code for the ticket
         reason: The description of the error
+        critical: If True, send an email to Angela and Petra, ASAP
 
     """
+    # TODO: implement `critical` param
     global tickets_dataframe
     n = df.copy()
     n["issueCode"] = error_code
@@ -573,6 +575,7 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
         "RED",
         "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
         "AE1001",
+        critical=True,
     )
 
 
