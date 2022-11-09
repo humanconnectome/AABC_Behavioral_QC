@@ -338,7 +338,7 @@ def rename_col(df, preferred_field_name, current_field_name):
         df.rename(columns={current_field_name: preferred_field_name}, inplace=True)
 
 
-def get_aabc_arms_report(token) -> pd.DataFrame:
+def get_aabc_arms_report(token, report_id="51031") -> pd.DataFrame:
     """Get the AABC arms report from REDCap
 
     Returns:
@@ -346,7 +346,7 @@ def get_aabc_arms_report(token) -> pd.DataFrame:
     """
     aabc_arms_report_request = params_request_report(
         token=token,
-        report_id="51031",
+        report_id=report_id,
     )
     df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=aabc_arms_report_request)
     return df
