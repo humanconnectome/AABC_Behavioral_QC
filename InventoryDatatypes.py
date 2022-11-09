@@ -449,18 +449,22 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     scores2 = tbx_score_df.PIN.drop_duplicates().str.extract("^(?P<PIN>(?P<subject>.+?)_(?P<redcap_event>.+))$")
 
     # now merge with inventory
-    pre_aabc_inventory_5 = pd.merge(
+    aabc_qint_tlbx = pd.merge(
         aabc_inventory_plus_qint,
         scores2,
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
     )
-    pre_aabc_inventory_5["has_tlxb_data"] = pre_aabc_inventory_5._merge != "left_only"
+    # filter out pins only in toolbox
+    in_tlbx_only = aabc_qint_tlbx._merge == "right_only"
+    qc_toolbox_pins_not_in_aabc(aabc_qint_tlbx.loc[in_tlbx_only])
+    aabc_inventory_5 = aabc_qint_tlbx.loc[~in_tlbx_only]
 
-    qc_toolbox_pins_not_in_aabc(pre_aabc_inventory_5)
+    # create a field specifying whether the subject has toolbox scores data
+    aabc_inventory_5["has_tlxb_data"] = aabc_inventory_5._merge == "both"
+    aabc_inventory_5.drop(columns=["_merge"], inplace=True)
 
-    aabc_inventory_5 = pre_aabc_inventory_5.loc[pre_aabc_inventory_5._merge != "right_only"].drop(columns=["_merge"])
     qc_missing_tlbx_data(aabc_inventory_5)
 
     code_block_4(aabc_inventory_5)
