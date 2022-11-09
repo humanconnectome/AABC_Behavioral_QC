@@ -470,9 +470,6 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     code_block_4(aabc_inventory_5)
 
 
-code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
-
-
 def code_block_4(aabc_inventory_5):
     ### NOW For ASA 24 ######################################################################
     # ORDER
@@ -663,6 +660,8 @@ def code_block_6(inventoryaabc6):
     qc_age_in_v_events(vinventoryaabc7)
     qc_bmi_in_v_events(vinventoryaabc7)
 
+
+code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
 
 # TO DO
 # HARMONIZE Event Names
