@@ -95,8 +95,8 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
     """
     aabc_inventory_including_test_subjects = get_aabc_arms_report(redcap_api_token)
     qc_detect_test_subjects_in_production_database(aabc_inventory_including_test_subjects)
-    aabc_inventory = remove_test_subjects(aabc_inventory_including_test_subjects, "subject_id")
-    aabc_inventory = idvisits(aabc_inventory)
+    aabc_inventory = idvisits(aabc_inventory_including_test_subjects)
+    aabc_inventory = remove_test_subjects(aabc_inventory, "subject_id")
     return aabc_inventory
 
 
