@@ -577,13 +577,20 @@ def qc_duplicate_qint_records(qint_df):
     register_tickets(dups2, "ORANGE", "Duplicate Q-interactive records", "AE5001")
 
 
-def qc_raw_or_scored_data_not_found(dffull, rf2):
-    # QC check:
-    # Either scored or raw is missing in format expected:
-    formats = pd.merge(dffull.PIN.drop_duplicates(), rf2, how="outer", on="PIN", indicator=True)[["PIN", "_merge"]]
-    issues = formats.loc[~(formats._merge == "both")]
+def qc_raw_or_scored_data_not_found(scored_df, raw_df):
+    scored = set(scored_df.PIN)
+    raw = set(raw_df.PIN)
     register_tickets(
-        issues, "ORANGE", "Raw or Scored data not found (make sure you didn't export Narrow format)", "AE5001"
+        scored_df[scored_df.PIN.isin(scored - raw)],
+        "ORANGE",
+        "Raw data not found (make sure you didn't export Narrow format)",
+        "AE5001",
+    )
+    register_tickets(
+        raw_df[raw_df.PIN.isin(raw - scored)],
+        "ORANGE",
+        "Scored data not found (make sure you didn't export Narrow format)",
+        "AE5001",
     )
 
 
