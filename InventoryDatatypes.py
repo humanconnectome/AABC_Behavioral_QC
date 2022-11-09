@@ -331,11 +331,12 @@ def qint_code_block(aabc_inventory, qint_api_token):
 aabc_vs_qint, aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
 
 
-def generic_fetch_toolbox_data(specific_toolbox_fn: typing.Callable) -> pd.DataFrame:
+def generic_fetch_toolbox_data(specific_toolbox_fn: typing.Callable, fix_typos_map: dict) -> pd.DataFrame:
     """Fetches the csv files using the specific_toolbox_fn and returns a dataframe with the data
 
     Args:
         specific_toolbox_fn: a function that takes site and returns a single string with all the csv data
+        fix_typos_map: a dictionary with the keys being the typos and the values being the correct values
 
     Returns:
         A dataframe with the data from the csv files
@@ -352,25 +353,39 @@ def generic_fetch_toolbox_data(specific_toolbox_fn: typing.Callable) -> pd.DataF
     df_ucla = get_data("AABC_UCLA_ITK")
     save_cache()
 
-    return pd.concat([df_wu, df_umn, df_ucla, df_mgh])
+    df = pd.concat([df_wu, df_umn, df_ucla, df_mgh])
+
+    # remove files known to be duds.
+    df = remove_test_subjects(df, "PIN")
+
+    # fix typos
+    df.PIN.replace(fix_typos_map, inplace=True)
+
+    return df
 
 
-def fetch_toolbox_raw_data() -> pd.DataFrame:
+def fetch_toolbox_raw_data(fix_typos_map: dict) -> pd.DataFrame:
     """Get DataFrame containing toolbox data from raw files for all sites
+
+    Args:
+        fix_typos_map: a dictionary with the keys being the typos and the values being the correct values
 
     Returns:
         dataframe of raw toolbox data
     """
-    return generic_fetch_toolbox_data(cat_toolbox_rawdata_files)
+    return generic_fetch_toolbox_data(cat_toolbox_rawdata_files, fix_typos_map)
 
 
-def fetch_toolbox_score_data() -> pd.DataFrame:
+def fetch_toolbox_score_data(fix_typos_map: dict) -> pd.DataFrame:
     """Get DataFrame containing toolbox data from score files for all sites
+
+    Args:
+        fix_typos_map: a dictionary with the keys being the typos and the values being the correct values
 
     Returns:
         dataframe of score toolbox data
     """
-    return generic_fetch_toolbox_data(cat_toolbox_score_files)
+    return generic_fetch_toolbox_data(cat_toolbox_score_files, fix_typos_map)
 
 
 def gen_fixtypos_map(aabc_vs_qint):
@@ -389,13 +404,8 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    toolbox_df = fetch_toolbox_raw_data()
-
-    # remove files known to be duds.
-    toolbox_df = remove_test_subjects(toolbox_df, "PIN")
-
     fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
-    toolbox_df.PIN.replace(fix_typos_map, inplace=True)
+    toolbox_df = fetch_toolbox_raw_data(fix_typos_map)
 
     # drop duplicates for purpose of generating QC flags.
     toolbox_df = toolbox_df.drop_duplicates(subset="PIN").copy()
@@ -408,9 +418,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
 
     ##fixtypos in Scores file now
-    dffull = fetch_toolbox_score_data()
-    dffull = remove_test_subjects(dffull, "PIN")
-    dffull.PIN.replace(fix_typos_map, inplace=True)
+    dffull = fetch_toolbox_score_data(fix_typos_map)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
