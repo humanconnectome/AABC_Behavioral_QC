@@ -481,17 +481,19 @@ def code_block_4(aabc_inventory_5):
     # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
-    anydata = set()
+    asa24ids = set()
+    already_visited = set()
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
         files_df = list_files_in_box_folders(box_folder_id)
         save_cache()
         for file_id in files_df.fileid:
             k = box.read_csv(file_id)
-            anydata.update(k.UserName)
+            asa24ids.update(k.UserName)
+        already_visited.update(files_df.itertuples(index=False, name=None))
 
-    AD = pd.DataFrame(anydata, columns=["asa24id"])
-    aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left")
+    AD = pd.DataFrame(asa24ids, columns=["asa24ids"])
+    aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24ids", how="left")
     aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
     qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
     code_block_5(aabc_inventory_6)
