@@ -405,6 +405,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
+    # TODO: resume petra paired programming here
     tb_raw_df = fetch_toolbox_raw_data(fix_typos_map)
 
     # drop duplicates for purpose of generating QC flags.
@@ -441,18 +442,16 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
     # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
     # find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
+    # TODO: ❓ below
     tbx_score_df["Date"] = tbx_score_df.DateFinished.str.split(" ", expand=True)[0]
 
     # add subject and visit
-    scores2 = tbx_score_df.drop_duplicates(subset="PIN").copy()
-    scores2["redcap_event"] = scores2.PIN.str.split("_", expand=True)[1]
-    scores2["subject"] = scores2.PIN.str.split("_", expand=True)[0]
-    scores2["redcap_event"] = scores2.PIN.str.split("_", expand=True)[1]
+    scores2 = tbx_score_df.PIN.drop_duplicates().str.extract("^(?P<PIN>(?P<subject>.+?)_(?P<redcap_event>.+))$")
 
     # now merge with inventory
     pre_aabc_inventory_5 = pd.merge(
         aabc_inventory_plus_qint,
-        scores2[["subject", "redcap_event", "PIN"]],
+        scores2,
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
