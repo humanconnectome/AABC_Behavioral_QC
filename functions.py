@@ -274,15 +274,15 @@ def toolbox_to_dataframe(text_content: str) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def filterdupass(instrument, dupvar, iset, dset):
-    fixass = iset[["subject", "redcap_event", dupvar]].copy()
+def filterdupass(instrument, fieldX, right_df, left_df):
+    nonempty_values = right_df[fieldX].notna() & (right_df[fieldX].str.strip() != "")
+    fixass = right_df.loc[nonempty_values].copy()
     fixass["PIN"] = fixass.subject + "_" + fixass.redcap_event
-    fixass = fixass.loc[~(fixass[dupvar] == "")][["PIN", dupvar]]
-    fixass["Assessment Name"] = "Assessment " + fixass[dupvar]
+    fixass = fixass[["PIN", fieldX]].copy()
+    fixass["Assessment Name"] = "Assessment " + fixass[fieldX]
     fixass["Inst"] = instrument
-    dset = pd.merge(dset, fixass, on=["PIN", "Inst", "Assessment Name"], how="left")
-    dset = dset.loc[~(dset[dupvar].isnull() == False)]
-    return dset
+    df = left_df.merge(fixass, on=["PIN", "Inst", "Assessment Name"], how="left")
+    return df
 
 
 def print_error_codes(df: pd.DataFrame) -> None:
