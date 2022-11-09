@@ -1,3 +1,4 @@
+import io
 import subprocess
 from datetime import date
 from typing import List
@@ -250,19 +251,27 @@ def get_list_from_excel_sheet(excel_file_path: str, sheet_name: str) -> List[str
     return df.field_name.to_list()
 
 
-@memofn(expire_in_days=8)
-def toolbox_to_dataframe(text_content):
-    csv = [line.split(",") for line in text_content.strip().splitlines()]
-    df = pd.DataFrame(csv)
+def toolbox_to_dataframe(text_content: str) -> pd.DataFrame:
+    """Convert toolbox string from multiple csv files into a single dataframe
 
-    # First row always contains headers
-    # Promote it to column names
-    df.columns = df.iloc[0]
+    Args:
+        text_content: string of csv files
 
-    # Drop all rows with headers
-    df = df.loc[df.PIN != "PIN"]
+    Returns:
+        A dataframe of the toolbox data
+    """
 
-    return df
+    # split the strings into separate CSV strings
+    delimiter = "PIN,"
+    split_text = [delimiter + x for x in text_content.split(delimiter)][1:]
+
+    # convert strings into pd.DataFrame
+    multiple_dfs = [pd.read_csv(io.StringIO(x)) for x in split_text]
+
+    # Stack the DataFrames vertically
+    df = pd.concat(multiple_dfs, axis=0, ignore_index=True)
+
+    return df.reset_index(drop=True)
 
 
 def filterdupass(instrument, dupvar, iset, dset):
