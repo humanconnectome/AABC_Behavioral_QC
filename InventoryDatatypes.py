@@ -432,7 +432,7 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
     dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"], keep=False)][
         ["PIN", "Assessment Name", "Inst"]
     ]
-    dupass = dupass.loc[~(dupass.Inst.str.upper().str.contains("ASSESSMENT"))]
+    dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)]
 
     # TURN THIS INTO A TICKET
 
