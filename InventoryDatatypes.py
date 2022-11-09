@@ -1,4 +1,7 @@
+import os
 import typing
+
+import yaml
 from memofn import load_cache, save_cache, memofn
 
 load_cache(".cache_memofn")
@@ -481,22 +484,44 @@ def code_block_4(aabc_inventory_5):
     # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
-    asa24ids = set()
-    already_visited = set()
+    already_visited, asa24ids = load_variables_from_yaml()
+
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
         files_df = list_files_in_box_folders(box_folder_id)
         save_cache()
-        for file_id in files_df.fileid:
-            k = box.read_csv(file_id)
+        current = set(files_df.itertuples(index=False, name=None))
+        new = current - already_visited
+        for filename, fileid, sha1 in new:
+            k = box.read_csv(fileid)
             asa24ids.update(k.UserName)
-        already_visited.update(files_df.itertuples(index=False, name=None))
+            already_visited.add((filename, fileid, sha1))
+
+    save_variables_to_yaml(already_visited, asa24ids)
 
     AD = pd.DataFrame(asa24ids, columns=["asa24ids"])
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24ids", how="left")
     aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
     qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
     code_block_5(aabc_inventory_6)
+
+
+def save_variables_to_yaml(already_visited, asa24ids):
+    with open("asa24_cached_data.yml", "w") as f:
+        already_visited = sorted(list(x) for x in already_visited)
+        yaml.dump({"asa24ids": sorted(asa24ids), "already_visited": already_visited}, f)
+
+
+def load_variables_from_yaml():
+    if not os.path.isfile("asa24_cached_data.yml"):
+        asa24ids = set()
+        already_visited = set()
+    else:
+        with open("asa24_cached_data.yml", "r") as f:
+            y = yaml.safe_load(f)
+        asa24ids = set(y["asa24ids"])
+        already_visited = set(tuple(row) for row in y["already_visited"])
+    return already_visited, asa24ids
 
 
 def code_block_5(aabc_inventory_6):
