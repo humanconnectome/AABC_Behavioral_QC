@@ -234,6 +234,10 @@ def cron_job_1(qint_df: pd.DataFrame, qint_api_token) -> None:
         )
 
 
+# TODO: TODAY run on airflow every sunday at 6AM CT
+# cron_job_qint(qint_df, qint_api_token)
+
+
 def code_block_2(aabc_inventory, qint_api_token):
     #########################################################################################
     # PHASE 1 Test that all dataypes expected are present
@@ -301,10 +305,6 @@ def code_block_2(aabc_inventory, qint_api_token):
         token=qint_api_token,
         report_id="51037",
     )
-    qint_df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
-
-    cron_job_1(qint_df, qint_api_token)
-
     # QC checks
     # now check
     qint_df2 = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
@@ -312,7 +312,7 @@ def code_block_2(aabc_inventory, qint_api_token):
     qint_df2["redcap_event"] = "V" + qint_df2.visit
     qint_df2 = remove_test_subjects(qint_df2, "subjectid")
     # Before merging, check for duplicates that haven't been given the 'unusable' flag
-    qc_duplicate_qint_records(qint_df)
+    qc_duplicate_qint_records(qint_df2)
 
     aabc_vs_qint = pd.merge(
         aabc_inventory[keeplist],
