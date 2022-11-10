@@ -573,21 +573,15 @@ def psychopy_code_block(inventoryaabc6):
     psychopy_files_list = []
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["Psychopy"][site_accronym]
-        dbitems = list_files_in_box_folders(box_folder_id)
+        intradb_df = list_files_in_box_folders(box_folder_id)
         save_cache()
-        for fname in dbitems.filename:
+        fn = intradb_df.filename
+        parts_of_fn = fn.str.extract("(?P<PIN_AB>(?P<subject>HCA\d+)_(?P<redcap_event>V\d)_(?P<scan>[A-Z]))")
 
-            # TODO: exclude practice runs from snapshot like 'CARIT_HCA8860898_V3_run0_2022-09-21_111428_design.csv'
-            search_result = re.search("(HCA\d+_V\d_[A-Z])", fname)
-            if not search_result:
-                print(fname)
-                continue
-            subjvscan = search_result.groups()[0]
-            l2 = subjvscan.split("_")
-            row = l2 + [fname]
-            psychopy_files_list.append(row)
-
-    pyschopy_files_df = pd.DataFrame(psychopy_files_list)
+        # 4 fields = filename, PIN_AB, subject, redcap_event, scan
+        df = pd.concat([fn, parts_of_fn], axis=1)
+        psychopy_files_list.append(df)
+    psychopy_df = pd.concat(psychopy_files_list)
 
     pyschopy_files_df.columns = ["subject", "redcap_event", "scan", "fname"]
     checkIDB = pyschopy_files_df[["subject", "redcap_event", "scan"]]
