@@ -427,12 +427,12 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
         instrument_name="NIH Toolbox Words-In-Noise Test Age 6+ v2.1",
     )
 
-    # find any non-identical duplicated Assessments still in data after patch
+    # drop identical rows
     tbx_score_df.drop_duplicates(inplace=True)
-    dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
-    dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)].copy()
+    # but find duplicates that match on "PIN" and "Inst" fields
+    duplicate_assessments = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
     register_tickets(
-        dupass,
+        duplicate_assessments,
         "ORANGE",
         "Duplicate assessment in toolbox",
         # TODO: Add a code number here:
