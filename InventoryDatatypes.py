@@ -469,20 +469,19 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
 def asa24_code_block(aabc_inventory_5):
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
     cache_file = "asa24_cached_data.yml"
-    already_visited, asa24ids = load_set_from_yaml(cache_file)
+    asa24_dict = load_dict_from_yaml(cache_file)
 
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
-        files_df = list_files_in_box_folders(box_folder_id)
+        files_dict = box.list_of_files([box_folder_id])
         save_cache()
-        current = set(files_df.itertuples(index=False, name=None))
-        new = current - already_visited
-        for filename, fileid, sha1 in new:
+        not_yet_visited = set(files_dict.keys()) - set(asa24_dict.keys())
+        for fileid in not_yet_visited:
             k = box.read_csv(fileid)
-            asa24ids.update(k.UserName)
-            already_visited.add((filename, fileid, sha1))
+            asa24_dict[fileid] = k.UserName.unique().tolist()
 
-    save_set_to_yaml(already_visited, asa24ids, cache_file)
+    save_dict_to_yaml(asa24_dict, cache_file)
+    asa24ids = [id_ for id_list in asa24_dict.values() for id_ in id_list]
 
     AD = pd.DataFrame(asa24ids, columns=["asa24id"])
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left", indicator=True)
@@ -492,38 +491,33 @@ def asa24_code_block(aabc_inventory_5):
     actigraphy_code_block(aabc_inventory_6)
 
 
-def save_set_to_yaml(already_visited: T.Set[T.Tuple[str]], values: T.Set[str], cache_filename: str) -> None:
-    """Save the sets of values and already_visisted to a yaml file.
-
-    Args:
-        already_visited: The tuples of (filename, fileid, sha1) that have already been visited.
-        values: The set of values to save.
-        cache_filename: The YAML file to save the values to.
-    """
-
-    with open(cache_filename, "w") as f:
-        yaml.dump(dict(values=sorted(values), already_visited=sorted(list(x) for x in already_visited)), f)
-
-
-def load_set_from_yaml(cache_filename: str) -> T.Tuple[T.Set[T.Tuple[str]], T.Set[str]]:
-    """Load the sets of `values` and `already_visisted` from a yaml file.
+def load_dict_from_yaml(cache_filename: str) -> T.Dict[str, T.Any]:
+    """Load from YAML file the dictionary of `values` with Box file ids as keys.
 
     Args:
         cache_filename: The YAML file to load the values from.
 
     Returns:
-        already_visited: The tuples of (filename, fileid, sha1) that have already been visited.
-        values: The set of values
+        values: The dictionary of values
     """
     if not os.path.isfile(cache_filename):
-        values = set()
-        already_visited = set()
+        return dict()
     else:
         with open(cache_filename, "r") as f:
-            y = yaml.safe_load(f)
-        values = set(y["values"])
-        already_visited = set(tuple(row) for row in y["already_visited"])
-    return already_visited, values
+            values = yaml.safe_load(f)
+        return values
+
+
+def save_dict_to_yaml(values: T.Dict[str, T.Any], cache_filename: str) -> None:
+    """Save the dictionary of values to a yaml file.
+
+    Args:
+        values: The dictionary of values to save.
+        cache_filename: The YAML file to save the values to.
+    """
+
+    with open(cache_filename, "w") as f:
+        yaml.dump(values, f)
 
 
 def actigraphy_code_block(aabc_inventory_6):
