@@ -549,6 +549,7 @@ def actigraphy_code_block(aabc_inventory_6):
     inventoryaabc6["has_actigraphy_data"] = inventoryaabc6._merge != "left_only"
 
     qc_missing_actigraphy_data_in_box(inventoryaabc6)
+    inventoryaabc6.drop("_merge", axis=1, inplace=True)
 
     psychopy_code_block(inventoryaabc6)
 
