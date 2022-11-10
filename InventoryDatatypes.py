@@ -589,24 +589,16 @@ def psychopy_code_block(inventoryaabc6):
     ci = checkIDB.drop_duplicates(subset="PIN_AB")
 
     # just check for existence of PsychoPY in IntraDB
-    # /ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
-    psychointradb4 = list_psychopy_subjects("AABC_WU_ITK")
-    psychointradb3 = list_psychopy_subjects("AABC_UMN_ITK")
-    psychointradb2 = list_psychopy_subjects("AABC_UCLA_ITK")
-    psychointradb1 = list_psychopy_subjects("AABC_MGH_ITK")
-
-    df4 = pd.DataFrame(str.splitlines(psychointradb4))
-    df4 = df4[0].str.split(",", expand=True)
-    df3 = pd.DataFrame(str.splitlines(psychointradb3))
-    df3 = df3[0].str.split(",", expand=True)
-    # df2 = pd.DataFrame(str.splitlines(psychointradb2))
-    # df2 = df2[0].str.split(',', expand=True)
-    df1 = pd.DataFrame(str.splitlines(psychointradb1))
-    df1 = df1[0].str.split(",", expand=True)
-
-    df = pd.concat([df1, df3, df4], axis=0)  # df2,
-    df.columns = ["PIN_AB"]
-    df.PIN_AB = df.PIN_AB.str.replace("t", "")
+    psychopy_subjects_on_intradb = "\n".join(
+        [
+            list_psychopy_subjects("AABC_WU_ITK").strip(),
+            list_psychopy_subjects("AABC_UMN_ITK").strip(),
+            list_psychopy_subjects("AABC_UCLA_ITK").strip(),
+            list_psychopy_subjects("AABC_MGH_ITK").strip(),
+        ]
+    )
+    # remove test suffix
+    psychopy_subjects_on_intradb = psychopy_subjects_on_intradb.replace("t", "")
 
     # merge df (intradb) and ci (Box) to see what's missing - one of these is redundant with the check against AABC...
     psymiss = pd.merge(ci, df, on="PIN_AB", how="outer", indicator=True)
