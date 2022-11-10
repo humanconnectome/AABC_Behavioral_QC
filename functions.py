@@ -280,8 +280,9 @@ def filterdupass(main_df: pd.DataFrame, dups_df: pd.DataFrame, dups_field: str, 
     fixed_values_df["PIN"] = fixed_values_df.subject + "_" + fixed_values_df.redcap_event
     fixed_values_df["Inst"] = instrument_name
     fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[dups_field]
-    subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field, "event_date", "subject_id", "site"]]
-    df = main_df.merge(subset_df, on=["PIN", "Inst", "Assessment Name"], how="left")
+    subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field]]
+    df = main_df.merge(subset_df, on=["PIN", "Inst", "Assessment Name"], how="left", indicator=True)
+    df = df.loc[df._merge == "left_only"].drop(columns=["_merge", dups_field])
     return df
 
 
