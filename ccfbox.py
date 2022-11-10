@@ -84,9 +84,10 @@ class LifespanBox:
             for i in items:
                 if i.type == "file":
                     if i.name.endswith(includes_file_extension):
-                        files[i.id] = {
+                        int_id = int(i.id)
+                        files[int_id] = {
                             "filename": i.name,
-                            "fileid": i.id,
+                            "fileid": int_id,
                             "sha1": i.sha1,
                         }
                 elif i.type == "folder":
