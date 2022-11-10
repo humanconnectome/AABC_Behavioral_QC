@@ -662,7 +662,7 @@ def qc_visit_summary_incomplete(vinventoryaabc7):
             "event_date",
         ]
     ]
-    summv = summv.loc[~(summv.visit_summary_complete == "2")]
+    summv = summv.loc[summv.visit_summary_complete != "2"]
     register_tickets(summv, "GREEN", "Visit Summary Incomplete", "AE2001")
 
 
