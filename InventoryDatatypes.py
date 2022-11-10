@@ -409,7 +409,7 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
     fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
-    # TODO: resume petra paired programming here
+    # This tb_raw_df is what is going to go to the snapshot, after dates are removed.
     tb_raw_df = fetch_toolbox_raw_data(fix_typos_map)
 
     # drop duplicates for purpose of generating QC flags.
