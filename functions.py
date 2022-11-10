@@ -603,39 +603,28 @@ def qc_toolbox_pins_not_in_aabc(missing_pins_in_aabc_df):
 
 def qc_missing_toolbox_data(aabc_inventory_5):
     # Look for missing IDs
-    missing_toolbox_df = aabc_inventory_5.loc[is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_tlbx_data]
-    missing_toolbox_df = missing_toolbox_df[["subject", "redcap_event", "site", "event_date", "nih_toolbox_collectyn"]]
+    missing_toolbox_df = aabc_inventory_5.loc[
+        is_v_event(aabc_inventory_5)
+        & (~aabc_inventory_5.has_tlbx_data)
+        & (aabc_inventory_5.nih_toolbox_collectyn != "0")
+    ]
     register_tickets(missing_toolbox_df, "ORANGE", "Missing TLBX data", "AE2001")
 
 
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
-    missingAD = aabc_inventory_6.loc[is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data]
-    missingAD = missingAD.loc[~(missingAD.asa24yn == "0")]
-    a1 = missingAD[
-        [
-            "subject_id",
-            "subject",
-            "study_id",
-            "redcap_event",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-            "asa24yn",
-            "asa24id",
-        ]
+    missingAD = aabc_inventory_6.loc[
+        is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data & (aabc_inventory_6.asa24yn != "0")
     ]
     register_tickets(
-        a1, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
+        missingAD, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
     )
 
 
 def qc_missing_actigraphy_data_in_box(inventoryaabc6):
     # Missing?
-    missingAct = inventoryaabc6.loc[is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data]
-    missingAct = missingAct.loc[~(missingAct.actigraphy_collectyn == "0")]
+    missingAct = inventoryaabc6.loc[
+        is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data & (inventoryaabc6.actigraphy_collectyn != "0")
+    ]
     a2 = missingAct[
         [
             "subject_id",
