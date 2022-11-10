@@ -428,10 +428,9 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     )
 
     # find any non-identical duplicated Assessments still in data after patch
-    dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"], keep=False)][
-        ["PIN", "Assessment Name", "Inst"]
-    ]
-    dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)]
+    tbx_score_df.drop_duplicates(inplace=True)
+    dupass = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
+    dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)].copy()
     register_tickets(
         dupass,
         "ORANGE",
