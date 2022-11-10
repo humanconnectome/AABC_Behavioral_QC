@@ -280,7 +280,7 @@ def filterdupass(main_df: pd.DataFrame, dups_df: pd.DataFrame, dups_field: str, 
     fixed_values_df["PIN"] = fixed_values_df.subject + "_" + fixed_values_df.redcap_event
     fixed_values_df["Inst"] = instrument_name
     fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[dups_field]
-    subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field]]
+    subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field, "event_date", "subject_id", "site"]]
     df = main_df.merge(subset_df, on=["PIN", "Inst", "Assessment Name"], how="left")
     return df
 
@@ -582,7 +582,7 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
     scored = set(scored_df.PIN)
     raw = set(raw_df.PIN)
     register_tickets(
-        scored_df[scored_df.PIN.isin(scored - raw)].rename(columns={"DateFinished": "event_date"}),
+        scored_df[scored_df.PIN.isin(scored - raw)],
         "ORANGE",
         "Raw data not found (make sure you didn't export Narrow format)",
         "AE5001",
