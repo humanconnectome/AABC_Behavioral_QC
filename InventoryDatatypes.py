@@ -569,23 +569,32 @@ def psychopy_code_block(inventoryaabc6):
     # 4. DONT dump or snapshot.  Leave data in IntraDB.
 
     site_accronym = "WU"
-    folder_queue = ["WU", "MGH", "UMN"]  # UCLE
+    folder_queue = ["WU", "MGH", "UMN"]  # UCLA
+
+    # TODO: cache results to yaml
 
     # scan Box
-    anydata = pd.DataFrame()
+    psychopy_files_list = []
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["Psychopy"][site_accronym]
         dbitems = list_files_in_box_folders(box_folder_id)
+        save_cache()
         for fname in dbitems.filename:
-            subjvscan = fname[fname.find("HCA") : fname.find("HCA") + 15]
+
+            # TODO: exclude practice runs from snapshot like 'CARIT_HCA8860898_V3_run0_2022-09-21_111428_design.csv'
+            search_result = re.search("(HCA\d+_V\d_[A-Z])", fname)
+            if not search_result:
+                print(fname)
+                continue
+            subjvscan = search_result.groups()[0]
             l2 = subjvscan.split("_")
             row = l2 + [fname]
-            print(row)
-            rowfor = pd.DataFrame(row).transpose()
-            anydata = pd.concat([anydata, rowfor])
+            psychopy_files_list.append(row)
 
-    anydata.columns = ["subject", "redcap_event", "scan", "fname"]
-    checkIDB = anydata[["subject", "redcap_event", "scan"]]
+    pyschopy_files_df = pd.DataFrame(psychopy_files_list)
+
+    pyschopy_files_df.columns = ["subject", "redcap_event", "scan", "fname"]
+    checkIDB = pyschopy_files_df[["subject", "redcap_event", "scan"]]
     checkIDB["PIN_AB"] = checkIDB.subject + "_" + checkIDB.redcap_event + "_" + checkIDB.scan
     ci = checkIDB.drop_duplicates(subset="PIN_AB")
 
