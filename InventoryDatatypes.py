@@ -415,12 +415,6 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # drop duplicates for purpose of generating QC flags.
     tb_raw_df = tb_raw_df.drop_duplicates(subset="PIN").copy()
 
-    # NOW THE SCORED DATA
-    # THERE IS A SUBJECT HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE HCA8596099_V3...FIX before 2023
-    # still not sure how to get filename next to the contents of the file, given the fact that there are spaces in the name. Bleh
-    # this is close, but wont work for case of multipe PINs in a single file
-    # find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data -type f -name "*Score*" -print0 | while IFS= read -r -d '' file; do echo "${file}," && head -2 "$file" | tail -1; done
-    # cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/"2022-09-07 10.04.20 Assessment Scores.csv_10.27.127.241_2022-09-07T10:04:36.2-05:00_olivera" | grep HCA8596099_V3 | sed 's/HCA8596099_V3/HCA8596099_V2/g'
     tbx_score_df = fetch_toolbox_score_data(fix_typos_map)
 
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
@@ -447,12 +441,6 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     )
 
     qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
-
-    # DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
-    # identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
-    # find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
-    # TODO: ❓ below
-    tbx_score_df["Date"] = tbx_score_df.DateFinished.str.split(" ", expand=True)[0]
 
     # add subject and visit
     scores2 = tbx_score_df.PIN.drop_duplicates().str.extract("^(?P<PIN>(?P<subject>.+?)_(?P<redcap_event>.+))$")
