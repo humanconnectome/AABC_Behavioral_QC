@@ -39,7 +39,7 @@ from functions import (
     qc_missing_toolbox_data,
     qc_unable_to_locate_asa24_id_in_redcap_or_box,
     qc_missing_actigraphy_data_in_box,
-    qc_psychopy_not_found_in_box_or_intradb,
+    qc_psychopy_not_found_in_neither_box_nor_intradb,
     qc_redcap_missing_counterbalance,
     qc_visit_summary_incomplete,
     is_v_event,
@@ -665,15 +665,15 @@ def psychopy_code_block(inventoryaabc6):
     PSY2["has_psychopy_data"] = True
     inventoryaabc7 = pd.merge(inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True)
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
-    vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
-    qc_psychopy_not_found_in_box_or_intradb(vinventoryaabc7)
+    aabc_visits = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
+    qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits)
     qc_redcap_missing_counterbalance(inventoryaabc7)
     qc_hot_flash_data()
     qc_vns_data()
     qc_bunk_ids_in_psychopy_and_actigraphy()
-    qc_visit_summary_incomplete(vinventoryaabc7)
-    qc_age_in_v_events(vinventoryaabc7)
-    qc_bmi_in_v_events(vinventoryaabc7)
+    qc_visit_summary_incomplete(aabc_visits)
+    qc_age_in_v_events(aabc_visits)
+    qc_bmi_in_v_events(aabc_visits)
 
 
 toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint)

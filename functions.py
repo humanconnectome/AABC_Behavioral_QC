@@ -641,21 +641,8 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
     register_tickets(a2, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001")
 
 
-def qc_psychopy_not_found_in_box_or_intradb(inventoryaabc7):
-    missingPY = inventoryaabc7.loc[
-        ~inventoryaabc7.has_psychopy_data,
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-            "has_psychopy_data",
-        ],
-    ]
+def qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits):
+    missingPY = aabc_visits.loc[~aabc_visits.has_psychopy_data]
     register_tickets(missingPY, "ORANGE", "PsychoPy cannot be found in BOX or IntraDB", "AE4001")
 
 
