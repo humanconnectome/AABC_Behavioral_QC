@@ -595,8 +595,6 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
 
 
 def qc_toolbox_pins_not_in_aabc(missing_pins_in_aabc_df):
-    # find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
-    # turn this into a ticket
     register_tickets(
         missing_pins_in_aabc_df, "ORANGE", "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?", "AE1001"
     )
