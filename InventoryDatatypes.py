@@ -1,5 +1,5 @@
 import os
-import typing
+import typing as T
 
 import yaml
 from memofn import load_cache, save_cache, memofn
@@ -335,7 +335,7 @@ def qint_code_block(aabc_inventory, qint_api_token):
 aabc_vs_qint, aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
 
 
-def generic_fetch_toolbox_data(specific_toolbox_fn: typing.Callable, fix_typos_map: dict) -> pd.DataFrame:
+def generic_fetch_toolbox_data(specific_toolbox_fn: T.Callable, fix_typos_map: dict) -> pd.DataFrame:
     """Fetches the csv files using the specific_toolbox_fn and returns a dataframe with the data
 
     Args:
@@ -468,7 +468,8 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
 
 def asa24_code_block(aabc_inventory_5):
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
-    already_visited, asa24ids = load_variables_from_yaml()
+    cache_file = "asa24_cached_data.yml"
+    already_visited, asa24ids = load_set_from_yaml(cache_file)
 
     for site_accronym in folder_queue:
         box_folder_id = config["NonQBox"]["ASA24"][site_accronym]
@@ -481,7 +482,7 @@ def asa24_code_block(aabc_inventory_5):
             asa24ids.update(k.UserName)
             already_visited.add((filename, fileid, sha1))
 
-    save_variables_to_yaml(already_visited, asa24ids)
+    save_set_to_yaml(already_visited, asa24ids, cache_file)
 
     AD = pd.DataFrame(asa24ids, columns=["asa24id"])
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left", indicator=True)
@@ -491,22 +492,38 @@ def asa24_code_block(aabc_inventory_5):
     actigraphy_code_block(aabc_inventory_6)
 
 
-def save_variables_to_yaml(already_visited, asa24ids):
-    with open("asa24_cached_data.yml", "w") as f:
-        already_visited = sorted(list(x) for x in already_visited)
-        yaml.dump({"asa24ids": sorted(asa24ids), "already_visited": already_visited}, f)
+def save_set_to_yaml(already_visited: T.Set[T.Tuple[str]], values: T.Set[str], cache_filename: str) -> None:
+    """Save the sets of values and already_visisted to a yaml file.
+
+    Args:
+        already_visited: The tuples of (filename, fileid, sha1) that have already been visited.
+        values: The set of values to save.
+        cache_filename: The YAML file to save the values to.
+    """
+
+    with open(cache_filename, "w") as f:
+        yaml.dump(dict(values=sorted(values), already_visited=sorted(list(x) for x in already_visited)), f)
 
 
-def load_variables_from_yaml():
-    if not os.path.isfile("asa24_cached_data.yml"):
-        asa24ids = set()
+def load_set_from_yaml(cache_filename: str) -> T.Tuple[T.Set[T.Tuple[str]], T.Set[str]]:
+    """Load the sets of `values` and `already_visisted` from a yaml file.
+
+    Args:
+        cache_filename: The YAML file to load the values from.
+
+    Returns:
+        already_visited: The tuples of (filename, fileid, sha1) that have already been visited.
+        values: The set of values
+    """
+    if not os.path.isfile(cache_filename):
+        values = set()
         already_visited = set()
     else:
-        with open("asa24_cached_data.yml", "r") as f:
+        with open(cache_filename, "r") as f:
             y = yaml.safe_load(f)
-        asa24ids = set(y["asa24ids"])
+        values = set(y["values"])
         already_visited = set(tuple(row) for row in y["already_visited"])
-    return already_visited, asa24ids
+    return already_visited, values
 
 
 def actigraphy_code_block(aabc_inventory_6):
