@@ -600,61 +600,35 @@ def psychopy_code_block(inventoryaabc6):
     # remove test suffix
     psychopy_subjects_on_intradb = psychopy_subjects_on_intradb.replace("t", "")
 
-    # merge df (intradb) and ci (Box) to see what's missing - one of these is redundant with the check against AABC...
-    psymiss = pd.merge(ci, df, on="PIN_AB", how="outer", indicator=True)
-    print("psychopy in BOX but not in IntraDB")
-    for i in psymiss.loc[psymiss._merge == "left_only"].PIN_AB.unique():
-        print(i)
-    p1 = pd.DataFrame(psymiss.loc[psymiss._merge == "left_only"].PIN_AB.unique())
-    p1["code"] = "ORANGE"
-    p1["reason"] = "Psychopy Data Found in Box but not IntraDB"
+    in_intradb = set(psychopy_subjects_on_intradb.splitlines()) - set("")
+    in_box = set(psychopy_df.PIN_AB)
 
-    # p2=pd.DataFrame()
-    p2 = []
-    print("psychopy in IntraDB but not in Box")
-    for i in psymiss.loc[psymiss._merge == "right_only"].PIN_AB.unique():
-        print(i)
-    p2 = pd.DataFrame(psymiss.loc[psymiss._merge == "right_only"].PIN_AB.unique())
-    p2["code"] = "ORANGE"
-    p2["reason"] = "Psychopy Data Found in IntraDB but not Box"
+    # TODO: Ask if it is okay to drop the scan, for merging purposes with `inventoryaabc6`? By losing scan, in_intradb goes from 88->47, in_box 108->57 due to _A/_B merging into a single value
+    in_intradb = set(x.rsplit("_", 1)[0] for x in in_intradb)
+    in_box = set(x.rsplit("_", 1)[0] for x in in_box)
 
-    p = pd.concat([p1, p2])  # ,columns='PIN_AB')
-    p["PIN"] = p[0].str[:13]
-    p["PIN_AB"] = p[0]
-    p["subject_id"] = p[0].str[:10]
-    p["subject"] = p[0].str[:10]
-    pwho = pd.merge(
-        inventoryaabc6.loc[is_v_event(inventoryaabc6, "redcap_event")].drop(columns=["subject_id", "subject"]),
-        p,
-        on="PIN",
-        how="right",
+    inventoryaabc6["PIN"] = inventoryaabc6.subject + "_" + inventoryaabc6.redcap_event
+
+    register_tickets(
+        inventoryaabc6[inventoryaabc6.PIN.isin(in_box - in_intradb)],
+        "ORANGE",
+        "PsychoPy data is in Box but not in IntraDB",
+        # TODO: Add an error_code
+        "",
     )
-    pwho = pwho[
-        [
-            "subject",
-            "subject_id",
-            "study_id",
-            "redcap_event",
-            "redcap_event_name",
-            "site",
-            "reason",
-            "code",
-            "v0_date",
-            "event_date",
-            "PIN_AB",
-        ]
-    ]
-    # TODO: register_ticket for pwho or better yet, the components of pwho (p1 and p2)
 
-    # dont worry about duplicates in IntraDB - these will be filtered.
-    # find subjects in AABC but not in IntraDB or BOX
-    PSY2 = psymiss.drop_duplicates(subset="subject")[["subject", "redcap_event"]]
-    PSY2["has_psychopy_data"] = True
-    inventoryaabc7 = pd.merge(inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True)
-    inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
-    aabc_visits = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
+    register_tickets(
+        inventoryaabc6[inventoryaabc6.PIN.isin(in_intradb - in_box)],
+        "ORANGE",
+        "PsychoPy data is in IntraDB but not in Box",
+        # TODO: Add an error_code
+        "",
+    )
+
+    inventoryaabc6["has_psychopy_data"] = ~inventoryaabc6.PIN.isin(in_box | in_intradb)
+    aabc_visits = inventoryaabc6.loc[is_v_event(inventoryaabc6)].copy()
     qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits)
-    qc_redcap_missing_counterbalance(inventoryaabc7)
+    qc_redcap_missing_counterbalance(inventoryaabc6)
     qc_hot_flash_data()
     qc_vns_data()
     qc_bunk_ids_in_psychopy_and_actigraphy()
