@@ -481,14 +481,10 @@ def asa24_code_block(aabc_inventory_5):
             asa24_dict[fileid] = k.UserName.unique().tolist()
 
     save_dict_to_yaml(asa24_dict, cache_file)
-    asa24ids = [id_ for id_list in asa24_dict.values() for id_ in id_list]
-
-    AD = pd.DataFrame(asa24ids, columns=["asa24id"])
-    aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left", indicator=True)
-    aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
-    qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
-    aabc_inventory_6.drop(columns=["_merge"], inplace=True)
-    actigraphy_code_block(aabc_inventory_6)
+    asa24ids = set(ID for id_list in asa24_dict.values() for ID in id_list)
+    aabc_inventory_5["has_asa24_data"] = aabc_inventory_5.asa24id.isin(asa24ids)
+    qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5)
+    actigraphy_code_block(aabc_inventory_5)
 
 
 def load_dict_from_yaml(cache_filename: str) -> T.Dict[str, T.Any]:

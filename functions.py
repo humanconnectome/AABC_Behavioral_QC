@@ -611,10 +611,10 @@ def qc_missing_toolbox_data(aabc_inventory_5):
     register_tickets(missing_toolbox_df, "ORANGE", "Missing TLBX data", "AE2001")
 
 
-def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6):
-    missingAD = aabc_inventory_6.loc[
-        is_v_event(aabc_inventory_6) & ~aabc_inventory_6.has_asa24_data & (aabc_inventory_6.asa24yn != "0")
-    ]
+def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
+    missingAD = aabc_inventory_5.loc[
+        is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_asa24_data & (aabc_inventory_5.asa24yn != "0")
+        ]
     register_tickets(
         missingAD, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
     )
