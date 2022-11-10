@@ -48,7 +48,6 @@ from functions import (
     qc_bunk_ids_in_psychopy_and_actigraphy,
     qc_age_in_v_events,
     qc_bmi_in_v_events,
-    cron_clean_up_aabc_inventory_for_recruitment_stats,
     register_tickets,
 )
 from config import LoadSettings
@@ -669,7 +668,6 @@ def psychopy_code_block(inventoryaabc6):
     PSY2["has_psychopy_data"] = True
     inventoryaabc7 = pd.merge(inventoryaabc6, PSY2, on=["subject", "redcap_event"], how="left", indicator=True)
     inventoryaabc7["has_psychopy_data"] = inventoryaabc7._merge != "left_only"
-    cron_clean_up_aabc_inventory_for_recruitment_stats(inventoryaabc6, inventoryaabc7)
     vinventoryaabc7 = inventoryaabc7.loc[is_v_event(inventoryaabc7)].copy()
     qc_psychopy_not_found_in_box_or_intradb(vinventoryaabc7)
     qc_redcap_missing_counterbalance(inventoryaabc7)
