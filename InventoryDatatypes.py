@@ -49,6 +49,7 @@ from functions import (
     qc_age_in_v_events,
     qc_bmi_in_v_events,
     cron_clean_up_aabc_inventory_for_recruitment_stats,
+    register_tickets,
 )
 from config import LoadSettings
 
@@ -437,8 +438,13 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
         ["PIN", "Assessment Name", "Inst"]
     ]
     dupass = dupass.loc[~dupass.Inst.str.contains("ASSESSMENT", na=False, case=False)]
-    # TODO:  Turn this into a ticket (current shape of df is 236x3, that's a lot of tickets)
-    dupass
+    register_tickets(
+        dupass,
+        "ORANGE",
+        "Duplicate assessment in toolbox",
+        # TODO: Add a code number here:
+        "",
+    )
 
     qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
 
