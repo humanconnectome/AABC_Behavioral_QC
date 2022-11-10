@@ -279,7 +279,7 @@ def filterdupass(main_df: pd.DataFrame, dups_df: pd.DataFrame, dups_field: str, 
     fixed_values_df = dups_df.loc[nonempty_values].copy()
     fixed_values_df["PIN"] = fixed_values_df.subject + "_" + fixed_values_df.redcap_event
     fixed_values_df["Inst"] = instrument_name
-    fixed_values_df["Assessment Name"] = "Assessment " + fixed_values_df[dups_field]
+    fixed_values_df["Assessment Name"] = fixed_values_df[dups_field]
     subset_df = fixed_values_df[["PIN", "Inst", "Assessment Name", dups_field]]
     df = main_df.merge(subset_df, on=["PIN", "Inst", "Assessment Name"], how="left", indicator=True)
     df = df.loc[df._merge == "left_only"].drop(columns=["_merge", dups_field])
@@ -615,7 +615,7 @@ def qc_missing_toolbox_data(aabc_inventory_5):
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
     missingAD = aabc_inventory_5.loc[
         is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_asa24_data & (aabc_inventory_5.asa24yn != "0")
-        ]
+    ]
     register_tickets(
         missingAD, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
     )
