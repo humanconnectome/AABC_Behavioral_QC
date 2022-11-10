@@ -583,10 +583,10 @@ def psychopy_code_block(inventoryaabc6):
         psychopy_files_list.append(df)
     psychopy_df = pd.concat(psychopy_files_list)
 
-    pyschopy_files_df.columns = ["subject", "redcap_event", "scan", "fname"]
-    checkIDB = pyschopy_files_df[["subject", "redcap_event", "scan"]]
-    checkIDB["PIN_AB"] = checkIDB.subject + "_" + checkIDB.redcap_event + "_" + checkIDB.scan
-    ci = checkIDB.drop_duplicates(subset="PIN_AB")
+    # TODO: Ask if files that don't have `PIN_AB` available should generate tickets? Example includes practice runs like 'CARIT_HCA8860898_V3_run0_2022-09-21_111428_design.csv'
+    bad_file_names = psychopy_df.loc[psychopy_df.PIN_AB.isna(), "filename"]
+    # proceed with good filenames
+    psychopy_df = psychopy_df[psychopy_df.PIN_AB.notna()].drop_duplicates().copy()
 
     # just check for existence of PsychoPY in IntraDB
     psychopy_subjects_on_intradb = "\n".join(
