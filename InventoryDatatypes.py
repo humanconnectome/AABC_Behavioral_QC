@@ -492,8 +492,8 @@ def asa24_code_block(aabc_inventory_5):
 
     save_variables_to_yaml(already_visited, asa24ids)
 
-    AD = pd.DataFrame(asa24ids, columns=["asa24ids"])
-    aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24ids", how="left")
+    AD = pd.DataFrame(asa24ids, columns=["asa24id"])
+    aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24id", how="left", indicator=True)
     aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
     qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
     aabc_inventory_6.drop(columns=["_merge"], inplace=True)
