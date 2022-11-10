@@ -530,27 +530,20 @@ def actigraphy_code_block(aabc_inventory_6):
         print(site_accronym)
         box_folder_id = config["NonQBox"]["Actigraphy"][site_accronym]
         dbitems = list_files_in_box_folders(box_folder_id)
-        actsubs = []
         for fid in dbitems.fileid:
             try:
-                patrn = "Identity"
                 file_one: io.BytesIO = box.read_file_in_memory(fid)
-                variable = file_one.readline(1)
-                if not variable == "":
-                    for l in file_one.readlines():
-                        if re.search(patrn, l):
-                            hcaid = ""
-                            hcaid = l.strip("\n").replace('"', "").split(",")[1]
-                            print("Inner", fid, "has", hcaid)
-                            actsubs = actsubs + [hcaid]
-                file_one.close()
+                text_content = file_one.decode()
+                hcaid = re.search('"(HCA[^"]+)"', text_content).groups()[0]
+                actdata.append(hcaid)
             except:
                 print("Something the matter with file", fid)
-        actdata = actdata + list(actsubs)  # list(set(actsubs))
 
+    save_cache()
     # Duplicates?
     duplicated_actigraphy_records = [item for item, count in collections.Counter(actdata).items() if count > 1]
-    if duplicated_actigraphy_records != "":
+    # TODO: create tickets that get sent to Petra only (by omitting site)
+    if len(duplicated_actigraphy_records) != 0:
         print(
             "Duplicated Actigraphy Record Found:",
             duplicated_actigraphy_records,
