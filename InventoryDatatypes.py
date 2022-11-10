@@ -398,7 +398,7 @@ def gen_fixtypos_map(aabc_vs_qint):
     return fixtypos_map
 
 
-def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
+def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
     # # 2. QC (after incorporating patches)
@@ -470,10 +470,10 @@ def code_block_3(aabc_vs_qint, aabc_inventory_plus_qint):
 
     qc_missing_toolbox_data(aabc_inventory_5)
 
-    code_block_4(aabc_inventory_5)
+    asa24_code_block(aabc_inventory_5)
 
 
-def code_block_4(aabc_inventory_5):
+def asa24_code_block(aabc_inventory_5):
     ### NOW For ASA 24 ######################################################################
     # ORDER
     # 1. scan for data (here just looking for existende)
@@ -503,7 +503,8 @@ def code_block_4(aabc_inventory_5):
     aabc_inventory_6 = pd.merge(aabc_inventory_5, AD, on="asa24ids", how="left")
     aabc_inventory_6["has_asa24_data"] = aabc_inventory_6._merge != "left_only"
     qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_6)
-    code_block_5(aabc_inventory_6)
+    aabc_inventory_6.drop(columns=["_merge"], inplace=True)
+    actigraphy_code_block(aabc_inventory_6)
 
 
 def save_variables_to_yaml(already_visited, asa24ids):
@@ -524,7 +525,7 @@ def load_variables_from_yaml():
     return already_visited, asa24ids
 
 
-def code_block_5(aabc_inventory_6):
+def actigraphy_code_block(aabc_inventory_6):
     #################################################################################
     # ACTIGRAPHY
     ### for now, this is basically the same protocol as for ASA24
@@ -568,12 +569,10 @@ def code_block_5(aabc_inventory_6):
 
     qc_missing_actigraphy_data_in_box(inventoryaabc6)
 
-    code_block_6(inventoryaabc6)
+    psychopy_code_block(inventoryaabc6)
 
 
-def code_block_6(inventoryaabc6):
-    # MOCA SPANISH  #############################################################
-    ## no data yet
+def psychopy_code_block(inventoryaabc6):
 
     ############################################################################
     # Psychopy
@@ -688,7 +687,7 @@ def code_block_6(inventoryaabc6):
     qc_bmi_in_v_events(vinventoryaabc7)
 
 
-code_block_3(aabc_vs_qint, aabc_inventory_plus_qint)
+toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint)
 
 # TO DO
 # HARMONIZE Event Names
