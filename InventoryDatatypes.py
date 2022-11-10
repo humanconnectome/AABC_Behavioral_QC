@@ -467,15 +467,6 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
 
 
 def asa24_code_block(aabc_inventory_5):
-    ### NOW For ASA 24 ######################################################################
-    # ORDER
-    # 1. scan for data (here just looking for existende)
-    # 2. QC ids (after incorporating patches and translating ASAID into AABC id)
-    # 3. generate tickets and send to JIra if don't already exist
-    #  4. send tickets that arent identical to ones already in Jira
-    # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
-    # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
-
     folder_queue = ["WU", "UMN", "MGH"]  # UCLA and MGH not started yet
     already_visited, asa24ids = load_variables_from_yaml()
 
