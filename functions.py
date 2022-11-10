@@ -313,6 +313,7 @@ def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", cri
     n["reason"] = reason
     today = pd.to_datetime(date.today().strftime("%Y-%m-%d"))
     n["issue_age"] = today - pd.to_datetime(n.event_date)
+    # TODO: include `site` from the inventory or iterating on sites, if site is missing, send to Petra at private project
 
     rename_col(n, "subject_id", "subject")
     rename_col(n, "redcap_event_name", "redcap_event")
