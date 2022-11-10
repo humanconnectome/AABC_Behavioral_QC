@@ -647,18 +647,7 @@ def qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits):
 
 
 def qc_redcap_missing_counterbalance(inventoryaabc7):
-    cb = inventoryaabc7.loc[
-        is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == ""),
-        [
-            "site",
-            "study_id",
-            "redcap_event",
-            "redcap_event_name",
-            "subject",
-            "v0_date",
-            "passedscreen",
-        ],
-    ]
+    cb = inventoryaabc7.loc[is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == "")]
     register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
 
 
@@ -678,37 +667,13 @@ def qc_visit_summary_incomplete(vinventoryaabc7):
 
 
 def qc_missing_age(agev):
-    ageav2 = agev.loc[
-        (agev.age_visit.astype(float).isnull() == True),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-            "v0_date",
-        ],
-    ]
+    ageav2 = agev.loc[(agev.age_visit.astype(float).isnull())]
     register_tickets(ageav2, "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
 
 
 def qc_age_outlier(agev):
     ag = agev.loc[agev.age_visit != ""]
-    agemv = ag.loc[
-        (ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "reason",
-            "code",
-            "event_date",
-            "v0_date",
-        ],
-    ]
+    agemv = ag.loc[(ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90)]
     register_tickets(agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
 
 
@@ -771,7 +736,7 @@ def qc_age_in_v_events(vinventoryaabc7):
             "age_visit",
             "event_date",
             "v0_date",
-        ],
+        ]
     ]
     qc_age_outlier(agev)
     qc_missing_age(agev)
