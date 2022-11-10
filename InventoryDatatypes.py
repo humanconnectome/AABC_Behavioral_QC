@@ -275,6 +275,7 @@ def qint_code_block(aabc_inventory, qint_api_token):
         "nih_toolbox_collectyn",
         "nih_toolbox_upload_typo",
         "tlbxwin_dups_v2",
+        "walkendur_dups",
         "actigraphy_collectyn",
         "vms_collectyn",
         "face_complete",
@@ -419,12 +420,8 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # merge with patch fixes (i.e. delete duplicate specified in visit summary)
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
     # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
-    tbx_score_df = filterdupass(
-        tbx_score_df,
-        dups_df=aabc_vs_qint,
-        dups_field="tlbxwin_dups_v2",
-        instrument_name="NIH Toolbox Words-In-Noise Test Age 6+ v2.1",
-    )
+    for instrument_name, _num, dups_field in config["toolbox_stringnumdupvar"]:
+        tbx_score_df = filterdupass(tbx_score_df, aabc_vs_qint, dups_field, instrument_name)
 
     # drop identical rows
     tbx_score_df.drop_duplicates(inplace=True)
