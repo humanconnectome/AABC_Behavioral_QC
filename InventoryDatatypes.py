@@ -517,27 +517,28 @@ def save_dict_to_yaml(values: T.Dict[str, T.Any], cache_filename: str) -> None:
 
 
 def actigraphy_code_block(aabc_inventory_6):
-    #################################################################################
-    # ACTIGRAPHY
-    ### for now, this is basically the same protocol as for ASA24
+    cache_file = "actigraphy_cached_data.yml"
+    actigraphy_dict = load_dict_from_yaml(cache_file)
 
-    # scan BOX
     folder_queue = ["WU", "UMN", "MGH"]  # ,'UCLA']
-    actdata = []
     for site_accronym in folder_queue:
         print(site_accronym)
         box_folder_id = config["NonQBox"]["Actigraphy"][site_accronym]
-        dbitems = list_files_in_box_folders(box_folder_id)
-        for fid in dbitems.fileid:
-            try:
-                file_one: io.BytesIO = box.read_file_in_memory(fid)
-                text_content = file_one.decode()
-                hcaid = re.search('"(HCA[^"]+)"', text_content).groups()[0]
-                actdata.append(hcaid)
-            except:
-                print("Something the matter with file", fid)
+        files_dict = box.list_of_files([box_folder_id])
+        save_cache()
+        not_yet_visited = set(files_dict.keys()) - set(actigraphy_dict.keys())
+        for fileid in not_yet_visited:
+            text_content = box.read_text(fileid)
+            match_result = re.search('"(HCA[^"]+)"', text_content)
+            if not match_result:
+                print("Something is wrong with this file: ", fileid)
+                continue
+            hcaid = match_result.groups()[0]
+            actigraphy_dict[fileid] = hcaid
 
     save_cache()
+    save_dict_to_yaml(actigraphy_dict, cache_file)
+    actdata = list(actigraphy_dict.values())
     # Duplicates?
     duplicated_actigraphy_records = [item for item, count in collections.Counter(actdata).items() if count > 1]
     # TODO: create tickets that get sent to Petra only (by omitting site)
