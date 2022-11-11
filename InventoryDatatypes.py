@@ -653,6 +653,7 @@ def psychopy_code_block(inventoryaabc6):
 
 
 aabc_code_block(api_key["aabcarms"])
+print("Done.")
 # TO DO
 # HARMONIZE Event Names
 # Add filenames to TLBX data

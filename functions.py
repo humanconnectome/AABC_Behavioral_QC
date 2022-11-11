@@ -10,8 +10,6 @@ import requests
 
 from config import *
 
-## get configuration files
-
 config = LoadSettings()
 tickets_dataframe = pd.DataFrame(
     columns=[
@@ -469,8 +467,8 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     )
 
 
-def qc_subject_id_is_not_missing(aabc_inventory):
-    qlist4 = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory.subject == "")]
+def qc_subject_id_is_not_missing(df):
+    qlist4 = df.loc[is_register_event(df) & (df.subject == "")]
     register_tickets(
         qlist4, "REDCap", "RED", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001"
     )
@@ -529,10 +527,8 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
     )
 
 
-def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint):
-    missingQ = aabc_inventory_plus_qint.loc[
-        is_v_event(aabc_inventory_plus_qint) & ~aabc_inventory_plus_qint.has_qint_data
-    ]
+def qc_unable_to_locate_qint_data(df):
+    missingQ = df.loc[is_v_event(df) & ~df.has_qint_data]
     register_tickets(
         missingQ, "RAVLT", "ORANGE", "Unable to locate Q-interactive data for this subject/visit", "AE4001"
     )
@@ -585,22 +581,15 @@ def qc_toolbox_pins_not_in_aabc(missing_pins_in_aabc_df):
     )
 
 
-def qc_missing_toolbox_data(aabc_inventory_5):
-    # Look for missing IDs
-    missing_toolbox_df = aabc_inventory_5.loc[
-        is_v_event(aabc_inventory_5)
-        & (~aabc_inventory_5.has_tlbx_data)
-        & (aabc_inventory_5.nih_toolbox_collectyn != "0")
-    ]
+def qc_missing_toolbox_data(df):
+    missing_toolbox_df = df.loc[is_v_event(df) & (~df.has_tlbx_data) & (df.nih_toolbox_collectyn != "0")]
     register_tickets(missing_toolbox_df, "TLBX", "ORANGE", "Missing TLBX data", "AE2001")
 
 
-def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
-    missingAD = aabc_inventory_5.loc[
-        is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_asa24_data & (aabc_inventory_5.asa24yn != "0")
-    ]
+def qc_unable_to_locate_asa24_id_in_redcap_or_box(df):
+    missing_asa24 = df.loc[is_v_event(df) & ~df.has_asa24_data & (df.asa24yn != "0")]
     register_tickets(
-        missingAD,
+        missing_asa24,
         "ASA24",
         "GREEN",
         "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
@@ -608,12 +597,14 @@ def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
     )
 
 
-def qc_missing_actigraphy_data_in_box(inventoryaabc6):
-    missingAct = inventoryaabc6.loc[
-        is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data & (inventoryaabc6.actigraphy_collectyn != "0")
-    ]
+def qc_missing_actigraphy_data_in_box(df):
+    missing_actigraphy = df.loc[is_v_event(df) & ~df.has_actigraphy_data & (df.actigraphy_collectyn != "0")]
     register_tickets(
-        missingAct, "Actigraphy", "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001"
+        missing_actigraphy,
+        "Actigraphy",
+        "YELLOW",
+        "Unable to locate Actigraphy data in Box for this subject/visit",
+        "AE4001",
     )
 
 
@@ -622,24 +613,14 @@ def qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits):
     register_tickets(missingPY, "PsychoPy", "ORANGE", "PsychoPy cannot be found in BOX or IntraDB", "AE4001")
 
 
-def qc_redcap_missing_counterbalance(inventoryaabc7):
-    cb = inventoryaabc7.loc[is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == "")]
+def qc_redcap_missing_counterbalance(df):
+    cb = df.loc[is_register_event(df) & (df.counterbalance_2nd == "")]
     register_tickets(cb, "REDCap", "RED", "Currently Missing Counterbalance", "AE3001")
 
 
-def qc_visit_summary_incomplete(vinventoryaabc7):
-    summv = vinventoryaabc7[
-        [
-            "study_id",
-            "site",
-            "subject",
-            "redcap_event",
-            "visit_summary_complete",
-            "event_date",
-        ]
-    ]
-    summv = summv.loc[summv.visit_summary_complete != "2"]
-    register_tickets(summv, "REDCap", "GREEN", "Visit Summary Incomplete", "AE2001")
+def qc_visit_summary_incomplete(df):
+    summary_incomplete = df.loc[df.visit_summary_complete != "2"]
+    register_tickets(summary_incomplete, "REDCap", "GREEN", "Visit Summary Incomplete", "AE2001")
 
 
 def qc_missing_age(df):
