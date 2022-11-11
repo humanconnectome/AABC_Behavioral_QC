@@ -6,13 +6,13 @@ from memofn import load_cache, save_cache, memofn
 
 load_cache(".cache_memofn")
 import collections
-import io
 import re
 import pandas as pd
 import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
+from utils.pandas_helpers import fcol
 from ccfbox import LifespanBox
 from functions import (
     memo_get_frame,
