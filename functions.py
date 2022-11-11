@@ -9,7 +9,6 @@ import pandas as pd
 import requests
 
 from config import *
-from utils.redcap_pandas import ffill_empty_strings
 
 ## get configuration files
 
@@ -76,29 +75,6 @@ def get_frame(api_url: str, data: dict) -> pd.DataFrame:
 
 
 memo_get_frame = memofn(get_frame, expire_in_days=1)
-
-
-def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
-    """Prepares a dataframe by doing 3 things:
-    1. Forward filling information (site, subject) from registration event to all other events
-    2. Mapping the raw `redcap_event_name` to `redcap_event`
-
-    Args:
-        aabc_arms_df: Dataframe fresh from redcap
-
-    Returns:
-        A modified dataframe
-    """
-    df = ffill_empty_strings(
-        aabc_arms_df,
-        "site",
-        "subject_id",
-    )
-    df.rename(columns={"subject_id": "subject"}, inplace=True)
-
-    df["redcap_event"] = df.redcap_event_name.replace(config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"])
-    df["PIN"] = df.subject + "_" + df.redcap_event
-    return df
 
 
 def concat(*args):

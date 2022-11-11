@@ -4,6 +4,8 @@ import typing as T
 import yaml
 from memofn import load_cache, save_cache, memofn
 
+from utils.redcap_pandas import ffill_empty_strings
+
 load_cache(".cache_memofn")
 import collections
 import re
@@ -12,11 +14,9 @@ import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
-from utils.pandas_helpers import fcol
 from ccfbox import LifespanBox
 from functions import (
     memo_get_frame,
-    idvisits,
     filterdupass,
     parse_content,
     params_request_report,
@@ -49,6 +49,7 @@ from functions import (
     qc_age_in_v_events,
     qc_bmi_in_v_events,
     register_tickets,
+    config,
 )
 from config import LoadSettings
 
@@ -90,7 +91,7 @@ def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
 # PHASE 0 TEST IDS AND ARMS
 # if Legacy, id exists in HCA and other subject id related tests:
 # Test that #visits in HCA corresponds with cohort in AABC
-def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
+def aabc_code_block(redcap_api_token: str) -> pd.DataFrame:
     """Download the AABC inventory from RedCap.
     This does QC on the subject ids and returns only the cleaned up rows (excludes test subjects).
 
@@ -141,7 +142,16 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
     ]
     aabc_inventory_including_test_subjects = get_aabc_arms_report(redcap_api_token)
     qc_detect_test_subjects_in_production_database(aabc_inventory_including_test_subjects)
-    aabc_inventory = idvisits(aabc_inventory_including_test_subjects)
+    aabc_inventory = ffill_empty_strings(
+        aabc_inventory_including_test_subjects,
+        "site",
+        "subject_id",
+    )
+    aabc_inventory.rename(columns={"subject_id": "subject"}, inplace=True)
+    aabc_inventory["redcap_event"] = aabc_inventory.redcap_event_name.replace(
+        config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"]
+    )
+    aabc_inventory["PIN"] = aabc_inventory.subject + "_" + aabc_inventory.redcap_event
     aabc_inventory = remove_test_subjects(aabc_inventory, "subject")
     aabc_inventory = aabc_inventory[keeplist]
     save_cache()
@@ -639,7 +649,7 @@ def psychopy_code_block(inventoryaabc6):
     qc_bmi_in_v_events(aabc_visits)
 
 
-get_aabc_inventory_from_redcap(api_key["aabcarms"])
+aabc_code_block(api_key["aabcarms"])
 # TO DO
 # HARMONIZE Event Names
 # Add filenames to TLBX data
