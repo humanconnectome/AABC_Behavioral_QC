@@ -102,6 +102,7 @@ def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
     df.subject = df.subject.ffill()
 
     df["redcap_event"] = df.redcap_event_name.replace(config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"])
+    df["PIN"] = df.subject + "_" + df.redcap_event
     return df
 
 
