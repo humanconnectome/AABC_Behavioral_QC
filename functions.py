@@ -432,7 +432,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
         [
             "study_id",
             "redcap_event_name",
-            "subject_id",
+            "subject",
             "legacy_yn",
             "site",
             "v0_date",
@@ -445,8 +445,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     hca_vs_aabc = pd.merge(
         hca_unique_subject_ids,
         aabc_registration_data,
-        left_on="subject",
-        right_on="subject_id",
+        on="subject",
         how="outer",
         indicator=True,
     )
@@ -466,7 +465,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     is_in_both_hca_aabc = hca_vs_aabc._merge == "both"
 
     qlist1 = hca_vs_aabc.loc[
-        is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc["subject_id"].notnull(),
+        is_in_aabc_not_in_hca & is_legacy_id & hca_vs_aabc.subject.notnull(),
     ]
     register_tickets(
         qlist1,
@@ -485,7 +484,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
 
 
 def qc_subject_id_is_not_missing(aabc_inventory):
-    qlist4 = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory["subject_id"] == "")]
+    qlist4 = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory.subject == "")]
     register_tickets(qlist4, "ORANGE", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001")
 
 
@@ -498,7 +497,6 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
             "study_id",
             "redcap_event_name",
             "site",
-            "subject_id",
             "v0_date",
             "event_date",
             "subject",
