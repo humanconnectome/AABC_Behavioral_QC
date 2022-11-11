@@ -577,7 +577,7 @@ def qc_duplicate_qint_records(qint_df):
     dups = qint_df.loc[qint_df.duplicated(subset=["subjectid", "visit"])]
     if dups.empty:
         return
-    dups2 = dups.loc[dups.q_unusable == ""]
+    dups2 = dups
     # TODO: event_date is required, but need to double-check with Petra that this is acceptable date to use
     dups2["event_date"] = dups2.created
     register_tickets(dups2, "ORANGE", "Duplicate Q-interactive records", "AE5001")

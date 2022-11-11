@@ -312,10 +312,9 @@ def qint_code_block(aabc_inventory, qint_api_token):
     # QC checks
     # now check
     qint_df2 = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
-    qint_df2 = qint_df2[["id", "site", "subjectid", "visit"]].copy()
+    qint_df2 = qint_df2.loc[qint_df2.q_unusable == "", ["id", "site", "subjectid", "visit"]].copy()
     qint_df2["redcap_event"] = "V" + qint_df2.visit
     qint_df2 = remove_test_subjects(qint_df2, "subjectid")
-    # Before merging, check for duplicates that haven't been given the 'unusable' flag
     qc_duplicate_qint_records(qint_df2)
 
     aabc_vs_qint = pd.merge(
