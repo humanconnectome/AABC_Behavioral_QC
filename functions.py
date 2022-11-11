@@ -297,7 +297,9 @@ def print_error_codes(df: pd.DataFrame) -> None:
         print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
 
-def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False, coordinator_only:bool = False) -> None:
+def register_tickets(
+    df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False, coordinator_only: bool = False
+) -> None:
     """Register new tickets in the tickets dataframe
 
     Args:
