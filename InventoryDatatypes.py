@@ -325,10 +325,14 @@ def qint_code_block(aabc_inventory, qint_api_token):
         how="outer",
         indicator=True,
     )
-    aabc_vs_qint["has_qint_data"] = aabc_vs_qint._merge != "left_only"
+    # Drop qint records that are not in AABC
     qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint)
+    aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].copy()
 
-    aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].drop(columns=["_merge"])
+    # drop the _merge column
+    aabc_inventory_plus_qint["has_qint_data"] = aabc_inventory_plus_qint._merge == "both"
+    aabc_inventory_plus_qint.drop(columns=["_merge"], inplace=True)
+
     qc_unable_to_locate_qint_data(aabc_inventory_plus_qint)
 
     toolbox_code_block(aabc_inventory_plus_qint)
