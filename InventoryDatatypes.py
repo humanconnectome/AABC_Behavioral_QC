@@ -551,15 +551,9 @@ def actigraphy_code_block(aabc_inventory_6):
         "",
         coordinator_only=True,
     )
-
-    ActD = pd.DataFrame(actdata, columns=["PIN"])
-    inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left", indicator=True)
-    inventoryaabc6["has_actigraphy_data"] = inventoryaabc6._merge != "left_only"
-
-    qc_missing_actigraphy_data_in_box(inventoryaabc6)
-    inventoryaabc6.drop("_merge", axis=1, inplace=True)
-
-    psychopy_code_block(inventoryaabc6)
+    aabc_inventory_6["has_actigraphy_data"] = aabc_inventory_6.PIN.isin(actigraphy_PINs)
+    qc_missing_actigraphy_data_in_box(aabc_inventory_6)
+    psychopy_code_block(aabc_inventory_6)
 
 
 def psychopy_code_block(inventoryaabc6):
