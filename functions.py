@@ -542,14 +542,7 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
 
 def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint):
     missingQ = aabc_inventory_plus_qint.loc[
-        is_v_event(aabc_inventory_plus_qint) & ~aabc_inventory_plus_qint.has_qint_data,
-        [
-            "study_id",
-            "subject",
-            "redcap_event",
-            "site",
-            "event_date",
-        ],
+        is_v_event(aabc_inventory_plus_qint) & ~aabc_inventory_plus_qint.has_qint_data
     ]
     register_tickets(missingQ, "ORANGE", "Unable to locate Q-interactive data for this subject/visit", "AE1001")
 
