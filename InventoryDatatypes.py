@@ -97,10 +97,51 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
     Returns:
         A dataframe with the AABC inventory of participants
     """
+    keeplist = [
+        "actigraphy_collectyn",
+        "age",
+        "age_visit",
+        "asa24id",
+        "asa24yn",
+        "bmi",
+        "completion_mocayn",
+        "counterbalance_1st",
+        "counterbalance_2nd",
+        "dob",
+        "ethnic",
+        "event_date",
+        "face_complete",
+        "height_ft",
+        "height_in",
+        "height_missing_jira",
+        "height_outlier_jira",
+        "legacy_yn",
+        "nih_toolbox_collectyn",
+        "nih_toolbox_upload_typo",
+        "passedscreen",
+        "psuedo_guid",
+        "racial",
+        "ravlt_collectyn",
+        "redcap_event",
+        "redcap_event_name",
+        "sex",
+        "site",
+        "study_id",
+        "subject",
+        "subject_id",
+        "tlbxwin_dups_v2",
+        "v0_date",
+        "visit_summary_complete",
+        "vms_collectyn",
+        "walkendur_dups",
+        "weight",
+        "PIN",
+    ]
     aabc_inventory_including_test_subjects = get_aabc_arms_report(redcap_api_token)
     qc_detect_test_subjects_in_production_database(aabc_inventory_including_test_subjects)
     aabc_inventory = idvisits(aabc_inventory_including_test_subjects)
     aabc_inventory = remove_test_subjects(aabc_inventory, "subject_id")
+    aabc_inventory = aabc_inventory[keeplist]
     return aabc_inventory
 
 
@@ -244,45 +285,6 @@ def cron_job_qint(qint_df: pd.DataFrame, qint_api_token) -> None:
 
 
 def qint_code_block(aabc_inventory, qint_api_token):
-    keeplist = [
-        "study_id",
-        "redcap_event_name",
-        "v0_date",
-        "dob",
-        "age",
-        "sex",
-        "legacy_yn",
-        "psuedo_guid",
-        "ethnic",
-        "racial",
-        "site",
-        "passedscreen",
-        "subject_id",
-        "subject",
-        "redcap_event",
-        "counterbalance_1st",
-        "counterbalance_2nd",
-        "height_ft",
-        "height_in",
-        "weight",
-        "bmi",
-        "height_outlier_jira",
-        "height_missing_jira",
-        "age_visit",
-        "event_date",
-        "completion_mocayn",
-        "ravlt_collectyn",
-        "nih_toolbox_collectyn",
-        "nih_toolbox_upload_typo",
-        "tlbxwin_dups_v2",
-        "walkendur_dups",
-        "actigraphy_collectyn",
-        "vms_collectyn",
-        "face_complete",
-        "visit_summary_complete",
-        "asa24yn",
-        "asa24id",
-    ]
 
     # FLOW:
     # Qinteractive  order:
@@ -317,7 +319,7 @@ def qint_code_block(aabc_inventory, qint_api_token):
     qc_duplicate_qint_records(qint_df2)
 
     aabc_vs_qint = pd.merge(
-        aabc_inventory[keeplist],
+        aabc_inventory,
         qint_df2.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
         on=["subject", "redcap_event"],
         how="outer",
