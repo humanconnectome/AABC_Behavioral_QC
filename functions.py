@@ -626,24 +626,10 @@ def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
 
 
 def qc_missing_actigraphy_data_in_box(inventoryaabc6):
-    # Missing?
     missingAct = inventoryaabc6.loc[
         is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data & (inventoryaabc6.actigraphy_collectyn != "0")
     ]
-    a2 = missingAct[
-        [
-            "subject_id",
-            "subject",
-            "redcap_event",
-            "study_id",
-            "redcap_event_name",
-            "site",
-            "v0_date",
-            "event_date",
-            "actigraphy_collectyn",
-        ]
-    ]
-    register_tickets(a2, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001")
+    register_tickets(missingAct, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001")
 
 
 def qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits):
