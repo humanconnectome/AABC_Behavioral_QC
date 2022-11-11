@@ -434,10 +434,10 @@ def toolbox_code_block(aabc_inventory_plus_qint):
     duplicate_assessments = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
     register_tickets(
         duplicate_assessments,
+        "TLBX",
         "ORANGE",
-        "Duplicate assessment in toolbox",
-        # TODO: Add a code number here:
-        "",
+        "Non-Identical duplicate assessment found in Toolbox",
+        "AE5001",
     )
 
     qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
@@ -613,18 +613,18 @@ def psychopy_code_block(inventoryaabc6):
 
     register_tickets(
         inventoryaabc6[inventoryaabc6.PIN.isin(in_box - in_intradb)],
+        "PsychoPy",
         "ORANGE",
         "PsychoPy data is in Box but not in IntraDB",
-        # TODO: Add an error_code
-        "",
+        "AE4001",
     )
 
     register_tickets(
         inventoryaabc6[inventoryaabc6.PIN.isin(in_intradb - in_box)],
+        "PsychoPy",
         "ORANGE",
         "PsychoPy data is in IntraDB but not in Box",
-        # TODO: Add an error_code
-        "",
+        "AE4001",
     )
 
     inventoryaabc6["has_psychopy_data"] = ~inventoryaabc6.PIN.isin(in_box | in_intradb)

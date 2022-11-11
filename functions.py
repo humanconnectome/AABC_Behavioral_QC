@@ -293,7 +293,13 @@ def print_error_codes(df: pd.DataFrame) -> None:
 
 
 def register_tickets(
-    df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False, coordinator_only: bool = False
+    df,
+    datatype: str,
+    code: str,
+    reason: str,
+    error_code: str = "AE0000",
+    critical: bool = False,
+    coordinator_only: bool = False,
 ) -> None:
     """Register new tickets in the tickets dataframe
 
@@ -308,6 +314,7 @@ def register_tickets(
     # TODO: implement `critical` param
     global tickets_dataframe
     n = df.copy()
+    n["datatype"] = datatype
     n["issueCode"] = error_code
     n["code"] = code
     n["reason"] = reason
@@ -418,6 +425,7 @@ def qc_detect_test_subjects_in_production_database(
     test_subjects = prod_df.loc[prod_df["subject_id"].str.contains("test", case=False)]
     register_tickets(
         test_subjects,
+        "REDCap",
         "HOUSEKEEPING",
         "HOUSEKEEPING : Please delete test subject.  Use test database when practicing",
         "AE6001",
@@ -469,6 +477,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     ]
     register_tickets(
         qlist1,
+        "REDCap",
         "RED",
         "Subject found in AABC REDCap Database with legacy indications whose ID was not found in HCP-A list",
         "AE1001",
@@ -477,6 +486,7 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
     qlist2 = hca_vs_aabc.loc[is_in_both_hca_aabc & ~is_legacy_id]
     register_tickets(
         qlist2,
+        "REDCap",
         "RED",
         "Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked",
         "AE1001",
@@ -485,7 +495,9 @@ def qc_subjects_found_in_aabc_not_in_hca(aabc_inventory: pd.DataFrame, hca_inven
 
 def qc_subject_id_is_not_missing(aabc_inventory):
     qlist4 = aabc_inventory.loc[is_register_event(aabc_inventory) & (aabc_inventory.subject == "")]
-    register_tickets(qlist4, "ORANGE", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001")
+    register_tickets(
+        qlist4, "REDCap", "RED", "Subject ID is MISSING in AABC REDCap Database Record with study id", "AE1001"
+    )
 
 
 def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
@@ -533,6 +545,7 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
     ]
     register_tickets(
         wrong_visit,
+        "REDCap",
         "RED",
         "Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2",
         "AE1001",
@@ -544,13 +557,16 @@ def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint):
     missingQ = aabc_inventory_plus_qint.loc[
         is_v_event(aabc_inventory_plus_qint) & ~aabc_inventory_plus_qint.has_qint_data
     ]
-    register_tickets(missingQ, "ORANGE", "Unable to locate Q-interactive data for this subject/visit", "AE1001")
+    register_tickets(
+        missingQ, "RAVLT", "ORANGE", "Unable to locate Q-interactive data for this subject/visit", "AE4001"
+    )
 
 
 def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
     qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
     register_tickets(
         qint_only,
+        "RAVLT",
         "ORANGE",
         "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
         "AE1001",
@@ -561,7 +577,7 @@ def qc_duplicate_qint_records(qint_df):
     duplicates = qint_df.duplicated(subset=["subjectid", "visit"])
     # `event_date` required for tickets
     df = qint_df.loc[duplicates].rename(columns={"created": "event_date"})
-    register_tickets(df, "ORANGE", "Duplicate Q-interactive records", "AE5001")
+    register_tickets(df, "RAVLT", "ORANGE", "Duplicate Q-interactive records", "AE5001")
 
 
 def qc_raw_or_scored_data_not_found(scored_df, raw_df):
@@ -569,12 +585,14 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
     raw = set(raw_df.PIN)
     register_tickets(
         scored_df[scored_df.PIN.isin(scored - raw)],
+        "TLBX",
         "ORANGE",
         "Raw data not found (make sure you didn't export Narrow format)",
         "AE5001",
     )
     register_tickets(
         raw_df[raw_df.PIN.isin(raw - scored)],
+        "TLBX",
         "ORANGE",
         "Scored data not found (make sure you didn't export Narrow format)",
         "AE5001",
@@ -583,7 +601,11 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
 
 def qc_toolbox_pins_not_in_aabc(missing_pins_in_aabc_df):
     register_tickets(
-        missing_pins_in_aabc_df, "ORANGE", "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?", "AE1001"
+        missing_pins_in_aabc_df,
+        "TLBX",
+        "ORANGE",
+        "TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?",
+        "AE1001",
     )
 
 
@@ -594,7 +616,7 @@ def qc_missing_toolbox_data(aabc_inventory_5):
         & (~aabc_inventory_5.has_tlbx_data)
         & (aabc_inventory_5.nih_toolbox_collectyn != "0")
     ]
-    register_tickets(missing_toolbox_df, "ORANGE", "Missing TLBX data", "AE2001")
+    register_tickets(missing_toolbox_df, "TLBX", "ORANGE", "Missing TLBX data", "AE2001")
 
 
 def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
@@ -602,7 +624,11 @@ def qc_unable_to_locate_asa24_id_in_redcap_or_box(aabc_inventory_5):
         is_v_event(aabc_inventory_5) & ~aabc_inventory_5.has_asa24_data & (aabc_inventory_5.asa24yn != "0")
     ]
     register_tickets(
-        missingAD, "GREEN", "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit", "AE2001"
+        missingAD,
+        "ASA24",
+        "GREEN",
+        "Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit",
+        "AE2001",
     )
 
 
@@ -610,17 +636,19 @@ def qc_missing_actigraphy_data_in_box(inventoryaabc6):
     missingAct = inventoryaabc6.loc[
         is_v_event(inventoryaabc6) & ~inventoryaabc6.has_actigraphy_data & (inventoryaabc6.actigraphy_collectyn != "0")
     ]
-    register_tickets(missingAct, "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001")
+    register_tickets(
+        missingAct, "Actigraphy", "YELLOW", "Unable to locate Actigraphy data in Box for this subject/visit", "AE4001"
+    )
 
 
 def qc_psychopy_not_found_in_neither_box_nor_intradb(aabc_visits):
     missingPY = aabc_visits.loc[~aabc_visits.has_psychopy_data]
-    register_tickets(missingPY, "ORANGE", "PsychoPy cannot be found in BOX or IntraDB", "AE4001")
+    register_tickets(missingPY, "PsychoPy", "ORANGE", "PsychoPy cannot be found in BOX or IntraDB", "AE4001")
 
 
 def qc_redcap_missing_counterbalance(inventoryaabc7):
     cb = inventoryaabc7.loc[is_register_event(inventoryaabc7) & (inventoryaabc7.counterbalance_2nd == "")]
-    register_tickets(cb, "RED", "Currently Missing Counterbalance", "AE3001")
+    register_tickets(cb, "REDCap", "RED", "Currently Missing Counterbalance", "AE3001")
 
 
 def qc_visit_summary_incomplete(vinventoryaabc7):
@@ -635,18 +663,18 @@ def qc_visit_summary_incomplete(vinventoryaabc7):
         ]
     ]
     summv = summv.loc[summv.visit_summary_complete != "2"]
-    register_tickets(summv, "GREEN", "Visit Summary Incomplete", "AE2001")
+    register_tickets(summv, "REDCap", "GREEN", "Visit Summary Incomplete", "AE2001")
 
 
 def qc_missing_age(agev):
     ageav2 = agev.loc[(agev.age_visit.astype(float).isnull())]
-    register_tickets(ageav2, "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
+    register_tickets(ageav2, "REDCap", "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
 
 
 def qc_age_outlier(agev):
     ag = agev.loc[agev.age_visit != ""]
-    agemv = ag.loc[(ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 90)]
-    register_tickets(agemv, "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
+    agemv = ag.loc[(ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 95)]
+    register_tickets(agemv, "REDCap", "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
 
 
 def qc_missing_weight_or_height(bmiv):
@@ -662,7 +690,11 @@ def qc_missing_weight_or_height(bmiv):
         ],
     ]
     register_tickets(
-        bmiv2, "RED", "Missing Height or Weight (or there is another typo preventing BMI calculation)", "AE3001"
+        bmiv2,
+        "REDCap",
+        "RED",
+        "Missing Height or Weight (or there is another typo preventing BMI calculation)",
+        "AE3001",
     )
 
 
@@ -670,7 +702,7 @@ def qc_bmi_outlier(bmiv):
     # outliers
     a = bmiv.loc[bmiv.bmi != ""].copy()
     a = a.loc[
-        (a.bmi.astype("float") <= 19) | (a.bmi.astype("float") >= 37),
+        (a.bmi.astype("float") <= 17) | (a.bmi.astype("float") >= 41),
         [
             "subject",
             "redcap_event",
@@ -679,7 +711,7 @@ def qc_bmi_outlier(bmiv):
             "event_date",
         ],
     ]
-    register_tickets(a, "RED", "BMI is an outlier.  Please double check height and weight", "AE7001")
+    register_tickets(a, "REDCap", "RED", "BMI is an outlier.  Please double check height and weight", "AE7001")
 
 
 def qc_hot_flash_data():
