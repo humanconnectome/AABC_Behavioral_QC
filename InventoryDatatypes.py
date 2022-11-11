@@ -66,8 +66,14 @@ def box_file_created_at(fileid):
 
 box.list_of_files = memofn(box.list_of_files, expire_in_days=1, ignore_first_n_args=0)
 
-## get the HCA inventory for ID checking with AABC
-hca_inventory = box.read_csv(config["hcainventory"])
+
+def get_hca_inventory_from_box():
+    ## get the HCA inventory for ID checking with AABC
+    hca_inventory = box.read_csv(config["hcainventory"])
+    return hca_inventory
+
+
+hca_inventory = get_hca_inventory_from_box()
 
 
 def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
