@@ -101,7 +101,7 @@ def aabc_code_block(redcap_api_token: str) -> pd.DataFrame:
     Returns:
         A dataframe with the AABC inventory of participants
     """
-    keeplist = [
+    keep_cols = [
         "actigraphy_collectyn",
         "age",
         "age_visit",
@@ -153,7 +153,7 @@ def aabc_code_block(redcap_api_token: str) -> pd.DataFrame:
     )
     aabc_inventory["PIN"] = aabc_inventory.subject + "_" + aabc_inventory.redcap_event
     aabc_inventory = remove_test_subjects(aabc_inventory, "subject")
-    aabc_inventory = aabc_inventory[keeplist]
+    aabc_inventory = aabc_inventory[keep_cols]
     save_cache()
 
     hca_inventory = get_hca_inventory_from_box()
@@ -315,37 +315,40 @@ def qint_code_block(aabc_inventory, qint_api_token):
     #    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
     #    if dup, set one to unususable and explain
 
+    keep_cols = "id site subjectid visit created".split(" ")
+
     # current Qint Redcap:
     qint_report = params_request_report(
         token=qint_api_token,
         report_id="51037",
     )
-    # QC checks
-    # now check
-    qint_df2 = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
-    qint_df2 = qint_df2.loc[qint_df2.q_unusable == "", ["id", "site", "subjectid", "visit", "created"]].copy()
-    qint_df2["redcap_event"] = "V" + qint_df2.visit
-    qint_df2 = remove_test_subjects(qint_df2, "subjectid")
-    qc_duplicate_qint_records(qint_df2)
+    qint_df = memo_get_frame(api_url=config["Redcap"]["api_url10"], data=qint_report)
 
+    # subset
+    qint_df = qint_df.loc[qint_df.q_unusable == "", keep_cols].copy()
+    qint_df = remove_test_subjects(qint_df, "subjectid")
+    qc_duplicate_qint_records(qint_df)
+
+    # Create a new field to merge on
+    qint_df["redcap_event"] = "V" + qint_df.visit
     aabc_vs_qint = pd.merge(
         aabc_inventory,
-        qint_df2.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
+        qint_df.rename(columns={"subjectid": "subject"}).drop(columns=["site"]),
         on=["subject", "redcap_event"],
         how="outer",
         indicator=True,
     )
     # Drop qint records that are not in AABC
     qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint)
-    aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].copy()
+    aabc_vs_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].copy()
 
     # drop the _merge column
-    aabc_inventory_plus_qint["has_qint_data"] = aabc_inventory_plus_qint._merge == "both"
-    aabc_inventory_plus_qint.drop(columns=["_merge"], inplace=True)
+    aabc_vs_qint["has_qint_data"] = aabc_vs_qint._merge == "both"
+    aabc_qint = aabc_vs_qint.drop(columns=["_merge"])
 
-    qc_unable_to_locate_qint_data(aabc_inventory_plus_qint)
+    qc_unable_to_locate_qint_data(aabc_qint)
 
-    toolbox_code_block(aabc_inventory_plus_qint)
+    toolbox_code_block(aabc_qint)
 
 
 def generic_fetch_toolbox_data(specific_toolbox_fn: T.Callable, fix_typos_map: dict) -> pd.DataFrame:
@@ -405,14 +408,14 @@ def fetch_toolbox_score_data(fix_typos_map: dict) -> pd.DataFrame:
     return generic_fetch_toolbox_data(cat_toolbox_score_files, fix_typos_map)
 
 
-def gen_fixtypos_map(aabc_inventory_plus_qint):
-    fix_typos = aabc_inventory_plus_qint.loc[aabc_inventory_plus_qint.nih_toolbox_upload_typo != ""]
+def gen_fixtypos_map(aabc_qint):
+    fix_typos = aabc_qint.loc[aabc_qint.nih_toolbox_upload_typo != ""]
     correct_pin = fix_typos.subject + "_" + fix_typos.redcap_event
     fixtypos_map = dict(zip(fix_typos.nih_toolbox_upload_typo, correct_pin))
     return fixtypos_map
 
 
-def toolbox_code_block(aabc_inventory_plus_qint):
+def toolbox_code_block(aabc_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
     # # 2. QC (after incorporating patches)
@@ -421,12 +424,12 @@ def toolbox_code_block(aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    fix_typos_map = gen_fixtypos_map(aabc_inventory_plus_qint)
-    # This tb_raw_df is what is going to go to the snapshot, after dates are removed.
-    tb_raw_df = fetch_toolbox_raw_data(fix_typos_map)
+    fix_typos_map = gen_fixtypos_map(aabc_qint)
+    # This tbx_raw_df is what is going to go to the snapshot, after dates are removed.
+    tbx_raw_df = fetch_toolbox_raw_data(fix_typos_map)
 
     # drop duplicates for purpose of generating QC flags.
-    tb_raw_df = tb_raw_df.drop_duplicates(subset="PIN").copy()
+    tbx_raw_df = tbx_raw_df.drop_duplicates(subset="PIN").copy()
 
     tbx_score_df = fetch_toolbox_score_data(fix_typos_map)
 
@@ -434,12 +437,12 @@ def toolbox_code_block(aabc_inventory_plus_qint):
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
     # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
     for instrument_name, _num, dups_field in config["toolbox_stringnumdupvar"]:
-        tbx_score_df = filterdupass(tbx_score_df, aabc_inventory_plus_qint, dups_field, instrument_name)
+        tbx_score_df = filterdupass(tbx_score_df, aabc_qint, dups_field, instrument_name)
 
     # drop identical rows
     tbx_score_df.drop_duplicates(inplace=True)
-    tbx_score_df = tbx_score_df.merge(aabc_inventory_plus_qint, "left", "PIN")
-    tb_raw_df = tb_raw_df.merge(aabc_inventory_plus_qint, "left", "PIN")
+    tbx_score_df = tbx_score_df.merge(aabc_qint, "left", "PIN")
+    tbx_raw_df = tbx_raw_df.merge(aabc_qint, "left", "PIN")
     # but find duplicates that match on "PIN" and "Inst" fields
     duplicate_assessments = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
     register_tickets(
@@ -450,13 +453,13 @@ def toolbox_code_block(aabc_inventory_plus_qint):
         "AE5001",
     )
 
-    qc_raw_or_scored_data_not_found(tbx_score_df, tb_raw_df)
+    qc_raw_or_scored_data_not_found(tbx_score_df, tbx_raw_df)
 
     # add subject and visit
     scores2 = tbx_score_df.PIN.drop_duplicates().str.extract("^(?P<PIN>(?P<subject>.+?)_(?P<redcap_event>.+))$")
 
     # now merge with inventory
-    aabc_qint_tlbx = aabc_inventory_plus_qint.merge(
+    aabc_qint_tlbx = aabc_qint.merge(
         scores2,
         on=["PIN", "subject", "redcap_event"],
         how="outer",
