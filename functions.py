@@ -642,31 +642,20 @@ def qc_visit_summary_incomplete(vinventoryaabc7):
     register_tickets(summv, "REDCap", "GREEN", "Visit Summary Incomplete", "AE2001")
 
 
-def qc_missing_age(agev):
-    ageav2 = agev.loc[(agev.age_visit.astype(float).isnull())]
-    register_tickets(ageav2, "REDCap", "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
+def qc_missing_age(df):
+    missing_age = df.loc[df.age_visit.isnull()]
+    register_tickets(missing_age, "REDCap", "RED", "Missing Age. Please check DOB and Event Date", "AE3001")
 
 
-def qc_age_outlier(agev):
-    ag = agev.loc[agev.age_visit != ""]
-    agemv = ag.loc[(ag.age_visit.astype("float") <= 40) | (ag.age_visit.astype("float") >= 95)]
-    register_tickets(agemv, "REDCap", "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
+def qc_age_outlier(df):
+    age_outliers = df.loc[(df.age_visit <= 40) | (df.age_visit >= 95)]
+    register_tickets(age_outliers, "REDCap", "RED", "Age outlier. Please double check DOB and Event Date", "AE7001")
 
 
-def qc_missing_weight_or_height(bmiv):
-    # missings
-    bmiv2 = bmiv.loc[
-        bmiv.bmi == "",
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "event_date",
-        ],
-    ]
+def qc_missing_weight_or_height(df):
+    missing_bmi = df.loc[df.bmi.isnull()]
     register_tickets(
-        bmiv2,
+        missing_bmi,
         "REDCap",
         "RED",
         "Missing Height or Weight (or there is another typo preventing BMI calculation)",
@@ -674,20 +663,11 @@ def qc_missing_weight_or_height(bmiv):
     )
 
 
-def qc_bmi_outlier(bmiv):
-    # outliers
-    a = bmiv.loc[bmiv.bmi != ""].copy()
-    a = a.loc[
-        (a.bmi.astype("float") <= 17) | (a.bmi.astype("float") >= 41),
-        [
-            "subject",
-            "redcap_event",
-            "study_id",
-            "site",
-            "event_date",
-        ],
-    ]
-    register_tickets(a, "REDCap", "RED", "BMI is an outlier.  Please double check height and weight", "AE7001")
+def qc_bmi_outlier(df):
+    bmi_outliers = df.loc[(df.bmi <= 17) | (df.bmi >= 41)]
+    register_tickets(
+        bmi_outliers, "REDCap", "RED", "BMI is an outlier.  Please double check height and weight", "AE7001"
+    )
 
 
 def qc_hot_flash_data():
@@ -705,24 +685,17 @@ def qc_bunk_ids_in_psychopy_and_actigraphy():
     pass
 
 
-def qc_age_in_v_events(vinventoryaabc7):
-    agev = vinventoryaabc7[
-        [
-            "redcap_event",
-            "study_id",
-            "site",
-            "subject",
-            "redcap_event_name",
-            "age_visit",
-            "event_date",
-            "v0_date",
-        ]
-    ]
-    qc_age_outlier(agev)
-    qc_missing_age(agev)
+def qc_age_in_v_events(df):
+    df = df.copy()
+    df["age_visit"] = pd.to_numeric(df.age_visit, errors="coerce")
+
+    qc_missing_age(df)
+    qc_age_outlier(df)
 
 
-def qc_bmi_in_v_events(vinventoryaabc7):
-    bmiv = vinventoryaabc7[["bmi", "redcap_event", "subject", "study_id", "site", "event_date"]]
-    qc_bmi_outlier(bmiv)
-    qc_missing_weight_or_height(bmiv)
+def qc_bmi_in_v_events(df):
+    df = df.copy()
+    df["bmi"] = pd.to_numeric(df.bmi, errors="coerce")
+
+    qc_missing_weight_or_height(df)
+    qc_bmi_outlier(df)
