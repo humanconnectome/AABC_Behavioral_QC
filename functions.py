@@ -715,8 +715,6 @@ def qc_age_in_v_events(vinventoryaabc7):
 
 
 def qc_bmi_in_v_events(vinventoryaabc7):
-    bmiv = vinventoryaabc7[
-        ["bmi", "redcap_event", "subject", "study_id", "site", "event_date"],
-    ].copy()
+    bmiv = vinventoryaabc7[["bmi", "redcap_event", "subject", "study_id", "site", "event_date"]]
     qc_bmi_outlier(bmiv)
     qc_missing_weight_or_height(bmiv)
