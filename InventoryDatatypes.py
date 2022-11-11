@@ -153,10 +153,7 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
     qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
     qc_subject_id_is_not_missing(aabc_inventory)
 
-    return aabc_inventory
-
-
-aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
+    qint_code_block(aabc_inventory, api_key["qint"])
 
 
 def ravlt_form_heuristic(row):
@@ -335,10 +332,7 @@ def qint_code_block(aabc_inventory, qint_api_token):
     aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].drop(columns=["_merge"])
     qc_unable_to_locate_qint_data(aabc_inventory_plus_qint)
 
-    return aabc_inventory_plus_qint
-
-
-aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
+    toolbox_code_block(aabc_inventory_plus_qint)
 
 
 def generic_fetch_toolbox_data(specific_toolbox_fn: T.Callable, fix_typos_map: dict) -> pd.DataFrame:
@@ -643,8 +637,7 @@ def psychopy_code_block(inventoryaabc6):
     qc_bmi_in_v_events(aabc_visits)
 
 
-toolbox_code_block(aabc_inventory_plus_qint)
-
+get_aabc_inventory_from_redcap(api_key["aabcarms"])
 # TO DO
 # HARMONIZE Event Names
 # Add filenames to TLBX data
