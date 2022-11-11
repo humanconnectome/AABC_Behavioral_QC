@@ -446,10 +446,9 @@ def toolbox_code_block(aabc_inventory_plus_qint):
     scores2 = tbx_score_df.PIN.drop_duplicates().str.extract("^(?P<PIN>(?P<subject>.+?)_(?P<redcap_event>.+))$")
 
     # now merge with inventory
-    aabc_qint_tlbx = pd.merge(
-        aabc_inventory_plus_qint,
+    aabc_qint_tlbx = aabc_inventory_plus_qint.merge(
         scores2,
-        on=["subject", "redcap_event"],
+        on=["PIN", "subject", "redcap_event"],
         how="outer",
         indicator=True,
     )
