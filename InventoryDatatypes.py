@@ -73,9 +73,6 @@ def get_hca_inventory_from_box():
     return hca_inventory
 
 
-hca_inventory = get_hca_inventory_from_box()
-
-
 def list_files_in_box_folders(*box_folder_ids) -> pd.DataFrame:
     """List filename, fileid, sha1 for all files in specific box folders
 
@@ -148,16 +145,18 @@ def get_aabc_inventory_from_redcap(redcap_api_token: str) -> pd.DataFrame:
     aabc_inventory = idvisits(aabc_inventory_including_test_subjects)
     aabc_inventory = remove_test_subjects(aabc_inventory, "subject_id")
     aabc_inventory = aabc_inventory[keeplist]
+    save_cache()
+
+    hca_inventory = get_hca_inventory_from_box()
+    qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
+    # TODO: On airflow, every hour
+    qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
+    qc_subject_id_is_not_missing(aabc_inventory)
+
     return aabc_inventory
 
 
 aabc_inventory = get_aabc_inventory_from_redcap(api_key["aabcarms"])
-save_cache()
-
-qc_subjects_found_in_aabc_not_in_hca(aabc_inventory, hca_inventory)
-# TODO: On airflow, every hour
-qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory)
-qc_subject_id_is_not_missing(aabc_inventory)
 
 
 def ravlt_form_heuristic(row):
