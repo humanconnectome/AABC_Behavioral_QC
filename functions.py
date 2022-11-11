@@ -547,9 +547,9 @@ def qc_subject_initiating_wrong_visit_sequence(aabc_inventory, hca_inventory):
     )
 
 
-def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint):
+def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint):
     missingQ = aabc_inventory_plus_qint.loc[
-        is_v_event(aabc_vs_qint) & ~aabc_vs_qint.has_qint_data,
+        is_v_event(aabc_inventory_plus_qint) & ~aabc_inventory_plus_qint.has_qint_data,
         [
             "study_id",
             "subject",

@@ -328,12 +328,12 @@ def qint_code_block(aabc_inventory, qint_api_token):
     qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint)
 
     aabc_inventory_plus_qint = aabc_vs_qint.loc[aabc_vs_qint._merge != "right_only"].drop(columns=["_merge"])
-    qc_unable_to_locate_qint_data(aabc_inventory_plus_qint, aabc_vs_qint)
+    qc_unable_to_locate_qint_data(aabc_inventory_plus_qint)
 
-    return aabc_vs_qint, aabc_inventory_plus_qint
+    return aabc_inventory_plus_qint
 
 
-aabc_vs_qint, aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
+aabc_inventory_plus_qint = qint_code_block(aabc_inventory, api_key["qint"])
 
 
 def generic_fetch_toolbox_data(specific_toolbox_fn: T.Callable, fix_typos_map: dict) -> pd.DataFrame:
@@ -393,14 +393,14 @@ def fetch_toolbox_score_data(fix_typos_map: dict) -> pd.DataFrame:
     return generic_fetch_toolbox_data(cat_toolbox_score_files, fix_typos_map)
 
 
-def gen_fixtypos_map(aabc_vs_qint):
-    fix_typos = aabc_vs_qint.loc[aabc_vs_qint.nih_toolbox_upload_typo != ""]
+def gen_fixtypos_map(aabc_inventory_plus_qint):
+    fix_typos = aabc_inventory_plus_qint.loc[aabc_inventory_plus_qint.nih_toolbox_upload_typo != ""]
     correct_pin = fix_typos.subject + "_" + fix_typos.redcap_event
     fixtypos_map = dict(zip(fix_typos.nih_toolbox_upload_typo, correct_pin))
     return fixtypos_map
 
 
-def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
+def toolbox_code_block(aabc_inventory_plus_qint):
     # NOW FOR TOOLBOX. ############################################################################
     # # 1. grab partial files from intraDB
     # # 2. QC (after incorporating patches)
@@ -409,7 +409,7 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
     # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-    fix_typos_map = gen_fixtypos_map(aabc_vs_qint)
+    fix_typos_map = gen_fixtypos_map(aabc_inventory_plus_qint)
     # This tb_raw_df is what is going to go to the snapshot, after dates are removed.
     tb_raw_df = fetch_toolbox_raw_data(fix_typos_map)
 
@@ -422,12 +422,12 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
     # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
     # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
     for instrument_name, _num, dups_field in config["toolbox_stringnumdupvar"]:
-        tbx_score_df = filterdupass(tbx_score_df, aabc_vs_qint, dups_field, instrument_name)
+        tbx_score_df = filterdupass(tbx_score_df, aabc_inventory_plus_qint, dups_field, instrument_name)
 
     # drop identical rows
     tbx_score_df.drop_duplicates(inplace=True)
-    tbx_score_df = tbx_score_df.merge(aabc_vs_qint, "left", "PIN")
-    tb_raw_df = tb_raw_df.merge(aabc_vs_qint, "left", "PIN")
+    tbx_score_df = tbx_score_df.merge(aabc_inventory_plus_qint, "left", "PIN")
+    tb_raw_df = tb_raw_df.merge(aabc_inventory_plus_qint, "left", "PIN")
     # but find duplicates that match on "PIN" and "Inst" fields
     duplicate_assessments = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
     register_tickets(
@@ -638,7 +638,7 @@ def psychopy_code_block(inventoryaabc6):
     qc_bmi_in_v_events(aabc_visits)
 
 
-toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint)
+toolbox_code_block(aabc_inventory_plus_qint)
 
 # TO DO
 # HARMONIZE Event Names
