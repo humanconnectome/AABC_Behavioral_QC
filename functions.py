@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 
 from config import *
-
+from utils.redcap_pandas import ffill_empty_strings
 
 ## get configuration files
 
@@ -85,21 +85,16 @@ def idvisits(aabc_arms_df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         aabc_arms_df: Dataframe fresh from redcap
-        keep_cols: Columns to keep in the dataframe
 
     Returns:
         A modified dataframe
     """
-    df = aabc_arms_df.copy()
-    # convert empty strings to NaN
-    df.site = df.site.where(df.site != "")
-    # Now forward fill the fresh NaNs
-    df.site = df.site.ffill()
-
-    # repeat process as above, but for 'subject_id'.
-    #   but name the column 'subject' for some reason
-    df["subject"] = df.subject_id.where(df.subject_id != "")
-    df.subject = df.subject.ffill()
+    df = ffill_empty_strings(
+        aabc_arms_df,
+        "site",
+        "subject_id",
+    )
+    df.rename(columns={"subject_id": "subject"}, inplace=True)
 
     df["redcap_event"] = df.redcap_event_name.replace(config["Redcap"]["datasources"]["aabcarms"]["AABCeventmap"])
     df["PIN"] = df.subject + "_" + df.redcap_event
