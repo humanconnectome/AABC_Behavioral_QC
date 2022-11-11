@@ -538,9 +538,10 @@ def actigraphy_code_block(aabc_inventory_6):
 
     save_cache()
     save_dict_to_yaml(actigraphy_dict, cache_file)
-    actdata = list(actigraphy_dict.values())
+    actigraphy_PINs = list(actigraphy_dict.values())
     # Duplicates?
-    duplicated_actigraphy_records = [item for item, count in collections.Counter(actdata).items() if count > 1]
+    act_counter = collections.Counter(actigraphy_PINs)
+    duplicated_actigraphy_records = [pin for pin, count in act_counter.items() if count > 1]
     register_tickets(
         aabc_inventory_6.loc[aabc_inventory_6.PIN.isin(duplicated_actigraphy_records)],
         # TODO: add code? "ORANGE"? etc.
