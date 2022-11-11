@@ -556,10 +556,8 @@ def qc_unable_to_locate_qint_data(aabc_inventory_plus_qint):
 
 def qc_has_qint_but_id_visit_not_found_in_aabc(aabc_vs_qint):
     qint_only = aabc_vs_qint.loc[aabc_vs_qint._merge == "right_only"]
-    # TODO: Use what event date? (for calculating `issue_age`)
-    qint_only["event_date"] = date.today().strftime("%Y-%m-%d")
     register_tickets(
-        qint_only[["subject", "redcap_event", "event_date"]],
+        qint_only,
         "ORANGE",
         "Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo",
         "AE1001",
