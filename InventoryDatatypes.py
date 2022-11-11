@@ -541,12 +541,15 @@ def actigraphy_code_block(aabc_inventory_6):
     actdata = list(actigraphy_dict.values())
     # Duplicates?
     duplicated_actigraphy_records = [item for item, count in collections.Counter(actdata).items() if count > 1]
-    # TODO: create tickets that get sent to Petra only (by omitting site)
-    if len(duplicated_actigraphy_records) != 0:
-        print(
-            "Duplicated Actigraphy Record Found:",
-            duplicated_actigraphy_records,
-        )
+    register_tickets(
+        aabc_inventory_6.loc[aabc_inventory_6.PIN.isin(duplicated_actigraphy_records)],
+        # TODO: add code? "ORANGE"? etc.
+        "",
+        "Duplicate actigraphy records Found",
+        # TODO: Add a code number here:
+        "",
+        coordinator_only=True,
+    )
 
     ActD = pd.DataFrame(actdata, columns=["PIN"])
     inventoryaabc6 = pd.merge(aabc_inventory_6, ActD, on="PIN", how="left", indicator=True)

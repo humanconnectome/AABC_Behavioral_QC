@@ -297,7 +297,7 @@ def print_error_codes(df: pd.DataFrame) -> None:
         print(f"CODE {row.code}: {row.subject_id}: {row.reason}")
 
 
-def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False) -> None:
+def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", critical: bool = False, coordinator_only:bool = False) -> None:
     """Register new tickets in the tickets dataframe
 
     Args:
@@ -305,6 +305,7 @@ def register_tickets(df, code: str, reason: str, error_code: str = "AE0000", cri
         code: The code for the ticket
         reason: The description of the error
         critical: If True, send an email to Angela and Petra, ASAP
+        coordinator_only: If True, don't create ticket at site. Just send email to coordinator
 
     """
     # TODO: implement `critical` param
