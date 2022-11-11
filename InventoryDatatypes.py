@@ -427,6 +427,8 @@ def toolbox_code_block(aabc_vs_qint, aabc_inventory_plus_qint):
 
     # drop identical rows
     tbx_score_df.drop_duplicates(inplace=True)
+    tbx_score_df = tbx_score_df.merge(aabc_vs_qint, "left", "PIN")
+    tb_raw_df = tb_raw_df.merge(aabc_vs_qint, "left", "PIN")
     # but find duplicates that match on "PIN" and "Inst" fields
     duplicate_assessments = tbx_score_df.loc[tbx_score_df.duplicated(subset=["PIN", "Inst"])]
     register_tickets(

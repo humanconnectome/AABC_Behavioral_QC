@@ -590,7 +590,7 @@ def qc_raw_or_scored_data_not_found(scored_df, raw_df):
         "AE5001",
     )
     register_tickets(
-        raw_df[raw_df.PIN.isin(raw - scored)].rename(columns={"DateCreated": "event_date"}),
+        raw_df[raw_df.PIN.isin(raw - scored)],
         "ORANGE",
         "Scored data not found (make sure you didn't export Narrow format)",
         "AE5001",
