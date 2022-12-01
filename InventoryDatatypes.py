@@ -346,7 +346,7 @@ if missingQ.shape[0]>0:
     print("Q-interactive cannot be found for")
     print(missingQ)
     q2=missingQ.copy()
-    q2['reason']='Unable to locate Q-interactive data for this subject/visit'
+    q2['reason']='MISSING or MALFORMED Q-interactive data for this subject/visit'
     q2['code']='ORANGE'
     q2['issueCode']='AE4001'
     q2['datatype']='RAVLT'
