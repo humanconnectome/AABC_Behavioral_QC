@@ -218,9 +218,10 @@ for studyshort in folderqueue:
     sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
 
     filelist=box.list_of_files([folder])
+    print(filelist)
     #print(filelist)
     db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
-    #print(db)
+    print(db)
     db.fileid=db.fileid.astype(int)
     #print(studyshort,":",db.shape[0],"records in BOX")
     #ones that already exist in q redcap
@@ -229,11 +230,13 @@ for studyshort in folderqueue:
 
     #find the new ones that need to be pulled in
     newfileids=pd.merge(db,cached_filelist.fileid,on='fileid',how='left',indicator=True)
+    newfileids_temp=newfileids.copy()
     newfileids=newfileids.loc[newfileids._merge=='left_only'].drop(columns=['_merge'])
     db2go=db.loc[db.fileid.isin(list(newfileids.fileid))]
     if db2go.empty:
         print("NO NEW RECORDS from",studyshort,"TO ADD AT THIS TIME")
     if not db2go.empty:
+        print("you are here")
         #initiate new ids
         #NEED TO UPDATE CACHED_FILELIST.ID after every iteration.
         s = cached_filelist.id.astype('Int64').max() + 1 + studyshortsum
@@ -243,43 +246,48 @@ for studyshort in folderqueue:
             id=i+s
             vect=vect+[id]
         studyshortsum=studyshortsum+l
+        print("now you are here")
         rows2push=pd.DataFrame(columns=firstvarcols+columnnames)
         for i in range(0,db2go.shape[0]):
-            redid=vect[i]
-            fid=db2go.iloc[i][['fileid']][0]
-            t=box.getFileById(fid)
-            created=t.get().created_at
-            fname=db2go.iloc[i][['filename']][0]
-            subjid = fname[fname.find('HCA'):10]
-            fsha=db2go.iloc[i][['sha1']][0]
-            print(i)
-            print(db2go.iloc[i][['fileid']][0])
-            print(db2go.iloc[i][['filename']][0])
-            print(db2go.iloc[i][['sha1']][0])
-            print("subject id:",subjid)
-            print("Redcap id:",redid)
-            #pushrow=getrow(fid,fname)
-            content=box.read_text(fid)
-            assessment='RAVLT'
-            if 'RAVLT-Alternate Form C' in content:
-                        form = 'Form C'
-            if 'RAVLT-Alternate Form D' in content:
-                        form = 'Form D'
-            if fname.find('Form B')>0:
-                        form= 'Form B'
-            #visits = sorted(list(map(int,requests.findall('[vV](\d)', fname))))
-            a = fname.replace("AV", "").find('V')
-            visit=fname[a+1]
-            #visit=visits[-1]
-            row=parse_content(content)
-            df = pd.DataFrame([row], columns=columnnames)
-            #print(df)
-            firstvars = pd.DataFrame([[redid, dag, sitenum, subjid, fid, fname, fsha, created, assessment,
-                                       visit, form, "", "", "", ""]], columns=firstvarcols)
-            #print(firstvars[['filename','subjectid']])
-            pushrow=pd.concat([firstvars,df],axis=1)
-            #print(pushrow)
-            rows2push=pd.concat([rows2push,pushrow],axis=0)
+            try:
+                redid=vect[i]
+                fid=db2go.iloc[i][['fileid']][0]
+                print("fid",fid)
+                t=box.getFileById(fid)
+                created=t.get().created_at
+                fname=db2go.iloc[i][['filename']][0]
+                subjid = fname[fname.find('HCA'):10]
+                fsha=db2go.iloc[i][['sha1']][0]
+                print(i)
+                print(db2go.iloc[i][['fileid']][0])
+                print(db2go.iloc[i][['filename']][0])
+                print(db2go.iloc[i][['sha1']][0])
+                print("subject id:",subjid)
+                print("Redcap id:",redid)
+                #pushrow=getrow(fid,fname)
+                content=box.read_text(fid)
+                assessment='RAVLT'
+                if 'RAVLT-Alternate Form C' in content:
+                            form = 'Form C'
+                if 'RAVLT-Alternate Form D' in content:
+                            form = 'Form D'
+                if fname.find('Form B')>0:
+                            form= 'Form B'
+                #visits = sorted(list(map(int,requests.findall('[vV](\d)', fname))))
+                a = fname.replace("AV", "").find('V')
+                visit=fname[a+1]
+                #visit=visits[-1]
+                row=parse_content(content)
+                df = pd.DataFrame([row], columns=columnnames)
+                #print(df)
+                firstvars = pd.DataFrame([[redid, dag, sitenum, subjid, fid, fname, fsha, created, assessment,
+                                           visit, form, "", "", "", ""]], columns=firstvarcols)
+                #print(firstvars[['filename','subjectid']])
+                pushrow=pd.concat([firstvars,df],axis=1)
+                #print(pushrow)
+                rows2push=pd.concat([rows2push,pushrow],axis=0)
+            except:
+                print("something wrong...moving along")
         if len(rows2push.subjectid) > 0:
             print("*************",studyshort,"  **********************")
             print(len(rows2push.subjectid),"rows to push:")
@@ -716,13 +724,15 @@ if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
     p2['issueCode']='AE4001'
     p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
-p=pd.concat([newp1,p2])#,columns='PIN_AB')
-p['PIN']=p[0].str[:13]
-p['PIN_AB']=p[0]
-p['subject_id']=p[0].str[:10]
-p['subject']=p[0].str[:10]
-pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
-pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','PIN_AB','datatype']]
+pwho=pd.DataFrame()
+p=pd.concat([newp1,p2])
+if p.shape[0]>0:#,columns='PIN_AB')
+    p['PIN']=p[0].str[:13]
+    p['PIN_AB']=p[0]
+    p['subject_id']=p[0].str[:10]
+    p['subject']=p[0].str[:10]
+    pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
+    pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','PIN_AB','datatype']]
 
 #dont worry about duplicates in IntraDB - these will be filtered.
 #find subjects in AABC but not in IntraDB or BOX
