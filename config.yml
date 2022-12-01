@@ -227,8 +227,8 @@ Redcap:
         UMN: 164567205278
 variablemask: 951436222592
 toolbox_stringnumdupvar:
-  -['NIH Toolbox Words-In-Noise Test Age 6+ v2.1',36,'tlbxwin_dups_v2']
-  -['NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0',16,'walkendur_dups']
+  - ['NIH Toolbox Words-In-Noise Test Age 6+ v2.1',36,'tlbxwin_dups_v2']
+  - ['NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0',16,'walkendur_dups']
 #NonRedCAP:
 # tlbx:
 #    instruments:
