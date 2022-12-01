@@ -572,7 +572,7 @@ a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', '
 #################################################################################
 #ACTIGRAPHY
 ### for now, this is basically the same protocol as for ASA24
-
+# TO DO Code for typos within the file (e.g. would be typos found in subsequent exports of database)
 #scan BOX
 folderqueue=['WU','UMN','MGH']#,'UCLA']
 actdata=[]
@@ -854,7 +854,7 @@ QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date
 
 
 ###REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
+filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 ##RED=issue_age>7
 ##ORANGE=issues_age>18
