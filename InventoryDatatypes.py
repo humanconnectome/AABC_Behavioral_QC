@@ -115,10 +115,11 @@ if not wrongvisit.empty:
     wrongvisit['code']='RED'
     wrongvisit['issueCode'] = 'AE1001'
     wrongvisit['datatype']='REDCap'
-    qlist3 = wrongvisit[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
-    for s3 in list(wrongvisit[study_id].unique()):
+    qlist3 = wrongvisit[['subject', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
+    qlist3=qlist3.rename(columns={'subject':'subject_id'})
+    for s3 in list(wrongvisit['subject'].unique()):
         if s3 !='':
-            print('CODE RED :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
+            print('CODE RED (if HCA691778 ignore) :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
 
 # check to make sure that the subject id is not missing.
 missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('register')) & (aabcinvent[study_id]=='')].copy()
@@ -315,6 +316,7 @@ invq=invq.loc[~(invq.q_unusable=='1')].copy()
 #Before merging, check for duplicates that haven't been given the 'unusable' flag
 dups=qintdf.loc[qintdf.duplicated(subset=['subjectid','visit'])]
 dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
+
 q0=pd.DataFrame()
 if dups2.shape[0]>0:
     print("Duplicate Q-interactive records")
@@ -324,8 +326,11 @@ if dups2.shape[0]>0:
     q0['code']='ORANGE'
     q0['issueCode']='AE5001'
 
-inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
-#find ids (including test subjects) that aren't i nmain AABC
+#inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
+inventoryaabc2=pd.merge(inventoryaabc,invq.drop(columns=['site']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
+
+#find ids (including test subjects) that aren't i nmain AABC (i.e. probably typos)
+#These all need to go to Petra - and documented in patch
 q1=pd.DataFrame()
 if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
@@ -807,7 +812,9 @@ if agemv.shape[0]>0:
     agemv['reason']='Age outlier. Please double check DOB and Event Date'
     agemv=agemv[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
-ageav=agev.loc[(agev.age_visit.astype(float).isnull()==True)]
+aa=agev.loc[agev.age_visit=='']
+ab=agev.loc[~(agev.age_visit=='')]
+ageav=pd.concat([aa,ab.loc[(ab.age_visit.astype(float).isnull()==True)]])
 if ageav.shape[0]>0:
     print("Missing Age:\n",ageav)
     ageav['code']='RED'
