@@ -162,7 +162,7 @@ except:
 keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
           'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
           'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
-          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn',
+          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1','actigraphy_upload_typo','actigraphy_upload_typoyn',
           'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
 
 inventoryaabc=idvisits(aabcinvent,keepsies=keeplist)
@@ -345,6 +345,7 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
+#this isn't working.  why not?  see AABCMGH-2
 missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES'))][['subject_id','study_id','subject','redcap_event','site','event_date']]
 q2=pd.DataFrame()
 if missingQ.shape[0]>0:
@@ -620,7 +621,7 @@ inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
 
 #Missing?
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
-missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn=='0')]
+missingAct=missingAct.loc[(missingAct.actigraphy_collectyn!='0') & (missingAct.actigraphy_partial_1 !=0)]
 a2=pd.DataFrame()
 if missingAct.shape[0]>0:
     print("Actigraphy cannot be found for")

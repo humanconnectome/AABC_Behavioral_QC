@@ -127,6 +127,8 @@ def create_if_not_exists(row: pd.Series) -> str:
     issues = search_for_ticket(row)
     if issues:
         print(f"Ticket(s) already exists: {issues}")
+        #TO DO : split out site string
+        #print(f"Ticket(s) already exists: https://issues.humanconnectome.org/projects/AABC*/issues/{issues}")
     else:
         if DRYRUN:
             print(f"DRYRUN: Would create ticket: {row.summary}")
