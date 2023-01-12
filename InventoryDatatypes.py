@@ -6,6 +6,7 @@ import requests
 import re
 import collections
 from functions import *
+import functions
 from config import *
 import subprocess
 import os
@@ -119,8 +120,8 @@ if not wrongvisit.empty:
     qlist3=qlist3.rename(columns={'subject':'subject_id'})
     for s3 in list(wrongvisit['subject'].unique()):
         if s3 !='':
-            print('CODE RED (if HCA691778 ignore) :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
-
+            print('CODE RED (if HCA6911778 ignore) :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
+            qlist3=qlist3.loc[~(qlist3.subject_id=='HCA6911778')].copy()
 # check to make sure that the subject id is not missing.
 missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('register')) & (aabcinvent[study_id]=='')].copy()
 qlist4=pd.DataFrame()
@@ -162,7 +163,7 @@ except:
 keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
           'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
           'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
-          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1','actigraphy_upload_typo','actigraphy_upload_typoyn',
+          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1___1','actigraphy_partial_1___0','actigraphy_partial_1___2','actigraphy_upload_typoyn',
           'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
 
 inventoryaabc=idvisits(aabcinvent,keepsies=keeplist)
@@ -206,7 +207,7 @@ qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_ind
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
 #all box files - grab, transform, send
-folderqueue=['WU','UMN','MGH'] ###,'UCLA']
+folderqueue=['UCLA']#['WU','UMN','MGH'] ###,'UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
@@ -334,8 +335,8 @@ inventoryaabc2=pd.merge(inventoryaabc,invq.drop(columns=['site']),left_on=['subj
 q1=pd.DataFrame()
 if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
-    print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subject','redcap_event']])
-    q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subject','redcap_event']]
+    print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']])
+    q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']].rename(columns={'subjectid':'subject'})
     q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo']
     q1['code']='ORANGE'
     q1['issueCode']='AE1001'
@@ -346,7 +347,7 @@ inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(colu
 #inventoryaabc2.to_csv('test.csv',index=False)
 
 #this isn't working.  why not?  see AABCMGH-2
-missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES'))][['subject_id','study_id','subject','redcap_event','site','event_date']]
+missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES')) & (~(inventoryaabc2.ravlt_collectyn=='0'))][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
 q2=pd.DataFrame()
 if missingQ.shape[0]>0:
     print("Q-interactive cannot be found for")
@@ -401,6 +402,7 @@ raw21=TLBXreshape(rawd2)
 #remove files known to be duds.
 rf2=pd.concat([raw41,raw31,raw21,raw11])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
+rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('HCA1111111_CR'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper()=='ABC123')]
 
 #drop duplicates for purpose of generating QC flags.
@@ -430,11 +432,16 @@ dffull1=TLBXreshape(results1)
 dffull2=TLBXreshape(results2)
 dffull3=TLBXreshape(results3)
 dffull4=TLBXreshape(results4)
+dffull1['site']=1
+dffull2['site']=2
+dffull3['site']=3
+dffull4['site']=4
 
 ##fixtypos in Scores file now
 dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
 dffull=dffull.copy() #pd.concat([df11,df31])
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
+dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('HCA1111111_CR'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
 dffull.PIN=dffull.PIN.replace(fixes)
 
@@ -496,7 +503,7 @@ df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['TLBX']='YES'
 
 #now merge with inventory
-inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN']],on=['subject','redcap_event'],how='outer',indicator=True)
+inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
 
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 #turn this into a ticket
@@ -508,7 +515,7 @@ if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
     t2['issueCode']='AE1001'
     t2['datatype']='TLBX'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
-    print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event']])
+    print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event','site','siteT']])
 
 inventoryaabc4=inventoryaabc4.loc[inventoryaabc4._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
@@ -539,7 +546,7 @@ T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','re
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-folderqueue=['WU','MGH','UMN']  #, UCLA and MGH not started yet
+folderqueue=['WU','MGH','UMN','UCLA']# and MGH not started yet
 anydata=[]
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
@@ -551,10 +558,13 @@ for studyshort in folderqueue:
     subs=[]
     for f in dbitems.fileid:
         print(f)
-        k=box.read_csv(f)
-        if not k.empty:
-            s=k.UserName.unique().tolist()
-            subs=subs+s
+        try:
+            k=box.read_csv(f)
+            if not k.empty:
+                s=k.UserName.unique().tolist()
+                subs=subs+s
+        except:
+            print("Couldn't read",f)
     anydata=anydata+list(set(subs))
 
 AD=pd.DataFrame(anydata,columns=['asa24id'])
@@ -580,7 +590,7 @@ a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', '
 ### for now, this is basically the same protocol as for ASA24
 # TO DO Code for typos within the file (e.g. would be typos found in subsequent exports of database)
 #scan BOX
-folderqueue=['WU','UMN','MGH']#,'UCLA']
+folderqueue=['WU','UMN','MGH','UCLA']
 actdata=[]
 studyshort='WU'
 for studyshort in folderqueue:
@@ -621,7 +631,7 @@ inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
 
 #Missing?
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
-missingAct=missingAct.loc[(missingAct.actigraphy_collectyn!='0') & (missingAct.actigraphy_partial_1 !=0)]
+missingAct=missingAct.loc[(missingAct.actigraphy_collectyn!='0') & (missingAct.actigraphy_partial_1___1 !=0)]
 a2=pd.DataFrame()
 if missingAct.shape[0]>0:
     print("Actigraphy cannot be found for")
@@ -661,17 +671,19 @@ for studyshort in folderqueue:
     dbitems=db.copy() #db.loc[db.filename.str.contains('TNS')].copy()
     subs=[]
     for fname in dbitems.filename:
-        #print(f)
-        subjvscan = fname[fname.find('HCA'):fname.find('HCA')+15]
-        l2=subjvscan.split('_')
-        row=l2+[fname]
-        print(row)
-        rowfor=pd.DataFrame(row).transpose()
-        anydata=pd.concat([anydata,rowfor])
-
-anydata.columns=['subject','redcap_event','scan','fname']
-PSY=anydata[['subject','redcap_event']].drop_duplicates()
-checkIDB=anydata[['subject','redcap_event','scan']]
+        try:
+            #print(f)
+            subjvscan = fname[fname.find('HCA'):fname.find('HCA')+15]
+            l2=subjvscan.split('_')
+            row=l2+[fname]
+            print(row)
+            rowfor=pd.DataFrame(row).transpose()
+            anydata=pd.concat([anydata,rowfor])
+        except:
+            print("problem with BOX file",f)
+anydata.columns=['subject','redcap_event','scan','fname','']
+PSY=anydata[['subject','redcap_event']].drop_duplicates().copy()
+checkIDB=anydata[['subject','redcap_event','scan']].copy()
 checkIDB['PIN_AB']=checkIDB.subject+'_'+checkIDB.redcap_event + '_'+checkIDB.scan
 ci=checkIDB.drop_duplicates(subset='PIN_AB')
 
@@ -732,6 +744,7 @@ if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
 
 pwho=pd.DataFrame()
 p=pd.concat([newp1,p2])
+#p=p2.copy()
 if p.shape[0]>0:#,columns='PIN_AB')
     p['PIN']=p[0].str[:13]
     p['PIN_AB']=p[0]
