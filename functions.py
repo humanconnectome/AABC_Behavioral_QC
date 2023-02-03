@@ -126,13 +126,45 @@ def getlist(mask,sheet):
     return restrictedA
 
 def TLBXreshape(results1):
-    df=results1.decode('utf-8')
+    #df=results1.decode('utf-8')
     df=pd.DataFrame(str.splitlines(results1.decode('utf-8')))
     df=df[0].str.split(',', expand=True)
     cols=df.loc[df[0]=='PIN'].values.tolist()
     df2=df.loc[~(df[0]=='PIN')]
     df2.columns=cols[0]
     return df2
+
+#TODO move chcp details to config file
+def importTLBX(siteabbrev='WU',typed='scores'):
+    if typed=='scores':
+        run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                    'find /ceph/intradb/archive/AABC_' + siteabbrev + '_ITK/resources/toolbox_endpoint_data/ -type f  -name "*Scores*" ! \( -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
+    else:
+        run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        'find /ceph/intradb/archive/AABC_'+siteabbrev+'_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
+    run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        'while read i; do cp "$i" /home/plenzini/tools/catTLBX/cache/.; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
+    run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                'for f in /home/plenzini/tools/catTLBX/cache/*\ *; do mv "$f" "${f// /_}"; done').stdout.read()
+    run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                'find /home/plenzini/tools/catTLBX/cache/ -type f > /home/plenzini/tools/catTLBX/datalist2.csv').stdout.read()
+    run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                "sed -i 's/\/home\/plenzini/\/home\/petra\/chpc3/g' /home/plenzini/tools/catTLBX/datalist2.csv").stdout.read()
+    # Using readlines()
+    file1 = open('/home/petra/chpc3/tools/catTLBX/datalist2.csv', 'r')
+    Lines = file1.readlines()
+    sitedf=pd.DataFrame()
+    count = 0
+    # Strips the newline character
+    for line in Lines:
+        count += 1
+        subsetdf=pd.read_csv(line.strip("\n"))
+        sitedf=pd.concat([sitedf,subsetdf],axis=0)
+        sitedf['sitestr']=siteabbrev
+    file1.close()
+    run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                "rm -f /home/plenzini/tools/catTLBX/cache/* /home/plenzini/tools/catTLBX/datalist* ").stdout.read()
+    return sitedf
 
 
 def filterdupass(instrument,dupvar,iset,dset):

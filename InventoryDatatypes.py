@@ -122,6 +122,9 @@ if not wrongvisit.empty:
         if s3 !='':
             print('CODE RED (if HCA6911778 ignore) :',s3,': Subject found in AABC REDCap Database initiating the wrong visit sequence (e.g. V3 insteady of V2')
             qlist3=qlist3.loc[~(qlist3.subject_id=='HCA6911778')].copy()
+
+#HCA7969815 is a new person, a wife of a legacy.  She shouldn't be flagged, but just make sure
+
 # check to make sure that the subject id is not missing.
 missingsubids=aabcinvent.loc[(aabcinvent.redcap_event_name.str.contains('register')) & (aabcinvent[study_id]=='')].copy()
 qlist4=pd.DataFrame()
@@ -159,14 +162,14 @@ except:
 #########################################################################################
 # PHASE 1 Test that all dataypes expected are present
 # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
-#there are lots of variables in the inventory.  Don't need them all
-keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
-          'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
-          'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
-          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1___1','actigraphy_partial_1___0','actigraphy_partial_1___2','actigraphy_upload_typoyn',
-          'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
+#there are lots of variables in the inventory.  Don't need them all, but keep them for simplicity in updates
+#keeplist=['study_id','redcap_event_name','v0_date','dob','age','sex','legacy_yn','psuedo_guid',
+#          'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
+#          'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
+#          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1___1','actigraphy_partial_1___0','actigraphy_partial_1___2','actigraphy_upload_typoyn',
+#          'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
 
-inventoryaabc=idvisits(aabcinvent,keepsies=keeplist)
+inventoryaabc=idvisits(aabcinvent,keepsies=list(aabcinvent.columns))
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
 
 # FLOW:
@@ -207,7 +210,7 @@ qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_ind
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
 #all box files - grab, transform, send
-folderqueue=['UCLA']#['WU','UMN','MGH'] ###,'UCLA']
+folderqueue=['UCLA','WU','UMN','MGH'] ###,'UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
@@ -346,7 +349,6 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
-#this isn't working.  why not?  see AABCMGH-2
 missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES')) & (~(inventoryaabc2.ravlt_collectyn=='0'))][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
 q2=pd.DataFrame()
 if missingQ.shape[0]>0:
@@ -385,88 +387,114 @@ Q2['subject_id']=Q2.subject
 # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
 ##FIRST THE RAW DATA FILES
-rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                    'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                    'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                    'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                    'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
+tlbxraw4=importTLBX(siteabbrev='WU',typed='raw')
+tlbxraw1=importTLBX(siteabbrev='MGH',typed='raw')
+tlbxraw3=importTLBX(siteabbrev='UMN',typed='raw')
+tlbxraw2=importTLBX(siteabbrev='UCLA',typed='raw')
+
+#rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                    'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
+#rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                    'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
+#rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                    'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
+#rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                    'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
 #note that some of these won't work because UCLA hasn't started collecting data
-raw41=TLBXreshape(rawd4)
-raw11=TLBXreshape(rawd1)
-raw31=TLBXreshape(rawd3)
-raw21=TLBXreshape(rawd2)
+
+#raw41=TLBXreshape(rawd4)
+#raw11=TLBXreshape(rawd1)
+#raw31=TLBXreshape(rawd3)
+#raw21=TLBXreshape(rawd2)
 
 #remove files known to be duds.
-rf2=pd.concat([raw41,raw31,raw21,raw11])
+rf2=pd.concat([tlbxraw1,tlbxraw2,tlbxraw3,tlbxraw4])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('HCA1111111_CR'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper()=='ABC123')]
+rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('PRACTICE'))]
+rf2=rf2.loc[~(rf2.PIN.str.contains('No line'))]
 
-#drop duplicates for purpose of generating QC flags.
-rf2=rf2.drop_duplicates(subset='PIN').copy()
-
-#fixtypos - NEED TO incorporate information about date of session as given in filename because of typos involving legit ids
-# THERE ARE TWO SUBJECTS HERE WHOSE NEXT VISIT WILL BE IN CONFLICT WITH THIS ONE, OTHERWISE
 fixtypos=inventoryaabc2.loc[inventoryaabc2.nih_toolbox_upload_typo!=''][['subject','redcap_event','nih_toolbox_upload_typo']]
 fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
 fixes=dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
 rf2.PIN=rf2.PIN.replace(fixes)
+#peek for remaining wierdness
+rf2.PIN.unique()
+
+#keep track of the full dataset so that you can drop anything with issues before sync
+rf2full=rf2.copy()
+rf2full=rf2full.drop_duplicates()
+
+#drop duplicates for purpose of generating QC flags.
+rf2=rf2.drop_duplicates(subset='PIN').copy()
+
 
 #NOW THE SCORED DATA
-results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                       'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-results1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                       'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                       'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                       'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
+tlbxscore4=importTLBX(siteabbrev='WU',typed='scores')
+tlbxscore1=importTLBX(siteabbrev='MGH',typed='scores')
+tlbxscore3=importTLBX(siteabbrev='UMN',typed='scores')
+tlbxscore2=importTLBX(siteabbrev='UCLA',typed='scores')
+tlbxscore1['site']=1
+tlbxscore2['site']=2
+tlbxscore3['site']=3
+tlbxscore4['site']=4
 
+
+#results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                       'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
+#results1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                       'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
+#results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                       'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
+#results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+#                       'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
+#
 #  TWO 'NIGHTMARE' SUBJECTS so far.  Removed bad data by hand from IntraDB.  fixed, uploaded bad data (provenance) to REDCap.  Uploaded corrected data to IntraDB
 #  HCA8596099_V3 and HCA7802172_V3 (both should be V2).  Typo listed as 'NIGHTMARE' in the visit summary.
 
-dffull1=TLBXreshape(results1)
-dffull2=TLBXreshape(results2)
-dffull3=TLBXreshape(results3)
-dffull4=TLBXreshape(results4)
-dffull1['site']=1
-dffull2['site']=2
-dffull3['site']=3
-dffull4['site']=4
+#dffull1=TLBXreshape(results1)
+#dffull2=TLBXreshape(results2)
+#dffull3=TLBXreshape(results3)
+#dffull4=TLBXreshape(results4)
+#dffull1['site']=1
+#dffull2['site']=2
+#dffull3['site']=3
+#dffull4['site']=4
 
 ##fixtypos in Scores file now
-dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
-dffull=dffull.copy() #pd.concat([df11,df31])
+#dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
+dffull=pd.concat([tlbxscore1, tlbxscore3, tlbxscore2, tlbxscore4])
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('HCA1111111_CR'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
-dffull.PIN=dffull.PIN.replace(fixes)
+dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('PRACTICE'))]
+dffull=dffull.loc[~(dffull.PIN.str.contains('No line'))]
 
+dffull.PIN=dffull.PIN.replace(fixes)
+dffull=dffull.drop_duplicates()
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
 # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
 # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
 iset=inventoryaabc2
 dffull=filterdupass('NIH Toolbox Words-In-Noise Test Age 6+ v2.1','tlbxwin_dups_v2',iset,dffull)
 dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walkendur_dups',iset,dffull)
+#dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','psmt_dups',iset,dffull)
 
 #find any non-identical duplicated Assessments still in data after patch
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-dupass=dupass.loc[~(dupass.Inst.str.upper().str.contains('ASSESSMENT'))]
-#booyah
 
 
 #TURN THIS INTO A TICKET
 duptix=dupass.drop_duplicates(subset='PIN').copy()
-duptix['code']='ORANGE'
-duptix['issueCode'] = 'AE5001'
-duptix['datatype'] = 'TLBX'
-duptix['reason'] = "Non-Identical Duplicate Found for "+duptix.Inst
-i3=inventoryaabc3[['subject', 'study_id', 'redcap_event_name', 'redcap_event','event_date']].copy()
-i3["PIN"]=i3.subject+'_'+i3.redcap_event
-duptix=pd.merge(duptix,i3,on='PIN',how='left')
+if duptix.shape[0]>0:
+    duptix['code']='ORANGE'
+    duptix['issueCode'] = 'AE5001'
+    duptix['datatype'] = 'TLBX'
+    duptix['reason'] = "Non-Identical Duplicate Found for "+duptix.Inst
+    i3=inventoryaabc3[['subject', 'study_id', 'redcap_event_name', 'redcap_event','event_date']].copy()
+    i3["PIN"]=i3.subject+'_'+i3.redcap_event
+    duptix=pd.merge(duptix,i3,on='PIN',how='left')
 
 #'subject', 'study_id', 'redcap_event_name', 'redcap_event',
 #       'event_date', 'PIN',
@@ -485,14 +513,12 @@ if issues.shape[0]>0:
     print("Raw or Scored data not found (make sure you didn't export Narrow format)")
     print(issues[['PIN']])
 
-
-#DATE FORMAT IS STILL FUNKY ON THIS CHECK, better to examine by hand until can figure out why str.split isn't working.
-#identical dups are removed if they have identical dates in original ssh command.  These will catch leftovers
 #find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
+#extend this section by pivoting and subtracting dates, then searching for diffs>60 days.
 dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
-catchdups=dffull.loc[~(dffull.Date=='')]
+catchdups=dffull.loc[~(dffull.Date.isnull()==True)]
 c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
-c.loc[c.duplicated(subset='PIN')]
+c.loc[c.duplicated(subset='PIN',keep=False)]
 #c is wierd.
 
 #add subject and visit
@@ -516,7 +542,17 @@ if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
     t2['datatype']='TLBX'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event','site','siteT']])
+t2b=pd.DataFrame()
+if df2.loc[df2.PIN.str.len()>13].shape[0] >0 :
+    t2b=df2.loc[df2.PIN.str.len()>13].copy()
+    t2b['reason']='TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?'
+    t2b['code']='ORANGE'
+    t2b['issueCode']='AE1001'
+    t2b['datatype']='TLBX'
+    print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
+    print(df2.loc[df2.PIN.str.len()>13][['PIN','subject','redcap_event','site']])
 
+#t2b=t2b.loc[~t2b.PIN.str.contains('HCA855')]
 inventoryaabc4=inventoryaabc4.loc[inventoryaabc4._merge!='right_only'].drop(columns=['_merge'])
 #inventoryaabc2.to_csv('test.csv',index=False)
 
@@ -532,10 +568,15 @@ if missingT.shape[0]>0:
     print("TLBX cannot be found for")
     print(missingT[['subject','redcap_event','site','event_date','nih_toolbox_collectyn']])
 
-#T=pd.concat([duptix,t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
-T=pd.concat([duptix,t1,t2,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
+#T=pd.concat([duptix,t1,t2b,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
+T=pd.concat([duptix,t1,t2,t2b,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
 #merge with site num from inventory
 T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','redcap_event'],how='left')
+
+#PUT IT ALL TOGETHER FOR THE EXPORT
+# TO DO
+######################################################################
+
 
 ### NOW For ASA 24 ######################################################################
 # ORDER
@@ -546,7 +587,7 @@ T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','re
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-folderqueue=['WU','MGH','UMN','UCLA']# and MGH not started yet
+folderqueue=['WU','MGH','UMN','UCLA']#
 anydata=[]
 for studyshort in folderqueue:
     folder = config['NonQBox']['ASA24'][studyshort]
@@ -659,6 +700,7 @@ a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', '
 
 studyshort='WU'
 folderqueue=['WU','MGH','UMN','UCLA']
+folderqueue=['UCLA']
 
 #scan Box
 anydata=pd.DataFrame()
@@ -702,12 +744,12 @@ df4 = pd.DataFrame(str.splitlines(psychointradb4.decode('utf-8')))
 df4 = df4[0].str.split(',', expand=True)
 df3 = pd.DataFrame(str.splitlines(psychointradb3.decode('utf-8')))
 df3 = df3[0].str.split(',', expand=True)
-#df2 = pd.DataFrame(str.splitlines(psychointradb2.decode('utf-8')))
-#df2 = df2[0].str.split(',', expand=True)
+df2 = pd.DataFrame(str.splitlines(psychointradb2.decode('utf-8')))
+df2 = df2[0].str.split(',', expand=True)
 df1 = pd.DataFrame(str.splitlines(psychointradb1.decode('utf-8')))
 df1 = df1[0].str.split(',', expand=True)
 
-df=pd.concat([df1,df3,df4],axis=0) #df2,
+df=pd.concat([df1,df2,df3,df4],axis=0) #df2,
 df.columns = ['PIN_AB']
 df.PIN_AB=df.PIN_AB.str.replace('t','')
 
@@ -717,12 +759,13 @@ psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
 
 print('A and or B psychopy in BOX but not in IntraDB')
 for i in psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique():
-    if i.split(sep='_')[2]=='A' or i.split(sep='_')[2]=='B':
-        print(i)
+    if str(i) != 'nan':
+        if i.split(sep='_')[2]=='A' or i.split(sep='_')[2]=='B':
+            print(i)
 p1=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     p1 = pd.DataFrame(psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique())
-    newp1=pd.DataFrame([item for item in list(p1[0]) if ('_A' in item or '_B' in item)])
+    newp1=pd.DataFrame([item for item in list(p1[0]) if ('_A' in str(item) or '_B' in str(item))])
     newp1['code']='ORANGE'
     newp1['issueCode']='AE4001'
     newp1['datatype']='PsychoPy'
@@ -774,7 +817,7 @@ if missingPY.shape[0]>0:
 P=pd.concat([pwho,peepy])
 #IntraDB ID
 P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
-
+#inventoryaabc7=inventoryaabc6.copy()
 ##################################################################################
 #HOT FLASH DATA (not available yet)
 
@@ -797,7 +840,7 @@ if cb.shape[0]>0:
     print("Current Counterbalance Ratio:\n", inventoryaabc7.counterbalance_2nd.value_counts())
     print("Currently Missing Counterbalance:", cb)
     cb['reason']='Currently Missing Counterbalance'
-    cb['code']='RED'
+    cb['code']='PINK'
     cb['datatype']='REDCap'
     cb['issueCode']='AE3001'
 #QC
@@ -846,7 +889,7 @@ a=bmiv.loc[bmiv.bmi !=''].copy()
 a=a.loc[(a.bmi.astype('float')<=17.0) | (a.bmi.astype('float')>=41)].copy()
 if a.shape[0]>0:
     print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 41)])
-    a['code']='RED'
+    a['code']='PINK'
     a['datatype']='REDCap'
     a['reason']='BMI is an outlier.  Please double check height and weight'
     a['issueCode']='AE7001'
@@ -856,7 +899,7 @@ if a.shape[0]>0:
 #missings
 bmiv=bmiv.loc[bmiv.bmi=='']
 if bmiv.shape[0]>0:
-    bmiv['code']='RED'
+    bmiv['code']='PINK'
     bmiv['issueCode']='AE3001'
     bmiv['datatype']='REDCap'
     bmiv['reason']='Missing Height or Weight (or there is another typo preventing BMI calculation)'
@@ -864,10 +907,19 @@ if bmiv.shape[0]>0:
     print("Missing BMI:\n",bmiv.loc[bmiv.bmi==''])
     bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
 
+#check counterbalance distribution - 97 vs 82 (3 to 4) as o 1/27/23
+inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].counterbalance_1st.value_counts()
 
 ##############################################################################
 #all the flags for JIRA together
-QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T)
+#QAAP=concat(Q1,Q2,a1,a2,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
+#fill in missing dates
+#af0dates=inventoryaabc7.loc[inventoryaabc7.redcap_event=='AF0'][['subject','v0_date']]
+#QAAP=QAAP.merge(af0dates,on='subject')
+#QAAP.loc[(QAAP.event_date.isnull()==True) | (QAAP.event_date==''),'event_date']=QAAP.v0_date
+#QAAP=QAAP.drop(columns=['v0_date'])
+
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']]
@@ -875,7 +927,7 @@ QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date
 
 
 ###REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='RED') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
+filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED')) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 ##RED=issue_age>7
 ##ORANGE=issues_age>18
