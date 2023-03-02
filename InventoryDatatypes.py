@@ -153,7 +153,7 @@ if not tests.empty:
 ###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 try:
-    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist4,qlist5])
+    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist5])#qlist4
 except:
     Q1=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 #########################################################################################
@@ -210,7 +210,7 @@ qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_ind
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
 #all box files - grab, transform, send
-folderqueue=['UCLA','WU','UMN','MGH'] ###,'UCLA']
+folderqueue=['UCLA']#['UCLA','WU','UMN','MGH'] ###,'UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
@@ -231,8 +231,8 @@ for studyshort in folderqueue:
     #print(studyshort,":",db.shape[0],"records in BOX")
     #ones that already exist in q redcap
     cached_filelist=qintdf.copy()
-    cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
-
+    #cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
+    cached_filelist.fileid.str.strip().astype(float).astype('Int64')
     #find the new ones that need to be pulled in
     newfileids=pd.merge(db,cached_filelist.fileid,on='fileid',how='left',indicator=True)
     newfileids_temp=newfileids.copy()
@@ -440,28 +440,6 @@ tlbxscore2['site']=2
 tlbxscore3['site']=3
 tlbxscore4['site']=4
 
-
-#results4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                       'cat /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-#results1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                       'cat /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-#results3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                       'cat /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-#results2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                       'cat /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/*Scores* | cut -d"," -f1,2,3,4,10 | sort -u').stdout.read()
-#
-#  TWO 'NIGHTMARE' SUBJECTS so far.  Removed bad data by hand from IntraDB.  fixed, uploaded bad data (provenance) to REDCap.  Uploaded corrected data to IntraDB
-#  HCA8596099_V3 and HCA7802172_V3 (both should be V2).  Typo listed as 'NIGHTMARE' in the visit summary.
-
-#dffull1=TLBXreshape(results1)
-#dffull2=TLBXreshape(results2)
-#dffull3=TLBXreshape(results3)
-#dffull4=TLBXreshape(results4)
-#dffull1['site']=1
-#dffull2['site']=2
-#dffull3['site']=3
-#dffull4['site']=4
-
 ##fixtypos in Scores file now
 #dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
 dffull=pd.concat([tlbxscore1, tlbxscore3, tlbxscore2, tlbxscore4])
@@ -498,6 +476,7 @@ if duptix.shape[0]>0:
 
 #'subject', 'study_id', 'redcap_event_name', 'redcap_event',
 #       'event_date', 'PIN',
+#before sending the dffull and rf2full to BOX, need to drop the duplicates from rf2full
 
 #QC check:
 #Either scored or raw is missing in format expected:
@@ -530,6 +509,19 @@ df2['TLBX']='YES'
 
 #now merge with inventory
 inventoryaabc4=pd.merge(inventoryaabc3,df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
+
+#find PINS with length greater than 10
+tlong=pd.DataFrame()
+dflong=df2.drop_duplicates(subset='PIN').copy()
+if dflong.loc[dflong.PIN.str.len() > 13].shape[0] > 0 :
+    tlong=dflong.loc[dflong.PIN.str.len() > 13].copy()
+    tlong['reason']='TOOLBOX PIN typos need to be addressed in the visit summary?'
+    tlong['code']='ORANGE'
+    tlong['issueCode']='AE1001'
+    tlong['datatype']='TLBX'
+    print("Too. Legit. Too legit 2 quit. Break it down: The following TOOLBOX PIN typos need to be addressed in the visit summary")
+    print(tlong.PIN)
+
 
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 #turn this into a ticket
@@ -569,7 +561,7 @@ if missingT.shape[0]>0:
     print(missingT[['subject','redcap_event','site','event_date','nih_toolbox_collectyn']])
 
 #T=pd.concat([duptix,t1,t2b,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
-T=pd.concat([duptix,t1,t2,t2b,t3])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
+T=pd.concat([duptix,t1,t2,t3,t2b,tlong])[['subject','study_id','redcap_event_name','redcap_event', 'event_date','PIN', 'reason', 'code','issueCode','datatype']]
 #merge with site num from inventory
 T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','redcap_event'],how='left')
 
@@ -698,9 +690,12 @@ a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', '
 # 3. generate an tickets and send to JIra if don't already exist
 # 4. DONT dump or snapshot.  Leave data in IntraDB.
 
+
+#can't figure out why some of the B files aren't being grabbed in the file listing from Box
+
+
 studyshort='WU'
 folderqueue=['WU','MGH','UMN','UCLA']
-folderqueue=['UCLA']
 
 #scan Box
 anydata=pd.DataFrame()
@@ -720,6 +715,7 @@ for studyshort in folderqueue:
             row=l2+[fname]
             print(row)
             rowfor=pd.DataFrame(row).transpose()
+            print(rowfor)
             anydata=pd.concat([anydata,rowfor])
         except:
             print("problem with BOX file",f)
@@ -739,7 +735,6 @@ psychointradb2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 psychointradb1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
-
 df4 = pd.DataFrame(str.splitlines(psychointradb4.decode('utf-8')))
 df4 = df4[0].str.split(',', expand=True)
 df3 = pd.DataFrame(str.splitlines(psychointradb3.decode('utf-8')))
@@ -751,39 +746,40 @@ df1 = df1[0].str.split(',', expand=True)
 
 df=pd.concat([df1,df2,df3,df4],axis=0) #df2,
 df.columns = ['PIN_AB']
-df.PIN_AB=df.PIN_AB.str.replace('t','')
+df.PIN_AB=df.PIN_AB.str.replace('t','').str.strip()
 
 #merge df (intradb) and ci (Box) to see what's missing - one of these is redundant with the check against AABC...
 psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
 #p1=pd.DataFrame()
 
-print('A and or B psychopy in BOX but not in IntraDB')
-for i in psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique():
-    if str(i) != 'nan':
-        if i.split(sep='_')[2]=='A' or i.split(sep='_')[2]=='B':
-            print(i)
+#print('A and or B psychopy in BOX but not in IntraDB')
+#for i in psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique():
+#    if str(i) != 'nan':
+#        if i.split(sep='_')[2]=='A' or i.split(sep='_')[2]=='B':
+#            print(i)
 p1=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     p1 = pd.DataFrame(psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique())
+    p1=p1.loc[~((p1[0].isnull()==True) | ((p1[0].str.contains("HCA678899_V3"))==True) | ((p1[0].str.contains("HCA996201_V3"))==True) | ((p1[0].str.contains("HCA752775_V3"))==True))].copy()
     newp1=pd.DataFrame([item for item in list(p1[0]) if ('_A' in str(item) or '_B' in str(item))])
     newp1['code']='ORANGE'
     newp1['issueCode']='AE4001'
     newp1['datatype']='PsychoPy'
     newp1['reason']='A and/or B Psychopy Data Found in Box but not IntraDB'
-
+print(newp1[0])
 #p2=pd.DataFrame()
 
-print('psychopy in IntraDB but not in Box')
+print('psychopy in IntraDB but not in Box -- not turning into tickets for now because bug in merge')
 for i in psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique():
     print(i)
 
 p2=pd.DataFrame()
-if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
-    p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
-    p2['code']='ORANGE'
-    p2['datatype']='PsychoPy'
-    p2['issueCode']='AE4001'
-    p2['reason']='Psychopy Data Found in IntraDB but not Box'
+#if psymiss.loc[psymiss._merge=='right_only'].shape[0] > 0:
+#    p2 = pd.DataFrame(psymiss.loc[psymiss._merge=='right_only'].PIN_AB.unique())
+#    p2['code']='ORANGE'
+#    p2['datatype']='PsychoPy'
+#    p2['issueCode']='AE4001'
+#    p2['reason']='Psychopy Data Found in IntraDB but not Box'
 
 pwho=pd.DataFrame()
 p=pd.concat([newp1,p2])
@@ -941,6 +937,8 @@ filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 
 ########################################################################
 #clean up the AABC inventory and upload to BOX for recruitment stats.
+#need to update this section after finalizing subject lists from exported datasets.
+
 inventoryaabc7.loc[inventoryaabc7.age=='','age']=inventoryaabc6.age_visit
 inventoryaabc7.loc[inventoryaabc7.event_date=='','event_date']=inventoryaabc7.v0_date
 inventoryaabc7=inventoryaabc7.sort_values(['redcap_event','event_date'])
