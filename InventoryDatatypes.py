@@ -24,12 +24,14 @@ pathp=box.downloadFile(config['hcainventory'])
 
 #get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
 #this is not yet working
+Asnaps=161956162589
+
 a=box.downloadFile(config['variablemask'])
 rdrop=getlist(a,'AABC-ARMS-DROP')
 rrest=getlist(a,'AABC-ARMS-RESTRICTED')
 rraw=getlist(a,'TLBX-RAW-RESTRICTED')
 rscore=getlist(a,'TLBX-SCORES-RESTRICTED')
-
+restrictedQ=getlist(a,'Q-RESTRICTED')
 #get ids
 ids=pd.read_csv(pathp)
 hcaids=ids.subject.drop_duplicates()
@@ -136,6 +138,12 @@ if not missingsubids.empty:
     qlist4 = missingsubids[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype']]
     for s4 in list(missingsubids.study_id.unique()):
         print('CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
+#from last time
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 106
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
+
+
 
 #test subjects that need to be deleted
 tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST'))][['study_id',study_id,'redcap_event_name']]
@@ -210,7 +218,7 @@ qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_ind
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
 #all box files - grab, transform, send
-folderqueue=['UCLA']#['UCLA','WU','UMN','MGH'] ###,'UCLA']
+folderqueue=['UCLA','WU','UMN','MGH'] ###,'UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
@@ -232,9 +240,9 @@ for studyshort in folderqueue:
     #ones that already exist in q redcap
     cached_filelist=qintdf.copy()
     #cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
-    cached_filelist.fileid.str.strip().astype(float).astype('Int64')
+    cached_filelist.fileid=cached_filelist.fileid.str.strip().astype(float).astype('Int64')
     #find the new ones that need to be pulled in
-    newfileids=pd.merge(db,cached_filelist.fileid,on='fileid',how='left',indicator=True)
+    newfileids=pd.merge(db.fileid,cached_filelist.fileid,on='fileid',how='left',indicator=True)
     newfileids_temp=newfileids.copy()
     newfileids=newfileids.loc[newfileids._merge=='left_only'].drop(columns=['_merge'])
     db2go=db.loc[db.fileid.isin(list(newfileids.fileid))]
@@ -244,7 +252,7 @@ for studyshort in folderqueue:
         print("you are here")
         #initiate new ids
         #NEED TO UPDATE CACHED_FILELIST.ID after every iteration.
-        s = cached_filelist.id.astype('Int64').max() + 1 + studyshortsum
+        s = cached_filelist.id.str.strip().astype(float).astype('Int64').max() + 1 + studyshortsum
         l=len(db2go)
         vect=[]
         for i in range(0,l):
@@ -340,7 +348,7 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']])
     q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']].rename(columns={'subjectid':'subject'})
-    q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo']
+    q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo and forward correction instructions and ticket to Petra']
     q1['code']='ORANGE'
     q1['issueCode']='AE1001'
     q1['datatype']='RAVLT'
@@ -369,7 +377,11 @@ Q2['subject_id']=Q2.subject
 # drop all the q_unusable.isnull()==False) records, as well as any ids that are not in AABC redcap
 # drop restricted vars.
 # send to BOX - this code needs to be fixed, but it will work
-#qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
+
+
+
+qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
+
 ##idstring='Q-Interactive'
 ##studystr='AABC'
 ##qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
@@ -391,21 +403,6 @@ tlbxraw4=importTLBX(siteabbrev='WU',typed='raw')
 tlbxraw1=importTLBX(siteabbrev='MGH',typed='raw')
 tlbxraw3=importTLBX(siteabbrev='UMN',typed='raw')
 tlbxraw2=importTLBX(siteabbrev='UCLA',typed='raw')
-
-#rawd4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                    'find /ceph/intradb/archive/AABC_WU_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-#rawd1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                    'find /ceph/intradb/archive/AABC_MGH_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-#rawd3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                    'find /ceph/intradb/archive/AABC_UMN_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-#rawd2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-#                    'find /ceph/intradb/archive/AABC_UCLA_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) -exec cat {} \;').stdout.read()
-#note that some of these won't work because UCLA hasn't started collecting data
-
-#raw41=TLBXreshape(rawd4)
-#raw11=TLBXreshape(rawd1)
-#raw31=TLBXreshape(rawd3)
-#raw21=TLBXreshape(rawd2)
 
 #remove files known to be duds.
 rf2=pd.concat([tlbxraw1,tlbxraw2,tlbxraw3,tlbxraw4])
@@ -522,7 +519,6 @@ if dflong.loc[dflong.PIN.str.len() > 13].shape[0] > 0 :
     print("Too. Legit. Too legit 2 quit. Break it down: The following TOOLBOX PIN typos need to be addressed in the visit summary")
     print(tlong.PIN)
 
-
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 #turn this into a ticket
 t2=pd.DataFrame()
@@ -567,6 +563,8 @@ T=pd.merge(T,inventoryaabc4[['subject','redcap_event','site']],on=['subject','re
 
 #PUT IT ALL TOGETHER FOR THE EXPORT
 # TO DO
+rf2full=rf2full.drop_duplicates()
+
 ######################################################################
 
 
@@ -662,10 +660,16 @@ ActD=pd.DataFrame(actdata,columns=['PIN'])
 ActD['Actigraphy']='YES'
 inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
 
-#Missing?
+#Missing -- TO DO : add exception for partial missing
+# #-- add typo replacements, where applicable, once we figure out how to handle?
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
 missingAct=missingAct.loc[(missingAct.actigraphy_collectyn!='0') & (missingAct.actigraphy_partial_1___1 !=0)]
+#drop exceptions until patched in redcap
+
+missingAct=missingAct.loc[~((missingAct.subject=='HCA8239378') & (missingAct.redcap_event=='V3'))].copy()
+
 a2=pd.DataFrame()
+
 if missingAct.shape[0]>0:
     print("Actigraphy cannot be found for")
     print(missingAct[['subject','redcap_event','site','event_date','actigraphy_collectyn']])
@@ -909,7 +913,7 @@ inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].co
 ##############################################################################
 #all the flags for JIRA together
 #QAAP=concat(Q1,Q2,a1,a2,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
-QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,bmiv,T).drop(columns=['v0_date'])
 #fill in missing dates
 #af0dates=inventoryaabc7.loc[inventoryaabc7.redcap_event=='AF0'][['subject','v0_date']]
 #QAAP=QAAP.merge(af0dates,on='subject')

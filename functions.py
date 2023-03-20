@@ -116,7 +116,7 @@ def send_frame(dataframe, tok):
 
 
 def run_ssh_cmd(host, cmd):
-    cmds = ['ssh', '-t', host, cmd]
+    cmds = ['ssh', '-t', '-i', '/Users/petralenzini/.ssh/plmacchpc',host, cmd]
     return Popen(cmds, stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
 
@@ -149,9 +149,9 @@ def importTLBX(siteabbrev='WU',typed='scores'):
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                 'find /home/plenzini/tools/catTLBX/cache/ -type f > /home/plenzini/tools/catTLBX/datalist2.csv').stdout.read()
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                "sed -i 's/\/home\/plenzini/\/home\/petra\/chpc3/g' /home/plenzini/tools/catTLBX/datalist2.csv").stdout.read()
+                "sed -i 's/\/home\/plenzini/\/Users\/petralenzini\/chpc3/g' /home/plenzini/tools/catTLBX/datalist2.csv").stdout.read()
     # Using readlines()
-    file1 = open('/home/petra/chpc3/tools/catTLBX/datalist2.csv', 'r')
+    file1 = open('/Users/petralenzini/chpc3/tools/catTLBX/datalist2.csv', 'r')
     Lines = file1.readlines()
     sitedf=pd.DataFrame()
     count = 0
@@ -184,7 +184,36 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
     """
     downloads all events and fields in a redcap database
     """
-    df=getframe(struct, api_url)
+    studydata = pd.DataFrame()
+    auth = pd.read_csv(redcap9configfile)
+    print(auth)
+    token=auth.loc[auth.study==studystr,'token'].reset_index().token[0]
+    subj=auth.loc[auth.study==studystr,'field'].reset_index().field[0]
+    print(token)
+    print(subj)
+    idvar='id'
+    data = {
+        'token': token,
+        'content': 'record',
+        'format': 'json',
+        'type': 'flat',
+        'rawOrLabel': 'raw',
+        'rawOrLabelHeaders': 'raw',
+        'exportCheckboxLabel': 'false',
+        'exportSurveyFields': 'false',
+        'exportDataAccessGroups': 'false',
+        'returnFormat': 'json'
+    }
+    buf = BytesIO()
+    ch = pycurl.Curl()
+    ch.setopt(ch.URL, 'https://redcap.wustl.edu/redcap/api/')
+    ch.setopt(ch.HTTPPOST, list(data.items()))
+    ch.setopt(ch.WRITEDATA, buf)
+    ch.perform()
+    ch.close()
+    htmlString = buf.getvalue().decode('UTF-8')
+    buf.close()
+    df = pd.read_json(htmlString)
     print(df.shape)
     if (studystr=='qint'):
         print('Dropping unusuable Q records')
@@ -193,6 +222,26 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
         print(df.shape)
         df['subject']=df[subj]
         df['redcap_event']='V'+df.visit.astype('str')
+        df.loc[df.redcap_event=='VCR','redcap_event']='CR'
+        if(idstring=='HCD'):
+            df=df.loc[df[subj].str.contains('HCD')].copy()
+            df = df.loc[~(df.assessment.str.contains('RAVLT'))].copy()
+            cols = [c for c in df.columns if c.lower()[:5] != 'ravlt']
+            df = df[cols].copy()
+        if(idstring=='HCA'):
+            df=df.loc[df[subj].str.contains('HCA')]
+            df = df.loc[df.assessment.str.contains('RAVLT')].copy()
+            print(len(df.columns))
+            cols = [c for c in df.columns if c.lower()[:4] != 'wais']
+            cols = [c for c in cols if c[:4] != 'wisc']
+            cols = [c for c in cols if c[:4] != 'wpps']
+            print(len(cols))
+            df = df[cols].copy()
+    if (studystr == 'ksads'):
+        print('Dropping unusuable K records')
+        print(df.shape)
+        df = df.loc[~(df.k_unusable == '1')]
+        print(df.shape)
     print(df.shape)
     print('Dropping exclusions/DNRs/Withdrawns')
     #for sb in list(flaggedgold.subject):
@@ -202,6 +251,8 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
     print(df.shape)
     if (studystr=='qint'):
         dfrestricted=df.copy() #[['id', 'subjectid', 'visit']+restrictedcols]
+    if (studystr=='ksads'):
+        dfrestricted=df.copy() #[['id', 'patientid', 'patienttype' ]+restrictedcols]
     for dropcol in restrictedcols:
         #try:
         df=df.drop(columns=dropcol)
