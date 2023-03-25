@@ -143,6 +143,11 @@ if not missingsubids.empty:
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
 
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 106
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 123
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
+#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
+
 
 
 #test subjects that need to be deleted
@@ -379,8 +384,9 @@ Q2['subject_id']=Q2.subject
 # send to BOX - this code needs to be fixed, but it will work
 
 
-
-qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',restrictedcols=restrictedQ)
+#PETRA
+#qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',secret,config,restrictedcols=restrictedQ)
+#hcpa = redjson(tok=secret.loc[secret.source=='hcpa','api_key'].reset_index().drop(columns='index').api_key[0])
 
 ##idstring='Q-Interactive'
 ##studystr='AABC'
@@ -459,7 +465,7 @@ dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walk
 #find any non-identical duplicated Assessments still in data after patch
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
 
-
+#HERE##
 #TURN THIS INTO A TICKET
 duptix=dupass.drop_duplicates(subset='PIN').copy()
 if duptix.shape[0]>0:
@@ -619,7 +625,6 @@ a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', '
 #################################################################################
 #ACTIGRAPHY
 ### for now, this is basically the same protocol as for ASA24
-# TO DO Code for typos within the file (e.g. would be typos found in subsequent exports of database)
 #scan BOX
 folderqueue=['WU','UMN','MGH','UCLA']
 actdata=[]
@@ -658,18 +663,23 @@ if [item for item, count in collections.Counter(actdata).items() if count > 1] !
 
 ActD=pd.DataFrame(actdata,columns=['PIN'])
 ActD['Actigraphy']='YES'
+#actigraphy_upload_typoyn
+fixtypos=inventoryaabc5.loc[inventoryaabc5.actigraphy_upload_typo!=''][['subject','redcap_event','actigraphy_upload_typo']]
+fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
+fixes=dict(zip(fixtypos.actigraphy_upload_typo, fixtypos.PIN))
+ActD.PIN=ActD.PIN.replace(fixes)
+
 inventoryaabc6=pd.merge(inventoryaabc5,ActD,on='PIN',how='left')
 
-#Missing -- TO DO : add exception for partial missing
-# #-- add typo replacements, where applicable, once we figure out how to handle?
+#Missing  : add exception for partial missing
 missingAct=inventoryaabc6.loc[(inventoryaabc6.redcap_event_name.str.contains('v')) & (~(inventoryaabc6.Actigraphy=='YES'))]
-missingAct=missingAct.loc[(missingAct.actigraphy_collectyn!='0') & (missingAct.actigraphy_partial_1___1 !=0)]
-#drop exceptions until patched in redcap
-
-missingAct=missingAct.loc[~((missingAct.subject=='HCA8239378') & (missingAct.redcap_event=='V3'))].copy()
+missingAct.shape
+#people that have partial data and it isknown that actigraphy device data are missing
+partials=missingAct.loc[ (missingAct.actigraphy_collectyn == '2' ) & (missingAct.actigraphy_partial_1___1.astype('int')==0)][['PIN','actigraphy_collectyn','subject','actigraphy_partial_1___1']]
+#don't want to include these guys in the list
+missingAct=missingAct.loc[~missingAct.PIN.isin(list(partials.PIN))]
 
 a2=pd.DataFrame()
-
 if missingAct.shape[0]>0:
     print("Actigraphy cannot be found for")
     print(missingAct[['subject','redcap_event','site','event_date','actigraphy_collectyn']])
@@ -729,6 +739,7 @@ checkIDB=anydata[['subject','redcap_event','scan']].copy()
 checkIDB['PIN_AB']=checkIDB.subject+'_'+checkIDB.redcap_event + '_'+checkIDB.scan
 ci=checkIDB.drop_duplicates(subset='PIN_AB')
 
+# PETRA #
 #just check for existence of PsychoPY in IntraDB
 #/ceph/intradb/archive/AABC_WU_ITK/arc001/HCA7281271_V3_B/RESOURCES/LINKED_DATA/PSYCHOPY/
 psychointradb4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
