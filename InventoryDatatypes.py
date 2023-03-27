@@ -322,6 +322,7 @@ if not all2push.empty:
 
 
 #QC checks
+#re - download the q data.
 #now check first define PIN for merging and drop unusables
 qintdf2=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 invq=qintdf2[['id', 'site', 'subjectid','visit','q_unusable']].copy()
@@ -330,19 +331,21 @@ invq['Qint']='YES'
 #invq=invq.loc[~(invq.subjectid.str.upper().str.contains('TEST'))]
 invq=invq.loc[~(invq.q_unusable=='1')].copy()
 
-#Before merging, check for duplicates that haven't been given the 'unusable' flag
-dups=qintdf.loc[qintdf.duplicated(subset=['subjectid','visit'])]
-dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
+dups2=invq.loc[invq.duplicated(subset=['subjectid','visit'])]
 
-q0=pd.DataFrame()
+#Before merging, check for duplicates that haven't been given the 'unusable' flag
+#dups=qintdf2.loc[qintdf2.duplicated(subset=['subjectid','visit'])#,keep=False)]
+#dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
+
+#q0=pd.DataFrame()
 if dups2.shape[0]>0:
     print("Duplicate Q-interactive records")
     print(dups2[['subjectid','visit']])
+    q0=dups2.copy()
     q0['datatype']='RAVLT'
-    q0['reason']=['Duplicate Q-interactive records']
+    q0['reason']='Duplicate Q-interactive records'
     q0['code']='ORANGE'
     q0['issueCode']='AE5001'
-
 #inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
 inventoryaabc2=pd.merge(inventoryaabc,invq.drop(columns=['site']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
 
@@ -377,21 +380,17 @@ Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','
 Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
-# pseudo code for snapshot to BOX
-# Send to Box
-# drop all the q_unusable.isnull()==False) records, as well as any ids that are not in AABC redcap
-# drop restricted vars.
-# send to BOX - this code needs to be fixed, but it will work
+
+#send to BOX
+qstruct=redjson(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
+qA = getframe(qstruct, config['Redcap']['api_url'])
+
+#drop all with flags - both duplicates, non-existent ids, corrupt files in Issues, based on subject and redcap_event
 
 
-#PETRA
-#qA,qArestricted=getredcap10Q('qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',secret,config,restrictedcols=restrictedQ)
-#hcpa = redjson(tok=secret.loc[secret.source=='hcpa','api_key'].reset_index().drop(columns='index').api_key[0])
+qArestricted=qA.drop(columns=restrictedQ) #droprestrict(qA,qArestricted,restrictedQ)
 
-##idstring='Q-Interactive'
-##studystr='AABC'
-##qA.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', index=False)
-##qArestricted.drop(columns='unusable_specify').to_csv(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', index=False)
+#qA,qArestricted=getredcap10Q(qstruct,'qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',config,restrictedcols=restrictedQ)
 ##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
 ##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
 
