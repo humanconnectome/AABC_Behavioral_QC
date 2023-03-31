@@ -180,40 +180,43 @@ def filterdupass(instrument,dupvar,iset,dset):
     dset=dset.loc[~(dset[dupvar].isnull()==False)]
     return dset
 
-def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
+def getredcap10Q(struct,studystr,curatedsnaps,goodies,idstring,config,restrictedcols=[]): #secret,config,
     """
     downloads all events and fields in a redcap database
     """
-    studydata = pd.DataFrame()
-    auth = pd.read_csv(redcap9configfile)
-    print(auth)
-    token=auth.loc[auth.study==studystr,'token'].reset_index().token[0]
-    subj=auth.loc[auth.study==studystr,'field'].reset_index().field[0]
-    print(token)
-    print(subj)
+    #studydata = pd.DataFrame()
+    #auth = secret
+    #print(auth)
+    #token=auth.loc[auth.source==studystr,'api_key'].reset_index().api_key[0]
+    ##subj=auth.loc[auth.source==studystr,'field'].reset_index().field[0]
+    subj=config['Redcap']['datasources']['qint']['subject']
+    #print(token)
+    #print(subj)
     idvar='id'
-    data = {
-        'token': token,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'rawOrLabel': 'raw',
-        'rawOrLabelHeaders': 'raw',
-        'exportCheckboxLabel': 'false',
-        'exportSurveyFields': 'false',
-        'exportDataAccessGroups': 'false',
-        'returnFormat': 'json'
-    }
-    buf = BytesIO()
-    ch = pycurl.Curl()
-    ch.setopt(ch.URL, 'https://redcap.wustl.edu/redcap/api/')
-    ch.setopt(ch.HTTPPOST, list(data.items()))
-    ch.setopt(ch.WRITEDATA, buf)
-    ch.perform()
-    ch.close()
-    htmlString = buf.getvalue().decode('UTF-8')
-    buf.close()
-    df = pd.read_json(htmlString)
+    data=struct
+    #data = {
+    #    'token': token,
+    #    'content': 'record',
+    #    'format': 'json',
+    #    'type': 'flat',
+    #    'rawOrLabel': 'raw',
+    #    'rawOrLabelHeaders': 'raw',
+    #    'exportCheckboxLabel': 'false',
+    #    'exportSurveyFields': 'false',
+    #    'exportDataAccessGroups': 'false',
+    #    'returnFormat': 'json'
+    #}
+    #buf = BytesIO()
+    #ch = pycurl.Curl()
+    #ch.setopt(ch.URL, 'https://redcap.wustl.edu/redcap/api/')
+    #ch.setopt(ch.HTTPPOST, list(data.items()))
+    #ch.setopt(ch.WRITEDATA, buf)
+    #ch.perform()
+    #ch.close()
+    #htmlString = buf.getvalue().decode('UTF-8')
+    #buf.close()
+    #df = pd.read_json(htmlString)
+    df=getframe(data,config['Redcap']['api_url'])
     print(df.shape)
     if (studystr=='qint'):
         print('Dropping unusuable Q records')
@@ -222,12 +225,12 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
         print(df.shape)
         df['subject']=df[subj]
         df['redcap_event']='V'+df.visit.astype('str')
-        df.loc[df.redcap_event=='VCR','redcap_event']='CR'
-        if(idstring=='HCD'):
-            df=df.loc[df[subj].str.contains('HCD')].copy()
-            df = df.loc[~(df.assessment.str.contains('RAVLT'))].copy()
-            cols = [c for c in df.columns if c.lower()[:5] != 'ravlt']
-            df = df[cols].copy()
+        #df.loc[df.redcap_event=='VCR','redcap_event']='CR'
+        #if(idstring=='HCD'):
+        #    df=df.loc[df[subj].str.contains('HCD')].copy()
+        #    df = df.loc[~(df.assessment.str.contains('RAVLT'))].copy()
+        #    cols = [c for c in df.columns if c.lower()[:5] != 'ravlt']
+        #    df = df[cols].copy()
         if(idstring=='HCA'):
             df=df.loc[df[subj].str.contains('HCA')]
             df = df.loc[df.assessment.str.contains('RAVLT')].copy()
@@ -237,13 +240,7 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
             cols = [c for c in cols if c[:4] != 'wpps']
             print(len(cols))
             df = df[cols].copy()
-    if (studystr == 'ksads'):
-        print('Dropping unusuable K records')
-        print(df.shape)
-        df = df.loc[~(df.k_unusable == '1')]
-        print(df.shape)
-    print(df.shape)
-    print('Dropping exclusions/DNRs/Withdrawns')
+    print('Dropping subs with issues')
     #for sb in list(flaggedgold.subject):
     df=df.loc[(df[subj].str[:10].isin(goodies))].copy()
     df=df.loc[~(df[subj].str.contains('CC'))].copy()
@@ -251,8 +248,6 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
     print(df.shape)
     if (studystr=='qint'):
         dfrestricted=df.copy() #[['id', 'subjectid', 'visit']+restrictedcols]
-    if (studystr=='ksads'):
-        dfrestricted=df.copy() #[['id', 'patientid', 'patienttype' ]+restrictedcols]
     for dropcol in restrictedcols:
         #try:
         df=df.drop(columns=dropcol)
@@ -260,3 +255,165 @@ def getredcap10Q(studystr,curatedsnaps,goodies,idstring,restrictedcols=[]):
         #    pass
     print(df.shape)
     return df, dfrestricted
+
+
+def folder_files(client, folders, extension='.csv', recursively=False):
+    """
+    A legacy function.
+    """
+    result = {}
+
+    for folder_id in folders:
+        client = box.get_client()
+        f = client.folder(folder_id)
+        print('Scanning %s' % folder_id)
+        print(dir(f))
+        print('.', end='')
+        items = list(f.get_items())
+
+        folders = []
+        #files = {}
+
+        for i in items:
+            #if i.type == 'file':
+            #    if i.name.endswith(extension):
+            #        files[i.id] = {
+            #            'filename': i.name,
+            #            'fileid': i.id,
+            #            'sha1': i.sha1
+            #        }
+            if i.type == 'folder':
+                folders.append(i.id)
+
+        #result.update(files)
+
+        #if recursively:
+            #res2=box.list_of_files(folders)
+            #folderdeet=box.folder_info(int(folders[0])
+            #result.update(box.list_of_files(folders, extension, True))
+
+    return folders #, result
+
+
+def getASA(folderqueue):
+    TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
+    allsubdb = pd.DataFrame(); CORRUPT=pd.DataFrame();ALLSUBS=pd.DataFrame();
+    BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
+
+    for studyshort in folderqueue:
+        print("Study:",studyshort)
+        folder = config['NonQBox']['ASA24'][studyshort]
+        dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
+        sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
+        subfolders = folder_files(client, [folder])
+        for i in subfolders:#[0:3]:
+            subfilelist = box.list_of_files([i])
+            f = client.folder(folder_id=i).get()
+            subdb = pd.DataFrame(subfilelist).transpose()
+            subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+            allsubdb = allsubdb.append(subdb)
+        ALLSUBS = ALLSUBS.append(allsubdb)
+        print("shape", ALLSUBS.shape)
+        dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()
+        dbitemsINS = allsubdb.loc[allsubdb.filename.str.contains('INS')].copy()
+        dbitemsTS = allsubdb.loc[allsubdb.filename.str.contains('TS')].copy()
+        dbitemsTotals = allsubdb.loc[allsubdb.filename.str.contains('Totals')].copy()
+        dbitemsItems = allsubdb.loc[allsubdb.filename.str.contains('Items')].copy()
+        dbitemsResp = allsubdb.loc[allsubdb.filename.str.contains('Responses')].copy()
+        TNS = TNS.append(dbitemsTNS)
+        INS = INS.append(dbitemsINS)
+        TS = TS.append(dbitemsTS)
+        Totals = Totals.append(dbitemsTotals)
+        Items = Items.append(dbitemsItems)
+        Resp = Resp.append(dbitemsResp)
+
+        Corrupted1 = pd.DataFrame();Corrupted2 = pd.DataFrame();Corrupted3 = pd.DataFrame();Corrupted4 = pd.DataFrame();Corrupted5 = pd.DataFrame();Corrupted6 = pd.DataFrame();
+        BigTotals = pd.DataFrame()
+        BigItems = pd.DataFrame()
+        BigResp = pd.DataFrame()
+        BigTNS = pd.DataFrame()
+        BigINS = pd.DataFrame()
+        BigTS = pd.DataFrame()
+
+        for f in list(Totals.fileid):
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
+                    BigTotals = BigTotals.append(k)
+            except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
+                Corrupted1 = Corrupted1.append(corrupt)
+        for f in Items.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN']= Items.loc[Items.fileid == f, "PIN"][0]
+                    BigItems = BigItems.append(k)
+            except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
+                Corrupted2 = Corrupted2.append(corrupt)
+        for f in Resp.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+                    BigResp = BigResp.append(k)
+            except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+                Corrupted3 = Corrupted3.append(corrupt)
+        for f in TNS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+                    BigTNS = BigTNS.append(k)
+            except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+                Corrupted4 = Corrupted4.append(corrupt)
+        for f in INS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+                    BigINS = BigINS.append(k)
+             except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+                Corrupted5 = Corrupted5.append(corrupt)
+        for f in TS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+                    BigTS = BigTS.append(k)
+             except:
+                print("Couldn't read", f)
+                corrupt['f'] = f
+                corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+                Corrupted6 = Corrupted6.append(corrupt)
+        CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
+        #print("Study:", studyshort)
+        if not BigTotals.empty:
+            BIGGESTTotals=BIGGESTTotals.append(BigTotals)
+        if not BigItems.empty:
+            BIGGESTItems = BIGGESTItems.append(BigItems)
+        if not BigTNS.empty:
+            BIGGESTTNS=BIGGESTTNS.append(BigTNS)
+        if not BigINS.empty:
+            BIGGESTINS = BIGGESTINS.append(BigINS)
+        if not BigTS.empty:
+            BIGGESTTS = BIGGESTTS.append(BigTS)
+        if not BigResp.empty:
+            BIGGESTResp = BIGGESTResp.append(BigResp)
+
+    return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS

@@ -337,7 +337,7 @@ dups2=invq.loc[invq.duplicated(subset=['subjectid','visit'])]
 #dups=qintdf2.loc[qintdf2.duplicated(subset=['subjectid','visit'])#,keep=False)]
 #dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
 
-#q0=pd.DataFrame()
+q0=pd.DataFrame()
 if dups2.shape[0]>0:
     print("Duplicate Q-interactive records")
     print(dups2[['subjectid','visit']])
@@ -381,15 +381,12 @@ Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
 
+#MOVE THIS CODE TO A SEPARATE FILE...A DUMMY CHECK for any missed issues
 #send to BOX
 qstruct=redjson(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
 qA = getframe(qstruct, config['Redcap']['api_url'])
-
 #drop all with flags - both duplicates, non-existent ids, corrupt files in Issues, based on subject and redcap_event
-
-
 qArestricted=qA.drop(columns=restrictedQ) #droprestrict(qA,qArestricted,restrictedQ)
-
 #qA,qArestricted=getredcap10Q(qstruct,'qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',config,restrictedcols=restrictedQ)
 ##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
 ##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
@@ -414,6 +411,7 @@ rf2=pd.concat([tlbxraw1,tlbxraw2,tlbxraw3,tlbxraw4])
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('TEST'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('HCA1111111_CR'))]
 rf2=rf2.loc[~(rf2.PIN.str.upper()=='ABC123')]
+rf2=rf2.loc[~(rf2.PIN.str.upper()=='HCA9926201')]
 rf2=rf2.loc[~(rf2.PIN.str.upper().str.contains('PRACTICE'))]
 rf2=rf2.loc[~(rf2.PIN.str.contains('No line'))]
 
@@ -442,12 +440,14 @@ tlbxscore2['site']=2
 tlbxscore3['site']=3
 tlbxscore4['site']=4
 
+
 ##fixtypos in Scores file now
 #dffull=pd.concat([dffull1, dffull3, dffull2, dffull4])
 dffull=pd.concat([tlbxscore1, tlbxscore3, tlbxscore2, tlbxscore4])
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('HCA1111111_CR'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper()=='ABC123')]
+dffull=dffull.loc[~(dffull.PIN.str.upper()=='HCA9926201')]
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('PRACTICE'))]
 dffull=dffull.loc[~(dffull.PIN.str.contains('No line'))]
 
@@ -464,7 +464,6 @@ dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walk
 #find any non-identical duplicated Assessments still in data after patch
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
 
-#HERE##
 #TURN THIS INTO A TICKET
 duptix=dupass.drop_duplicates(subset='PIN').copy()
 if duptix.shape[0]>0:
@@ -476,8 +475,6 @@ if duptix.shape[0]>0:
     i3["PIN"]=i3.subject+'_'+i3.redcap_event
     duptix=pd.merge(duptix,i3,on='PIN',how='left')
 
-#'subject', 'study_id', 'redcap_event_name', 'redcap_event',
-#       'event_date', 'PIN',
 #before sending the dffull and rf2full to BOX, need to drop the duplicates from rf2full
 
 #QC check:
@@ -500,7 +497,6 @@ dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
 catchdups=dffull.loc[~(dffull.Date.isnull()==True)]
 c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
 c.loc[c.duplicated(subset='PIN',keep=False)]
-#c is wierd.
 
 #add subject and visit
 df2=dffull.drop_duplicates(subset='PIN').copy()
@@ -581,32 +577,41 @@ rf2full=rf2full.drop_duplicates()
 #  4. send tickets that arent identical to ones already in Jira
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
+#HERE
+#folderqueue=['WU','MGH','UMN','UCLA']#
+#anydata=[]
+#for studyshort in folderqueue:
+#    folder = config['NonQBox']['ASA24'][studyshort]
+#    dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
+#    sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
+#    filelist=box.list_of_files([folder])
+#    db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
+#    dbitems=db.copy() #db.loc[db.filename.str.contains('TNS')].copy()
+#    subs=[]
+#    for f in dbitems.fileid:
+#        print(f)
+#        try:
+#            k=box.read_csv(f)
+#            if not k.empty:
+#                s=k.UserName.unique().tolist()
+#                subs=subs+s
+#        except:
+#            print("Couldn't read",f)
+#    anydata=anydata+list(set(subs))
 
-folderqueue=['WU','MGH','UMN','UCLA']#
-anydata=[]
-for studyshort in folderqueue:
-    folder = config['NonQBox']['ASA24'][studyshort]
-    dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
-    sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
-    filelist=box.list_of_files([folder])
-    db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
-    dbitems=db.copy() #db.loc[db.filename.str.contains('TNS')].copy()
-    subs=[]
-    for f in dbitems.fileid:
-        print(f)
-        try:
-            k=box.read_csv(f)
-            if not k.empty:
-                s=k.UserName.unique().tolist()
-                subs=subs+s
-        except:
-            print("Couldn't read",f)
-    anydata=anydata+list(set(subs))
 
-AD=pd.DataFrame(anydata,columns=['asa24id'])
+#################
+###extended
+folderqueue=['MGH','WU','UMN','UCLA']
+#ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
+ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
+AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
+AD['asa24id']=AD.UserName#=pd.DataFrame(anydata,columns=['asa24id'])
 AD['ASA24']='YES'
-inventoryaabc5=pd.merge(inventoryaabc4,AD,on='asa24id',how='left')
-missingAD=inventoryaabc5.loc[(inventoryaabc5.redcap_event_name.str.contains('v')) & (~(inventoryaabc5.ASA24=='YES'))]
+
+#missings
+inventoryaabc5=pd.merge(inventoryaabc4,AD,on='asa24id',how='outer',indicator=True)
+missingAD=inventoryaabc5.loc[(inventoryaabc5._merge != 'right_only') & (inventoryaabc5.redcap_event_name.str.contains('v')) & (~(inventoryaabc5.ASA24=='YES'))]
 missingAD=missingAD.loc[~(missingAD.asa24yn=='0')]
 a1=pd.DataFrame()
 if missingAD.shape[0]>0:
@@ -620,6 +625,34 @@ if missingAD.shape[0]>0:
     a1['subject_id']=a1['subject']
 a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 #a1 is concatenated later with other q2 codes
+#typo PIN PINbox is different that PINRedcap
+missmatch=inventoryaabc5.loc[(inventoryaabc5.PIN != inventoryaabc5.PIN_perBox) & (inventoryaabc5.asa24id != "")]
+a2=pd.DataFrame()
+if missmatch.shape[0]>0:
+    print("ASA24 id matches to different study ids in Box vs Redcap")
+    print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
+    a2=missingAD.copy()
+    a2['reason']='ASA24 id matches to different study ids in Box vs Redcap'
+    a2['code']='GREEN'
+    a2['datatype']='ASA24'
+    a2['issueCode']='AE2001'
+    a2['subject_id']=a1['subject']
+a2=a2[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+
+#typo same PIN but different asa24id
+missmatch2=pd.merge(inventoryaabc4,AD,how='inner',left_on='PIN',right_on='PIN_perBox')
+missmatch2.loc[missmatch2.asa24id_x!=missmatch2.asa24id_y]
+a3=pd.DataFrame()
+if missmatch2.shape[0]>0:
+    print("Subject associated with 2 ASA24 ids in Box vs Redcap")
+    print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id_y','PIN_perBox']])
+    a3=missmatch2.copy()
+    a3['reason']='ASA id associated with different subject ids in Box and Redcap'
+    a3['code']='GREEN'
+    a3['datatype']='ASA24'
+    a3['issueCode']='AE2001'
+    a3['subject_id']=a1['subject']
+a3=a3[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 #################################################################################
 #ACTIGRAPHY
