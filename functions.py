@@ -307,11 +307,20 @@ def getASA(folderqueue):
         sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
         subfolders = folder_files(client, [folder])
         for i in subfolders:#[0:3]:
-            subfilelist = box.list_of_files([i])
-            f = client.folder(folder_id=i).get()
-            subdb = pd.DataFrame(subfilelist).transpose()
-            subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
-            allsubdb = allsubdb.append(subdb)
+            if studyshort=='UCLA':
+                subsubfolders = folder_files(client, [i])
+                for i in subsubfolders:  # [0:3]:
+                    subfilelist = box.list_of_files([i])
+                    f = client.folder(folder_id=i).get()
+                    subdb = pd.DataFrame(subfilelist).transpose()
+                    subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+                    allsubdb = allsubdb.append(subdb)
+            else:
+                subfilelist = box.list_of_files([i])
+                f = client.folder(folder_id=i).get()
+                subdb = pd.DataFrame(subfilelist).transpose()
+                subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+                allsubdb = allsubdb.append(subdb)
         ALLSUBS = ALLSUBS.append(allsubdb)
         print("shape", ALLSUBS.shape)
         dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()

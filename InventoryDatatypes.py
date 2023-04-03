@@ -577,32 +577,9 @@ rf2full=rf2full.drop_duplicates()
 #  4. send tickets that arent identical to ones already in Jira
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
-#HERE
-#folderqueue=['WU','MGH','UMN','UCLA']#
-#anydata=[]
-#for studyshort in folderqueue:
-#    folder = config['NonQBox']['ASA24'][studyshort]
-#    dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
-#    sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
-#    filelist=box.list_of_files([folder])
-#    db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
-#    dbitems=db.copy() #db.loc[db.filename.str.contains('TNS')].copy()
-#    subs=[]
-#    for f in dbitems.fileid:
-#        print(f)
-#        try:
-#            k=box.read_csv(f)
-#            if not k.empty:
-#                s=k.UserName.unique().tolist()
-#                subs=subs+s
-#        except:
-#            print("Couldn't read",f)
-#    anydata=anydata+list(set(subs))
-
-
-#################
-###extended
 folderqueue=['MGH','WU','UMN','UCLA']
+folderqueue=['UCLA']
+
 #ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
 ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
@@ -627,32 +604,32 @@ a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', '
 #a1 is concatenated later with other q2 codes
 #typo PIN PINbox is different that PINRedcap
 missmatch=inventoryaabc5.loc[(inventoryaabc5.PIN != inventoryaabc5.PIN_perBox) & (inventoryaabc5.asa24id != "")]
-a2=pd.DataFrame()
+a11=pd.DataFrame()
 if missmatch.shape[0]>0:
     print("ASA24 id matches to different study ids in Box vs Redcap")
     print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
-    a2=missingAD.copy()
-    a2['reason']='ASA24 id matches to different study ids in Box vs Redcap'
-    a2['code']='GREEN'
-    a2['datatype']='ASA24'
-    a2['issueCode']='AE2001'
-    a2['subject_id']=a1['subject']
-a2=a2[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a11=missingAD.copy()
+    a11['reason']='ASA24 id matches to different study ids in Box vs Redcap'
+    a11['code']='GREEN'
+    a11['datatype']='ASA24'
+    a11['issueCode']='AE2001'
+    a11['subject_id']=a1['subject']
+a11=a11[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 #typo same PIN but different asa24id
 missmatch2=pd.merge(inventoryaabc4,AD,how='inner',left_on='PIN',right_on='PIN_perBox')
 missmatch2.loc[missmatch2.asa24id_x!=missmatch2.asa24id_y]
-a3=pd.DataFrame()
+a111=pd.DataFrame()
 if missmatch2.shape[0]>0:
     print("Subject associated with 2 ASA24 ids in Box vs Redcap")
     print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id_y','PIN_perBox']])
-    a3=missmatch2.copy()
-    a3['reason']='ASA id associated with different subject ids in Box and Redcap'
-    a3['code']='GREEN'
-    a3['datatype']='ASA24'
-    a3['issueCode']='AE2001'
-    a3['subject_id']=a1['subject']
-a3=a3[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a111=missmatch2.copy()
+    a111['reason']='ASA id associated with different subject ids in Box and Redcap'
+    a111['code']='GREEN'
+    a111['datatype']='ASA24'
+    a111['issueCode']='AE2001'
+    a111['subject_id']=a1['subject']
+a111=a111[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 #################################################################################
 #ACTIGRAPHY
@@ -862,10 +839,30 @@ P=pd.concat([pwho,peepy])
 P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 #inventoryaabc7=inventoryaabc6.copy()
 ##################################################################################
-#HOT FLASH DATA (not available yet)
+#HOT FLASH DATA some
+#NOTE: Maki's group to do the scoring and stuff.  We are just checking for IDs and typos
+
+client = box.get_client()
+Hotfolder = config['NonQBox']['Hotflash']['Allsites']
+HotSites = folder_files(client,[Hotfolder])
+HotFiles=pd.DataFrame()
+for i in HotSites:  # [0:3]:
+    #subfilelist = box.list_of_files([i])
+    f = client.folder(folder_id=i).get()
+    subfilelist=list(f.get_items())
+    if subfilelist != []:
+        subdb = pd.DataFrame([str(a) for a in subfilelist])#.transpose()
+        #subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+        new = subdb[0].str.split('(', expand=True)
+        subdb['PIN']=new[1].str[:13]#.str.split(' ',expand=True)[[0]]
+        HotFiles = HotFiles.append(subdb)
+Hotties=pd.merge(inventoryaabc5.drop(columns='_merge'),HotFiles,on='PIN',how='outer',indicator=True)
+
+#typo ids:
+Hotties.loc[Hotties._merge=='right_only'][['PIN','subject']]
 
 ###################################################################################
-#VNS (not available yet)
+#VMS (not available yet)
 
 ###################################################################################
 # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
@@ -956,7 +953,7 @@ inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].co
 ##############################################################################
 #all the flags for JIRA together
 #QAAP=concat(Q1,Q2,a1,a2,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
-QAAP=concat(Q1,Q2,a1,a2,P,C,summv,agemv,ageav,bmiv,T).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,bmiv,T).drop(columns=['v0_date'])
 #fill in missing dates
 #af0dates=inventoryaabc7.loc[inventoryaabc7.redcap_event=='AF0'][['subject','v0_date']]
 #QAAP=QAAP.merge(af0dates,on='subject')
