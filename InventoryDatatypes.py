@@ -180,7 +180,7 @@ except:
 #          'ethnic','racial','site','passedscreen','subject_id','counterbalance_1st','counterbalance_2nd','height_ft', 'height_in', 'weight','bmi', 'height_outlier_jira', 'height_missing_jira',
 #          'age_visit','event_date','completion_mocayn','ravlt_collectyn','nih_toolbox_collectyn','nih_toolbox_upload_typo',
 #          'tlbxwin_dups_v2','walkendur_dups','actigraphy_collectyn','actigraphy_partial_1___1','actigraphy_partial_1___0','actigraphy_partial_1___2','actigraphy_upload_typoyn',
-#          'vms_collectyn','face_complete','visit_summary_complete','asa24yn','asa24id']
+#          'vms_collectyn','vms_partial_1','vms_upload_typoyn','vms_upload_typo,'vms_upload','face_complete','visit_summary_complete','asa24yn','asa24id']
 
 inventoryaabc=idvisits(aabcinvent,keepsies=list(aabcinvent.columns))
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
@@ -578,8 +578,7 @@ rf2full=rf2full.drop_duplicates()
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 folderqueue=['MGH','WU','UMN','UCLA']
-folderqueue=['UCLA']
-
+#folderqueue=['UCLA']
 #ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
 ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
@@ -856,13 +855,37 @@ for i in HotSites:  # [0:3]:
         new = subdb[0].str.split('(', expand=True)
         subdb['PIN']=new[1].str[:13]#.str.split(' ',expand=True)[[0]]
         HotFiles = HotFiles.append(subdb)
+
 Hotties=pd.merge(inventoryaabc5.drop(columns='_merge'),HotFiles,on='PIN',how='outer',indicator=True)
 
+Typos=Hotties.loc[(Hotties._merge=='right_only')].copy()[['PIN']]
 #typo ids:
-Hotties.loc[Hotties._merge=='right_only'][['PIN','subject']]
+Hot1=pd.DataFrame()
+if Typos.shape[0]>0:
+    Hot1=Typos.copy()
+    print("TYPOS  ",Hot1.PIN)
+    Hot1['reason']='Subject in Box cannot be found in REDCap'
+    Hot1['code']='ORANGE'
+    Hot1['datatype']='HotFlash'
+    Hot1['issueCode']='AE4001'
 
-###################################################################################
-#VMS (not available yet)
+#should have data for 40 - 59 women
+#check against visit summary expectations
+Female=Hotties.loc[Hotties.sex=='2'].copy()[['subject']]
+H=Hotties.loc[(Hotties.age_visit !='') & (Hotties.subject.isin(list(Female.subject.unique())))]
+H2=H.loc[(H._merge=='left_only') & (H.redcap_event_name.str.contains('v')) & (H.age_visit.astype('float') >= 40) & (H.age_visit.astype('float') <=59)]
+#These are the guys we need to locate
+Hot2=H2.loc[~((H2.vms_collectyn=='0') | (H2.vms_collectyn=='3'))]#[['PIN','subject','vms_collectyn','vms_partial_1___0','vms_partial_1___1','vms_partial_1___2']]
+Hot2b=pd.DataFrame()
+if Hot2.shape[0]>0:
+    Hot2b=Hot2.copy()
+    print("HotFlash Data cannot be found in BOX  ")
+    print(Hot2[['subject','redcap_event','site','event_date']])
+    Hot2b['reason']='HotFlash Data cannot be found in BOX - upload or fix visit summary'
+    Hot2b['code']='ORANGE'
+    Hot2b['datatype']='HotFlash'
+    Hot2b['issueCode']='AE4001'
+
 
 ###################################################################################
 # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
@@ -953,7 +976,7 @@ inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].co
 ##############################################################################
 #all the flags for JIRA together
 #QAAP=concat(Q1,Q2,a1,a2,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
-QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,bmiv,T).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
 #fill in missing dates
 #af0dates=inventoryaabc7.loc[inventoryaabc7.redcap_event=='AF0'][['subject','v0_date']]
 #QAAP=QAAP.merge(af0dates,on='subject')
