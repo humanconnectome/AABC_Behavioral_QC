@@ -21,6 +21,8 @@ NonQBox:
     MGH: 164567661061
     UMN: 164567618335
     UCLA: 164567368480
+  Hotflash:
+    Allsites: 164567054752
 Redcap:
   lagdatevar: visit_date
   api_url: 'https://redcap.wustl.edu/redcap/api/'
