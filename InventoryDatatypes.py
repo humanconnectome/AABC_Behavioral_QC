@@ -577,6 +577,9 @@ rf2full=rf2full.drop_duplicates()
 #  4. send tickets that arent identical to ones already in Jira
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
+
+#TO DO: reorganize output so that PIN comes first
+
 folderqueue=['MGH','WU','UMN','UCLA']
 #folderqueue=['UCLA']
 #ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
@@ -974,6 +977,10 @@ if bmiv.shape[0]>0:
 inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].counterbalance_1st.value_counts()
 
 ##############################################################################
+# PUT TOGETHER A SPREAD OF INFO ON ASA24 - PPT
+
+
+#####
 #all the flags for JIRA together
 #QAAP=concat(Q1,Q2,a1,a2,C,summv,agemv,ageav,a,bmiv,T).drop(columns=['v0_date'])
 QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
