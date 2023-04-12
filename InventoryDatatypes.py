@@ -143,13 +143,6 @@ if not missingsubids.empty:
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
 
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 106
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 123
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
-
-
-
 #test subjects that need to be deleted
 tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST'))][['study_id',study_id,'redcap_event_name']]
 qlist5=pd.DataFrame()
@@ -381,16 +374,6 @@ Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
 
-#MOVE THIS CODE TO A SEPARATE FILE...A DUMMY CHECK for any missed issues
-#send to BOX
-qstruct=redjson(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
-qA = getframe(qstruct, config['Redcap']['api_url'])
-#drop all with flags - both duplicates, non-existent ids, corrupt files in Issues, based on subject and redcap_event
-qArestricted=qA.drop(columns=restrictedQ) #droprestrict(qA,qArestricted,restrictedQ)
-#qA,qArestricted=getredcap10Q(qstruct,'qint',Asnaps,list(inventoryaabc.subject.unique()),'AABC',config,restrictedcols=restrictedQ)
-##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_' + snapshotdate + '.csv', Asnaps)
-##box.upload_file(box_temp + '/' + studystr + '_' + idstring + '_Restricted_' + snapshotdate + '.csv', ArestrictSnaps)
-
 
 # NOW FOR TOOLBOX. ############################################################################
 # # 1. grab partial files from intraDB
@@ -582,10 +565,13 @@ rf2full=rf2full.drop_duplicates()
 
 folderqueue=['MGH','WU','UMN','UCLA']
 #folderqueue=['UCLA']
+client = box.get_client()
+
 #ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
-ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
+ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(client=client,folderqueue=folderqueue)
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
 AD['asa24id']=AD.UserName#=pd.DataFrame(anydata,columns=['asa24id'])
+AD=AD.drop_duplicates()
 AD['ASA24']='YES'
 
 #missings
@@ -611,7 +597,7 @@ if missmatch.shape[0]>0:
     print("ASA24 id matches to different study ids in Box vs Redcap")
     print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
     a11=missingAD.copy()
-    a11['reason']='ASA24 id matches to different study ids in Box vs Redcap'
+    a11['reason']='ASA24 id associated with different study ids in Box vs Redcap.  Check for typos or missingness'
     a11['code']='GREEN'
     a11['datatype']='ASA24'
     a11['issueCode']='AE2001'
@@ -620,18 +606,18 @@ a11=a11[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name',
 
 #typo same PIN but different asa24id
 missmatch2=pd.merge(inventoryaabc4,AD,how='inner',left_on='PIN',right_on='PIN_perBox')
-missmatch2.loc[missmatch2.asa24id_x!=missmatch2.asa24id_y]
+mm=missmatch2.loc[missmatch2.UserName!=missmatch2.asa24id_y]
 a111=pd.DataFrame()
-if missmatch2.shape[0]>0:
+if mm.shape[0]>0:
     print("Subject associated with 2 ASA24 ids in Box vs Redcap")
-    print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id_y','PIN_perBox']])
-    a111=missmatch2.copy()
+    print(mm[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN_perBox']])
+    a111=mm.copy()
     a111['reason']='ASA id associated with different subject ids in Box and Redcap'
     a111['code']='GREEN'
     a111['datatype']='ASA24'
     a111['issueCode']='AE2001'
     a111['subject_id']=a1['subject']
-a111=a111[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a111=a111[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 #################################################################################
 #ACTIGRAPHY
@@ -815,7 +801,7 @@ if p.shape[0]>0:#,columns='PIN_AB')
     p['PIN_AB']=p[0]
     p['subject_id']=p[0].str[:10]
     p['subject']=p[0].str[:10]
-    pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
+    pwho=pd.merge(inventoryaabc6.loc[inventoryaabc6.redcap_event.astype('str').str.contains('V')].drop(columns=['subject_id','subject']),p,on='PIN',how='right')
     pwho=pwho[['subject','subject_id', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','issueCode','code','v0_date','event_date','PIN_AB','datatype']]
 
 #dont worry about duplicates in IntraDB - these will be filtered.
@@ -824,6 +810,8 @@ PSY2=psymiss.drop_duplicates(subset='subject')[['subject','redcap_event']]
 PSY2['Psychopy']='YES'
 inventoryaabc7=pd.merge(inventoryaabc6,PSY2,on=['subject','redcap_event'],how='left')
 missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.Psychopy=='YES'))].copy()
+dropm=inventoryaabc7.loc[(inventoryaabc7.missscan4=='1') | (inventoryaabc7.missscan4=='2')][['PIN']]
+missingPY=missingPY.loc[~(missingPY.PIN.isin(list(dropm.PIN.unique())))].copy()
 missingPY['subject_id']=missingPY.subject
 #missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
 peepy=pd.DataFrame()
@@ -839,6 +827,7 @@ if missingPY.shape[0]>0:
 P=pd.concat([pwho,peepy])
 #IntraDB ID
 P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+P=P.drop_duplicates()
 #inventoryaabc7=inventoryaabc6.copy()
 ##################################################################################
 #HOT FLASH DATA some
@@ -914,7 +903,7 @@ C=cb[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v
 C.rename(columns={'v0_date':'event_date'})
 
 
-summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
+summv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['study_id','site','subject','redcap_event','visit_summary_complete','event_date']]
 summv=summv.loc[~(summv.visit_summary_complete=='2')]
 if summv.shape[0]>0:
     summv['code']='GREEN'
@@ -924,7 +913,7 @@ if summv.shape[0]>0:
     summv=summv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
     print("Visit Summary Incomplete:\n",summv)
 
-agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
+agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
 ag=agev.loc[agev.age_visit !='']
 agemv=ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=95 )].copy()
 if agemv.shape[0]>0:
@@ -948,7 +937,7 @@ if ageav.shape[0]>0:
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 #inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['subject','redcap_event_name','height_ft','height_in','weight','bmi','event_date']]
-bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date']].copy()
+bmiv=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date']].copy()
 #outliers
 #add in check against the extreme value confirmation and then relax the extremes
 a=bmiv.loc[bmiv.bmi !=''].copy()
@@ -974,7 +963,7 @@ if bmiv.shape[0]>0:
     bmiv=bmiv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
 
 #check counterbalance distribution - 97 vs 82 (3 to 4) as o 1/27/23
-inventoryaabc7.loc[inventoryaabc7.redcap_event_name.str.contains('register')].counterbalance_1st.value_counts()
+inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('register')].counterbalance_1st.value_counts()
 
 ##############################################################################
 # PUT TOGETHER A SPREAD OF INFO ON ASA24 - PPT
@@ -992,7 +981,7 @@ QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).dro
 
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
-QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']]
+QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']].drop_duplicates()
 QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
 

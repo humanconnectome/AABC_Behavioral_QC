@@ -264,7 +264,7 @@ def folder_files(client, folders, extension='.csv', recursively=False):
     result = {}
 
     for folder_id in folders:
-        client = box.get_client()
+        #client = box.get_client()
         f = client.folder(folder_id)
         print('Scanning %s' % folder_id)
         print(dir(f))
@@ -295,7 +295,7 @@ def folder_files(client, folders, extension='.csv', recursively=False):
     return folders #, result
 
 
-def getASA(folderqueue):
+def getASA(client,folderqueue):
     TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
     allsubdb = pd.DataFrame(); CORRUPT=pd.DataFrame();ALLSUBS=pd.DataFrame();
     BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
@@ -352,9 +352,9 @@ def getASA(folderqueue):
                     BigTotals = BigTotals.append(k)
             except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
-                Corrupted1 = Corrupted1.append(corrupt)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
+                #Corrupted1 = Corrupted1.append(corrupt)
         for f in Items.fileid:
             try:
                 k = box.read_csv(f)
@@ -363,9 +363,9 @@ def getASA(folderqueue):
                     BigItems = BigItems.append(k)
             except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
-                Corrupted2 = Corrupted2.append(corrupt)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
+                #Corrupted2 = Corrupted2.append(corrupt)
         for f in Resp.fileid:
             try:
                 k = box.read_csv(f)
@@ -374,9 +374,9 @@ def getASA(folderqueue):
                     BigResp = BigResp.append(k)
             except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
-                Corrupted3 = Corrupted3.append(corrupt)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+                #Corrupted3 = Corrupted3.append(corrupt)
         for f in TNS.fileid:
             try:
                 k = box.read_csv(f)
@@ -385,32 +385,32 @@ def getASA(folderqueue):
                     BigTNS = BigTNS.append(k)
             except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
-                Corrupted4 = Corrupted4.append(corrupt)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+                #Corrupted4 = Corrupted4.append(corrupt)
         for f in INS.fileid:
             try:
                 k = box.read_csv(f)
                 if not k.empty:
                     k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
                     BigINS = BigINS.append(k)
-             except:
+            except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
-                Corrupted5 = Corrupted5.append(corrupt)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+                #Corrupted5 = Corrupted5.append(corrupt)
         for f in TS.fileid:
             try:
                 k = box.read_csv(f)
                 if not k.empty:
                     k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
                     BigTS = BigTS.append(k)
-             except:
+            except:
                 print("Couldn't read", f)
-                corrupt['f'] = f
-                corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
-                Corrupted6 = Corrupted6.append(corrupt)
-        CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+                #Corrupted6 = Corrupted6.append(corrupt)
+        #CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
         #print("Study:", studyshort)
         if not BigTotals.empty:
             BIGGESTTotals=BIGGESTTotals.append(BigTotals)
