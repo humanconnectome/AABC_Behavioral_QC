@@ -22,6 +22,7 @@ LIST_VALID_COMPONENTS = [
     "RAVLT",
     "REDCap",
     "TLBX",
+    "HotFlash"
 ]
 
 # Custom Fields for Jira
