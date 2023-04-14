@@ -25,13 +25,20 @@ pathp=box.downloadFile(config['hcainventory'])
 #get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
 #this is not yet working
 Asnaps=161956162589
-
+Rsnaps=203445756892
 a=box.downloadFile(config['variablemask'])
 rdrop=getlist(a,'AABC-ARMS-DROP')
 rrest=getlist(a,'AABC-ARMS-RESTRICTED')
 rraw=getlist(a,'TLBX-RAW-RESTRICTED')
 rscore=getlist(a,'TLBX-SCORES-RESTRICTED')
 restrictedQ=getlist(a,'Q-RESTRICTED')
+restrictedATotals=getlist(a,'ASA24-Totals')
+restrictedAResp=getlist(a,'ASA24-Resp')
+restrictedATS=getlist(a,'ASA24-TS')
+restrictedAINS=getlist(a,'ASA24-INS')
+restrictedATNS=getlist(a,'ASA24-TNS')
+restrictedAItems=getlist(a,'ASA24-Items')
+
 #get ids
 ids=pd.read_csv(pathp)
 hcaids=ids.subject.drop_duplicates()
@@ -139,6 +146,7 @@ if not missingsubids.empty:
     for s4 in list(missingsubids.study_id.unique()):
         print('CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
 #from last time
+#THESE ARE GOING TO SHOW UP AS HAVING MISSING DATA...MAKE SURE TO EXCLUDE THEM LATER
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 106
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
@@ -561,14 +569,14 @@ rf2full=rf2full.drop_duplicates()
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-#TO DO: reorganize output so that PIN comes first
-
 folderqueue=['MGH','WU','UMN','UCLA']
 #folderqueue=['UCLA']
 client = box.get_client()
 
 #ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
 ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(client=client,folderqueue=folderqueue)
+
+
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
 AD['asa24id']=AD.UserName#=pd.DataFrame(anydata,columns=['asa24id'])
 AD=AD.drop_duplicates()
@@ -988,14 +996,35 @@ QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date
 ###REDUCE by Color code.... need to be able to change these values.
 filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED')) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
-##RED=issue_age>7
-##ORANGE=issues_age>18
-##YELLOW=issue_age>28
-##GREEN=issue_age>35
 
-####### Download existing JIRA tickets and reduce QAAP accordingly
-## create and upload new tickets.
-#
+
+
+# SEND SNAPSHOTS
+
+# ASA24
+issues='All_Issues_11Apr2023.csv'
+BIGGESTTotalsRest,BIGGESTTotals2=PINfirst(BIGGESTTotals,"Totals",issues,restrictedATotals);
+BIGGESTItemsRest,BIGGESTItems2=PINfirst(BIGGESTItems,"Items",issues,restrictedAItems)
+BIGGESTRespRest,BIGGESTResp2=PINfirst(BIGGESTResp,"Resp",issues,restrictedAResp)
+BIGGESTTSRest,BIGGESTTS2=PINfirst(BIGGESTTS,"TS",issues,restrictedATS)
+BIGGESTTNSRest,BIGGESTTNS2=PINfirst(BIGGESTTNS,"TNS",issues,restrictedATNS)
+BIGGESTINSRest,BIGGESTINS2=PINfirst(BIGGESTINS,"INS",issues,restrictedAINS)
+
+box.upload_file("AABC_"+"ASA24-"+ "Totals" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("AABC_"+"ASA24-"+ "Items" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("AABC_"+"ASA24-"+ "Resp" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("AABC_"+"ASA24-"+ "TS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("AABC_"+"ASA24-"+ "TNS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("AABC_"+"ASA24-"+ "INS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+
+box.upload_file("AABC_"+"ASA24-"+ "Totals" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "Items" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "Resp" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "TS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "TNS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "INS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+
+
 
 
 ########################################################################

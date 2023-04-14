@@ -10,6 +10,7 @@ import os
 import sys
 from subprocess import Popen, PIPE
 from config import *
+box = LifespanBox(cache="./tmp")
 
 
 
@@ -294,6 +295,29 @@ def folder_files(client, folders, extension='.csv', recursively=False):
 
     return folders #, result
 
+def removeIssues(dataset,component='ASA24',issuefile=issues):
+    issues=pd.read_csv(issuefile)#'All_Issues_'+date.today().strftime("%d%b%Y")+'.csv'
+    droplist=issues.loc[issues.datatype==component][['subject','redcap_event']].drop_duplicates()
+    dset=pd.merge(dataset,droplist,on=['subject','redcap_event'],how='outer',indicator=True)
+    return dset.loc[dset._merge=='left_only'].drop(columns='_merge')
+
+def droprest(datain,dropvars):
+    return datain.drop(columns=dropvars)
+
+def PINfirst(dataset,strname,issuefile,dropvars):
+    dataset['subject'] = dataset.PIN.str[:10]
+    dataset['redcap_event'] = dataset.PIN.str[11:13]
+    print(dataset.shape)
+    dataset2=removeIssues(dataset,component='ASA24',issuefile=issuefile)
+    a = list(dataset2.columns)
+    b = dataset2[a[-3:] + a[:-3]].sort_values('PIN').drop_duplicates()
+    print(b.shape)
+    #for the restricted folder
+    b.loc[b.PIN != ''].to_csv("AABC_"+"ASA24-"+ strname +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
+    #for the regular folder
+    c = b.drop(columns=dropvars)
+    c.loc[b.PIN != ''].to_csv("AABC_" + "ASA24-" + strname + "_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+    return b,c
 
 def getASA(client,folderqueue):
     TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
