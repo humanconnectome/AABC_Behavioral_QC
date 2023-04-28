@@ -186,20 +186,12 @@ inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.con
 #Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
 
 #QC checks
-#re - download the q data.
-#now check first define PIN for merging and drop unusables
 qintdf2=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 invq=qintdf2[['id', 'site', 'subjectid','visit','q_unusable']].copy()
 invq['redcap_event']="V"+invq.visit
 invq['Qint']='YES'
-#invq=invq.loc[~(invq.subjectid.str.upper().str.contains('TEST'))]
 invq=invq.loc[~(invq.q_unusable=='1')].copy()
-
 dups2=invq.loc[invq.duplicated(subset=['subjectid','visit'])]
-
-#Before merging, check for duplicates that haven't been given the 'unusable' flag
-#dups=qintdf2.loc[qintdf2.duplicated(subset=['subjectid','visit'])#,keep=False)]
-#dups2=dups.loc[~(dups.q_unusable.isnull()==False)]  #or '', not sure
 
 q0=pd.DataFrame()
 if dups2.shape[0]>0:
@@ -210,24 +202,19 @@ if dups2.shape[0]>0:
     q0['reason']='Duplicate Q-interactive records'
     q0['code']='ORANGE'
     q0['issueCode']='AE5001'
-#inventoryaabc2=pd.merge(inventoryaabc,invq.rename(columns={'subjectid':'subject'}).drop(columns=['site']),on=['subject','redcap_event'],how='outer',indicator=True)
-inventoryaabc2=pd.merge(inventoryaabc,invq.drop(columns=['site']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
 
-#find ids (including test subjects) that aren't i nmain AABC (i.e. probably typos)
-#These all need to go to Petra - and documented in patch
+inventoryaabc2=pd.merge(inventoryaabc,invq.drop(columns=['site']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
 q1=pd.DataFrame()
 if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
-    print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']])
-    q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event']].rename(columns={'subjectid':'subject'})
+    print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event','site']])
+    q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event','site']].rename(columns={'subjectid':'subject'})
     q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo and forward correction instructions and ticket to Petra']
     q1['code']='ORANGE'
     q1['issueCode']='AE1001'
     q1['datatype']='RAVLT'
 
-#inventoryaabc2._merge.value_counts()
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
-#inventoryaabc2.to_csv('test.csv',index=False)
 
 missingQ=inventoryaabc3.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Qint=='YES')) & (~(inventoryaabc2.ravlt_collectyn=='0'))][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
 q2=pd.DataFrame()
@@ -275,7 +262,7 @@ fixes=dict(zip(fixtypos.nih_toolbox_upload_typo, fixtypos.PIN))
 rf2.PIN=rf2.PIN.replace(fixes)
 #peek for remaining wierdness
 rf2.PIN.unique()
-
+###HERE###
 #keep track of the full dataset so that you can drop anything with issues before sync
 rf2full=rf2.copy()
 rf2full=rf2full.drop_duplicates()
@@ -432,18 +419,14 @@ rf2full=rf2full.drop_duplicates()
 # # # 5. just dump all legit data to BOX (transform to be defined later) after patching, dropping restricted variables, and merging in subject and redcap_event
 # # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
-folderqueue=['MGH','WU','UMN','UCLA']
-#folderqueue=['UCLA']
-client = box.get_client()
-
-#ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(client=client,folderqueue=folderqueue)
-#just read in latest stuff from cron-job
-BIGGESTTotals=pd.read_csv("AABC_ASA24-Totals_2023-04-21.csv")
-BIGGESTItems=pd.read_csv("AABC_ASA24-Items_2023-04-21.csv")
-BIGGESTResp=pd.read_csv("AABC_ASA24-Resp_2023-04-21.csv")
-BIGGESTTS=pd.read_csv("AABC_ASA24-TS_2023-04-21.csv")
-BIGGESTTNS=pd.read_csv("AABC_ASA24-TNS_2023-04-21.csv")
-BIGGESTINS=pd.read_csv("AABC_ASA24-INS_2023-04-21.csv")
+#just read in latest stuff from cron-job -- is in ./tmp directory
+outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
+BIGGESTTotals=pd.read_csv(outp+'temp_Totals.csv')
+BIGGESTItems=pd.read_csv(outp+'temp_Items.csv')
+BIGGESTResp=pd.read_csv(outp+'temp_Resp.csv')
+BIGGESTTS=pd.read_csv(outp+'temp_TTS.csv')
+BIGGESTTNS=pd.read_csv(outp+'temp_TNS.csv')
+BIGGESTINS=pd.read_csv(outp+'temp_INS.csv')
 
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
 AD['asa24id']=AD.UserName#=pd.DataFrame(anydata,columns=['asa24id'])
@@ -892,14 +875,14 @@ BIGGESTTSRest,BIGGESTTS2=PINfirst(BIGGESTTS,"TS",issues,restrictedATS)
 BIGGESTTNSRest,BIGGESTTNS2=PINfirst(BIGGESTTNS,"TNS",issues,restrictedATNS)
 BIGGESTINSRest,BIGGESTINS2=PINfirst(BIGGESTINS,"INS",issues,restrictedAINS)
 
-box.upload_file("AABC_"+"ASA24-"+ "Totals" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("AABC_"+"ASA24-"+ "Items" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("AABC_"+"ASA24-"+ "Resp" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("AABC_"+"ASA24-"+ "TS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("AABC_"+"ASA24-"+ "TNS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("AABC_"+"ASA24-"+ "INS" +"_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "Totals.csv", Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "Items.csv", Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "Resp.csv", Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "TS.csv", Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "TNS.csv", Asnaps)
+box.upload_file("./tmp/AABC_"+"ASA24-"+ "INS.csv", Asnaps)
 
-box.upload_file("AABC_"+"ASA24-"+ "Totals" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_"+"ASA24-"+ "Totals" +"_Restricted_.csv", Rsnaps)
 box.upload_file("AABC_"+"ASA24-"+ "Items" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_"+"ASA24-"+ "Resp" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_"+"ASA24-"+ "TS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
