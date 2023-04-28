@@ -15,9 +15,9 @@ import sys
 from datetime import date
 
 ## get configuration files
-config = LoadSettings()
+config = LoadSettings("/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/config.yml")
 secret=pd.read_csv(config['config_files']['secrets'])
-box = LifespanBox(cache="./tmp")
+box = LifespanBox(cache="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp")
 scratch=205351313707
 
 aabcreport = redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51031')
