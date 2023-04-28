@@ -5,8 +5,8 @@ from ccf.box import LifespanBox
 import requests
 import re
 import collections
-from functions import *
-import functions
+#from functions import *
+#import functions
 from config import *
 import subprocess
 import os
@@ -147,9 +147,7 @@ if not missingsubids.empty:
         print('CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
 #from last time
 #THESE ARE GOING TO SHOW UP AS HAVING MISSING DATA...MAKE SURE TO EXCLUDE THEM LATER
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 106
 #CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4129-36
-#CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id: 4131-71
 
 #test subjects that need to be deleted
 tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST'))][['study_id',study_id,'redcap_event_name']]
@@ -185,142 +183,7 @@ except:
 
 inventoryaabc=idvisits(aabcinvent,keepsies=list(aabcinvent.columns))
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
-
-# FLOW:
-# Qinteractive  order:
-# # 1. grab new stuff from box
-# # 2. transform it
-# # 3. send it to REDCap
-# # 4. QC (incorporating patches)
-# # 5. generate tickets
-# # 6. send tickets that arent identical to ones already in Jira (now or at the end in a single bolus)
-# # 7. create and send snapshot of patched data to BOX after dropping restricted variables
-
-# Observed:
-# pull Q data from Box to qint REDCap, then query qint against AABC-Arms study ids and visit
-#    All records EVER created will be included in REDCap.
-#    duplications
-#    typos will be set to unusable automatically
-#    missing: look for potential records in REDCap, first.  Correct in REDCap Not BOX or it will lead to duplicate.
-#    if dup, set one to unususable and explain
-
-#the variables that make up the 'common' form in the Qinteractive database.
-firstvarcols = ['id', 'redcap_data_access_group', 'site', 'subjectid', 'fileid',
-                'filename', 'sha1', 'created', 'assessment', 'visit', 'form',
-                'q_unusable', 'unusable_specify', 'common_complete', 'ravlt_two']
-
-#the variables that make up the ravlt form
-columnnames = ['ravlt_pea_ravlt_sd_tc', 'ravlt_delay_scaled', 'ravlt_delay_completion', 'ravlt_discontinue',
-               'ravlt_reverse', 'ravlt_pea_ravlt_sd_trial_i_tc', 'ravlt_pea_ravlt_sd_trial_ii_tc',
-               'ravlt_pea_ravlt_sd_trial_iii_tc', 'ravlt_pea_ravlt_sd_trial_iv_tc', 'ravlt_pea_ravlt_sd_trial_v_tc',
-               'ravlt_pea_ravlt_sd_listb_tc', 'ravlt_pea_ravlt_sd_trial_vi_tc', 'ravlt_recall_correct_trial1',
-               'ravlt_recall_correct_trial2', 'ravlt_recall_correct_trial3', 'ravlt_recall_correct_trial4',
-               'ravlt_delay_recall_correct', 'ravlt_delay_recall_intrusion', 'ravlt_delay_total_intrusion',
-               'ravlt_delay_total_repetitions']
-
-
-#current Qint Redcap:
-qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51037')
-qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
-
-#all box files - grab, transform, send
-folderqueue=['UCLA','WU','UMN','MGH'] ###,'UCLA']
-######
-###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
-#this is currently taing too much time to iterate through box
-#import anything new by any definition (new name, new sha, new fileid)
-studyshortsum=0
-all2push=pd.DataFrame()
-for studyshort in folderqueue:
-    folder = config['Redcap']['datasources']['qint']['BoxFolders'][studyshort]
-    dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
-    sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
-
-    filelist=box.list_of_files([folder])
-    print(filelist)
-    #print(filelist)
-    db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
-    print(db)
-    db.fileid=db.fileid.astype(int)
-    #print(studyshort,":",db.shape[0],"records in BOX")
-    #ones that already exist in q redcap
-    cached_filelist=qintdf.copy()
-    #cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
-    cached_filelist.fileid=cached_filelist.fileid.str.strip().astype(float).astype('Int64')
-    #find the new ones that need to be pulled in
-    newfileids=pd.merge(db.fileid,cached_filelist.fileid,on='fileid',how='left',indicator=True)
-    newfileids_temp=newfileids.copy()
-    newfileids=newfileids.loc[newfileids._merge=='left_only'].drop(columns=['_merge'])
-    db2go=db.loc[db.fileid.isin(list(newfileids.fileid))]
-    if db2go.empty:
-        print("NO NEW RECORDS from",studyshort,"TO ADD AT THIS TIME")
-    if not db2go.empty:
-        print("you are here")
-        #initiate new ids
-        #NEED TO UPDATE CACHED_FILELIST.ID after every iteration.
-        s = cached_filelist.id.str.strip().astype(float).astype('Int64').max() + 1 + studyshortsum
-        l=len(db2go)
-        vect=[]
-        for i in range(0,l):
-            id=i+s
-            vect=vect+[id]
-        studyshortsum=studyshortsum+l
-        print("now you are here")
-        rows2push=pd.DataFrame(columns=firstvarcols+columnnames)
-        for i in range(0,db2go.shape[0]):
-            try:
-                redid=vect[i]
-                fid=db2go.iloc[i][['fileid']][0]
-                print("fid",fid)
-                t=box.getFileById(fid)
-                created=t.get().created_at
-                fname=db2go.iloc[i][['filename']][0]
-                subjid = fname[fname.find('HCA'):10]
-                fsha=db2go.iloc[i][['sha1']][0]
-                print(i)
-                print(db2go.iloc[i][['fileid']][0])
-                print(db2go.iloc[i][['filename']][0])
-                print(db2go.iloc[i][['sha1']][0])
-                print("subject id:",subjid)
-                print("Redcap id:",redid)
-                #pushrow=getrow(fid,fname)
-                content=box.read_text(fid)
-                assessment='RAVLT'
-                if 'RAVLT-Alternate Form C' in content:
-                            form = 'Form C'
-                if 'RAVLT-Alternate Form D' in content:
-                            form = 'Form D'
-                if fname.find('Form B')>0:
-                            form= 'Form B'
-                #visits = sorted(list(map(int,requests.findall('[vV](\d)', fname))))
-                a = fname.replace("AV", "").find('V')
-                visit=fname[a+1]
-                #visit=visits[-1]
-                row=parse_content(content)
-                df = pd.DataFrame([row], columns=columnnames)
-                #print(df)
-                firstvars = pd.DataFrame([[redid, dag, sitenum, subjid, fid, fname, fsha, created, assessment,
-                                           visit, form, "", "", "", ""]], columns=firstvarcols)
-                #print(firstvars[['filename','subjectid']])
-                pushrow=pd.concat([firstvars,df],axis=1)
-                #print(pushrow)
-                rows2push=pd.concat([rows2push,pushrow],axis=0)
-            except:
-                print("something wrong...moving along")
-        if len(rows2push.subjectid) > 0:
-            print("*************",studyshort,"  **********************")
-            print(len(rows2push.subjectid),"rows to push:")
-            print(list(rows2push.subjectid))
-            print("***************************************************")
-        all2push=pd.concat([all2push,rows2push]).drop_duplicates()
-print("**************** Summary All Sites **********************")
-print(len(all2push.subjectid),"Total rows to push across sites:")
-
-if not all2push.empty:
-  send_frame(dataframe=all2push, tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0])
-####
-###END SECTION THAT NEEDS TO BE TURNED INTO A CRON JOB
-
+#Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
 
 #QC checks
 #re - download the q data.
@@ -573,9 +436,14 @@ folderqueue=['MGH','WU','UMN','UCLA']
 #folderqueue=['UCLA']
 client = box.get_client()
 
-#ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(folderqueue)
-ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(client=client,folderqueue=folderqueue)
-
+#ALLSUBS,BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS=getASA(client=client,folderqueue=folderqueue)
+#just read in latest stuff from cron-job
+BIGGESTTotals=pd.read_csv("AABC_ASA24-Totals_2023-04-21.csv")
+BIGGESTItems=pd.read_csv("AABC_ASA24-Items_2023-04-21.csv")
+BIGGESTResp=pd.read_csv("AABC_ASA24-Resp_2023-04-21.csv")
+BIGGESTTS=pd.read_csv("AABC_ASA24-TS_2023-04-21.csv")
+BIGGESTTNS=pd.read_csv("AABC_ASA24-TNS_2023-04-21.csv")
+BIGGESTINS=pd.read_csv("AABC_ASA24-INS_2023-04-21.csv")
 
 AD=BIGGESTTotals[['PIN','UserName']].rename(columns={'PIN':'PIN_perBox'}).copy()
 AD['asa24id']=AD.UserName#=pd.DataFrame(anydata,columns=['asa24id'])
@@ -1000,6 +868,20 @@ filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 
 
 # SEND SNAPSHOTS
+#inventory before indicators
+aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
+subjects=aabcinvent[['study_id','subject_id','redcap_event_name','passedscreen','register_subject_complete','register_visit_complete']]
+
+aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','redcap_event_name','site','subject_id','v0_date','event_date'])
+subjects=subjects.loc[subjects.register_visit_complete =='2'][['study_id']]
+#,'age','sex','racial','ethnic'
+subs=list(subjects.study_id)
+aabcidvisits2=aabcidvisits.loc[aabcidvisits.study_id.isin(subs)].copy()
+aabcidvisits2.loc[aabcidvisits2.event_date=='','event_date']=aabcidvisits2.v0_date
+aabcidvisits2=aabcidvisits2.drop(columns=['v0_date'])
+#'age','sex','racial','ethnic','site',
+
+#sortaabc=aabcidvisits.sort_values(['study_id','redcap_event_name'])
 
 # ASA24
 issues='All_Issues_11Apr2023.csv'
@@ -1024,7 +906,10 @@ box.upload_file("AABC_"+"ASA24-"+ "TS" +"_Restricted_" + date.today().strftime("
 box.upload_file("AABC_"+"ASA24-"+ "TNS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_"+"ASA24-"+ "INS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 
-
+qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0],reportid='60649')
+qintdf2=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
+#qintdf2 is already filtered for not unusables
+#need to drop anyone with issues as well as duplicates and bad ids.
 
 
 ########################################################################
