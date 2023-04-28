@@ -295,7 +295,7 @@ def folder_files(client, folders, extension='.csv', recursively=False):
 
     return folders #, result
 
-def removeIssues(dataset,component='ASA24',issuefile=issues):
+def removeIssues(dataset,issuefile,component='ASA24'):
     issues=pd.read_csv(issuefile)#'All_Issues_'+date.today().strftime("%d%b%Y")+'.csv'
     droplist=issues.loc[issues.datatype==component][['subject','redcap_event']].drop_duplicates()
     dset=pd.merge(dataset,droplist,on=['subject','redcap_event'],how='outer',indicator=True)
@@ -313,10 +313,10 @@ def PINfirst(dataset,strname,issuefile,dropvars):
     b = dataset2[a[-3:] + a[:-3]].sort_values('PIN').drop_duplicates()
     print(b.shape)
     #for the restricted folder
-    b.loc[b.PIN != ''].to_csv("AABC_"+"ASA24-"+ strname +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
+    b.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-"+ strname +"_Restricted_csv", index=False)
     #for the regular folder
     c = b.drop(columns=dropvars)
-    c.loc[b.PIN != ''].to_csv("AABC_" + "ASA24-" + strname + "_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+    c.loc[b.PIN != ''].to_csv(".tmp/AABC_ASA24-" + strname + ".csv",index=False)
     return b,c
 
 def getASA(client,folderqueue):
