@@ -63,7 +63,7 @@ qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_ind
 qintdf=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])
 
 #all box files - grab, transform, send
-folderqueue=['WU','UCLA','WU','UMN','MGH'] ###,'UCLA']
+folderqueue=['WU','UCLA','UMN','MGH'] ###,'UCLA']
 ######
 ###THIS WHOLE SECTION NEEDS TO BE CRON'D - e.g. scan for anything new and import it into Qinteractive - let patch in REDCap handle bad or duplicate data.
 #this is currently taing too much time to iterate through box
@@ -119,6 +119,7 @@ for studyshort in folderqueue:
                 #print("subject id:",subjid)
                 #print("Redcap id:",redid)
                 content=box.read_text(fid)
+                form=''
                 assessment='RAVLT'
                 if 'RAVLT-Alternate Form C' in content:
                             form = 'Form C'
@@ -126,6 +127,8 @@ for studyshort in folderqueue:
                             form = 'Form D'
                 if fname.find('Form B')>0:
                             form= 'Form B'
+                if fname.find('Form A') > 0:
+                    form = 'Form A'
                 a = fname.replace("AV", "").find('V')
                 visit=fname[a+1]
                 row=parse_content(content)
@@ -137,9 +140,9 @@ for studyshort in folderqueue:
             except:
                 print("something is wrong with this file")
                 print(db2go.iloc[i])
-                print("...exporting to scratch")
-                db2go.iloc[i].to_csv("./tmp/Corrupted_"+db.iloc[i].filename,index=False)
-                box.upload_file("./tmp/Corrupted_"+db.iloc[i].filename,scratch)
+                #print("...exporting to scratch")
+                #db2go.iloc[i].to_csv("./tmp/Corrupted_"+db.iloc[i].filename,index=False)
+                #box.upload_file("./tmp/Corrupted_"+db.iloc[i].filename,scratch)
 
         if len(rows2push.subjectid) > 0:
             print("*************",studyshort,"  **********************")

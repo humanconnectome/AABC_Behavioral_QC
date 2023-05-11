@@ -48,7 +48,7 @@ for studyshort in folderqueue:
             anydata=pd.concat([anydata,rowfor])
         except:
             print("problem with BOX file",f)
-anydata.to_csv(outp+"temp_psychopy.py",index=False)
+anydata.to_csv(outp+"temp_psychopy.csv",index=False)
 
 #part two (scan intradb)
 psychointradb4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',

@@ -5,7 +5,7 @@ from ccf.box import LifespanBox
 #import requests
 import re
 import collections
-#from functions import *
+from functions import *
 #import functions
 from config import *
 #import subprocess
