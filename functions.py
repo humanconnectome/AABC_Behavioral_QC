@@ -8,6 +8,7 @@ import collections
 import subprocess
 import os
 import sys
+from datetime import date
 from subprocess import Popen, PIPE
 from config import *
 box = LifespanBox(cache="./tmp")
@@ -144,7 +145,9 @@ def importTLBX(siteabbrev='WU',typed='scores'):
         run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                         'find /ceph/intradb/archive/AABC_'+siteabbrev+'_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
-                        'while read i; do cp "$i" /home/plenzini/tools/catTLBX/cache/.; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
+                'cd /home/plenzini/tools/catTLBX/cache; while read i; do cp "$i" .; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
+    #run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+    #                    'while read i; do cp "$i" /home/plenzini/tools/catTLBX/cache/.; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                 'for f in /home/plenzini/tools/catTLBX/cache/*\ *; do mv "$f" "${f// /_}"; done').stdout.read()
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
@@ -304,19 +307,20 @@ def removeIssues(dataset,issuefile,component='ASA24'):
 def droprest(datain,dropvars):
     return datain.drop(columns=dropvars)
 
-def PINfirst(dataset,strname,issuefile,dropvars):
+def PINfirst(dataset,strname,issuefile,inventory,dropvars):
     dataset['subject'] = dataset.PIN.str[:10]
     dataset['redcap_event'] = dataset.PIN.str[11:13]
     print(dataset.shape)
-    dataset2=removeIssues(dataset,component='ASA24',issuefile=issuefile)
-    a = list(dataset2.columns)
-    b = dataset2[a[-3:] + a[:-3]].sort_values('PIN').drop_duplicates()
+    dataset2=pd.merge(dataset,inventory,on=['subject','redcap_event'],how='inner')
+    dataset3=removeIssues(dataset2,component='ASA24',issuefile=issuefile)
+    a = list(dataset3.columns)
+    b = dataset3[a[-3:] + a[:-3]].sort_values('PIN').drop_duplicates()
     print(b.shape)
     #for the restricted folder
-    b.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-"+ strname +"_Restricted_csv", index=False)
+    b.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-"+ strname +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
     #for the regular folder
     c = b.drop(columns=dropvars)
-    c.loc[b.PIN != ''].to_csv(".tmp/AABC_ASA24-" + strname + ".csv",index=False)
+    c.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-" + strname + "_" + date.today().strftime("%Y-%m-%d") + ".csv",index=False)
     return b,c
 
 def getASA(client,folderqueue):
