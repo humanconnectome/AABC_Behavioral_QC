@@ -1,9 +1,9 @@
 root:
-  cache: ../tmp/cache/
-  store: ../tmp/store/
+  cache: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/
+  store: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/
 config_files:
-  box: ./creds/BoxApp.json
-  secrets: ./creds/secrets.csv
+  box: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/BoxApp.json
+  secrets: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/secrets.csv
 hcainventory: 1143354744443
 NonQBox:
   ASA24:
@@ -16,6 +16,11 @@ NonQBox:
     MGH: 164567488449
     UMN: 164567845637
     UCLA: 164567002110
+  Cobras:
+    WUSM: 1159525512055
+    MGH: 1172144098420
+    UMN:
+    UCLA:
   Psychopy:
     WU: 164567123018
     MGH: 164567661061
@@ -227,7 +232,7 @@ Redcap:
         MGH: 164567697980
         UCLA: 164567694892
         UMN: 164567205278
-variablemask: 951436222592
+variablemask: 1216689780168
 toolbox_stringnumdupvar:
   - ['NIH Toolbox Words-In-Noise Test Age 6+ v2.1',36,'tlbxwin_dups_v2']
   - ['NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0',16,'walkendur_dups']
