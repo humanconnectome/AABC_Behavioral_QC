@@ -187,7 +187,7 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
     print(inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event','site']])
     q1=inventoryaabc2.loc[inventoryaabc2._merge=='right_only'][['subjectid','redcap_event','site']].rename(columns={'subjectid':'subject'})
-    q1['reason']=['Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo and forward correction instructions and ticket to Petra']
+    q1['reason']='Subject with Q-int data but ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please look for typo or naming convention problem and forward correction instructions and ticket to Petra'
     q1['code']='ORANGE'
     q1['issueCode']='AE1001'
     q1['datatype']='RAVLT'
@@ -200,7 +200,7 @@ if missingQ.shape[0]>0:
     print("Q-interactive cannot be found for")
     print(missingQ)
     q2=missingQ.copy()
-    q2['reason']='MISSING or MALFORMED Q-interactive data for this subject/visit'
+    q2['reason']='MISSING, MISNAMED, or MALFORMED Q-interactive data for this subject/visit'
     q2['code']='ORANGE'
     q2['issueCode']='AE4001'
     q2['datatype']='RAVLT'
@@ -775,7 +775,7 @@ box.upload_file("./tmp/AABC_"+"ASA24-"+ "INS" +"_Restricted_" + date.today().str
 
 #qintdf2 is already filtered for not unusables - inventory filtered for issues
 qintdf2uploadrestricted=pd.merge(inventorysnapshot[['subject','redcap_event']],qintdf2,left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='inner')
-qintdf2uploadrestricted['PIN']=qintdf2uploadrestricted.subject+"_"+qintdf2upload.redcap_event
+qintdf2uploadrestricted['PIN']=qintdf2uploadrestricted.subject+"_"+qintdf2uploadrestricted.redcap_event
 qintdf2upload=qintdf2uploadrestricted.drop(columns=restrictedQ+['Qint'])
 qintdf2uploadrestricted.to_csv("AABC_Q-Interactive_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 qintdf2upload.to_csv("AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
