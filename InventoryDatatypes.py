@@ -158,6 +158,7 @@ except:
 
 inventoryaabc=idvisits(aabcinvent,keepsies=list(aabcinvent.columns))
 inventoryaabc['PIN']=inventoryaabc.subject+"_"+inventoryaabc.redcap_event
+print('test subjects:',inventoryaabc.loc[(inventoryaabc.subject_id.str.upper().str.contains('TEST'))])
 
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
 #Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
@@ -260,11 +261,20 @@ dffull=dffull.drop_duplicates()
 # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
 iset=inventoryaabc
 dffull=filterdupass('NIH Toolbox Words-In-Noise Test Age 6+ v2.1','tlbxwin_dups_v2',iset,dffull)
+print(dffull.shape)
 dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walkendur_dups',iset,dffull)
+print(dffull.shape)
+dffull=filterdupass('NIH Toolbox 4-Meter Walk Gait Speed Test Age 7+ v2.0','tlbx4walk_dups',iset,dffull)
+print(dffull.shape)
+
 #dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','psmt_dups',iset,dffull)
 
 rf2full=filterdupass('NIH Toolbox Words-In-Noise Test Age 6+ v2.1','tlbxwin_dups_v2',iset,rf2full)
+print(rf2full.shape)
 rf2full=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walkendur_dups',iset,rf2full)
+print(rf2full.shape)
+rf2full=filterdupass('NIH Toolbox 4-Meter Walk Gait Speed Test Age 7+ v2.0','tlbx4walk_dups',iset,rf2full)
+print(rf2full.shape)
 
 #find any non-identical duplicated Assessments still in data after patch
 dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
@@ -466,6 +476,11 @@ missingAct.shape
 partials=missingAct.loc[ (missingAct.actigraphy_collectyn == '2' ) & (missingAct.actigraphy_partial_1___1.astype('int')==0)][['PIN','actigraphy_collectyn','subject','actigraphy_partial_1___1']]
 #don't want to include these guys in the list
 missingAct=missingAct.loc[~missingAct.PIN.isin(list(partials.PIN))]
+#drop the ones that are definitely nos, too.
+missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn == '0' )].copy()
+
+
+
 
 a2=pd.DataFrame()
 if missingAct.shape[0]>0:
@@ -516,10 +531,15 @@ print("TRACK DOWN BAD IDS FROM COBRAS:",AllCobra.loc[AllCobra._merge=='left_only
 # 3. generate an tickets and send to JIra if don't already exist
 # 4. DONT dump or snapshot.  Leave data in IntraDB.
 
+
+# maybe a different method of correcting typos is needed.  IntraDB needs to have correct information unless there is a patch somewhere.
+# so need to create a patch for psychopy .. usually just one of the scans had a typo (e.g. vismotor but not resting state)
+
 #box scan moved to cron
 anydata=pd.read_csv(outp+"temp_psychopy.csv")
-
 anydata.columns=['subject','redcap_event','scan','fname','']
+anydata.loc[~(anydata.subject.isin(["HCA1234567"]))]
+
 PSY=anydata[['subject','redcap_event']].drop_duplicates().copy()
 checkIDB=anydata[['subject','redcap_event','scan']].copy()
 checkIDB['PIN_AB']=checkIDB.subject+'_'+checkIDB.redcap_event + '_'+checkIDB.scan
@@ -530,7 +550,7 @@ df=pd.read_csv(outp+"temp_psychintradb.csv")
 df.columns = ['PIN_AB']
 df.PIN_AB=df.PIN_AB.str.replace('t','').str.strip()
 
-psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True)
+psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True).drop_duplicates()
 
 p1=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
@@ -541,6 +561,7 @@ if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     newp1['issueCode']='AE4001'
     newp1['datatype']='PsychoPy'
     newp1['reason']='A and/or B Psychopy Data Found in Box but not IntraDB'
+print('A and/or B Psychopy Data Found in Box but not IntraDB')
 print(newp1[0])
 
 print('psychopy in IntraDB but not in Box -- not turning into tickets for now because bug in merge')
@@ -566,7 +587,7 @@ PSY2=psymiss.drop_duplicates(subset='subject')[['subject','redcap_event']]
 PSY2['Psychopy']='YES'
 inventoryaabc7=pd.merge(inventoryaabc,PSY2,on=['subject','redcap_event'],how='left')
 missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.Psychopy=='YES'))].copy()
-dropm=inventoryaabc7.loc[(inventoryaabc7.missscan4=='1') | (inventoryaabc7.missscan4=='2')][['PIN']]
+dropm=inventoryaabc7.loc[(inventoryaabc7.missscan4=='1') | (inventoryaabc7.missscan4=='2') | (inventoryaabc7.scan_collectyn=='0')][['PIN']]
 missingPY=missingPY.loc[~(missingPY.PIN.isin(list(dropm.PIN.unique())))].copy()
 missingPY['subject_id']=missingPY.subject
 #missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
@@ -584,7 +605,8 @@ P=pd.concat([pwho,peepy])
 #IntraDB ID
 P=P[['subject','redcap_event','study_id', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 P=P.drop_duplicates()
-
+#no psychopy data:
+P=P.loc[~((P.subject=="HCA6487286") & (P.redcap_event=='V3'))]
 
 ##################################################################################
 #HOT FLASH DATA
@@ -678,12 +700,13 @@ if ageav.shape[0]>0:
     ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
-bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira', 'height_missing_jira']].copy()
+bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira','weight_outlier_jira', 'height_missing_jira']].copy()
 #outliers
 #add in check against the extreme value confirmation and then relax the extremes
 
 a=bmiv.loc[bmiv.bmi !=''].copy()
 a=a.loc[(a.bmi.astype('float')<=17.0) | (a.bmi.astype('float')>=41)].copy()
+a=a.loc[~((a.height_outlier_jira==1) | (a.weight_outlier_jira))]
 if a.shape[0]>0:
     print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 41)])
     a['code']='PINK'
@@ -750,7 +773,8 @@ len(issues.PIN.unique())
 inventorysnapshot=pd.merge(inventoryaabc,issues.drop(columns=['PIN']),on=['subject','redcap_event'],how='outer',indicator=True)
 inventorysnapshot=inventorysnapshot.loc[inventorysnapshot._merge=='left_only'].drop(columns=['_merge'])
 
-###########################################################
+################STOP HERE UNLESS YOU WANT T CREATE SNAPSHOTS ############################
+#########################################################################################
 #ASA24
 BIGGESTTotalsRest,BIGGESTTotals2=PINfirst(BIGGESTTotals,"Totals",issuesfile,inventorysnapshot[['subject','redcap_event']],restrictedATotals);
 BIGGESTItemsRest,BIGGESTItems2=PINfirst(BIGGESTItems,"Items",issuesfile,inventorysnapshot[['subject','redcap_event']],restrictedAItems)
