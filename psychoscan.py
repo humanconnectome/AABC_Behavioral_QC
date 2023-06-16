@@ -5,7 +5,7 @@ from ccf.box import LifespanBox
 #import requests
 import re
 import collections
-#from functions import *
+from functions import *
 #import functions
 from config import *
 #import subprocess
@@ -53,12 +53,20 @@ anydata.to_csv(outp+"temp_psychopy.csv",index=False)
 #part two (scan intradb)
 psychointradb4 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb4scan = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        "ls /ceph/intradb/archive/AABC_WU_ITK/arc001/*/SCANS/*/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 psychointradb3 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb3scan = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        "ls /ceph/intradb/archive/AABC_UMN_ITK/arc001/*/SCANS/*/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 psychointradb2 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb2scan = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        "ls /ceph/intradb/archive/AABC_UCLA_ITK/arc001/*/SCANS/*/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 psychointradb1 = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                        "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/RESOURCES/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
+psychointradb1scan = run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
+                        "ls /ceph/intradb/archive/AABC_MGH_ITK/arc001/*/SCANS/*/LINKED_DATA/PSYCHOPY/ | cut -d'_' -f2,3,4 | grep HCA | grep -E -v 'ITK|Eye|tt' | sort -u").stdout.read()
 df4 = pd.DataFrame(str.splitlines(psychointradb4.decode('utf-8')))
 df4 = df4[0].str.split(',', expand=True)
 df3 = pd.DataFrame(str.splitlines(psychointradb3.decode('utf-8')))
@@ -68,6 +76,15 @@ df2 = df2[0].str.split(',', expand=True)
 df1 = pd.DataFrame(str.splitlines(psychointradb1.decode('utf-8')))
 df1 = df1[0].str.split(',', expand=True)
 
-df=pd.concat([df1,df2,df3,df4],axis=0) #df2,
+df4s = pd.DataFrame(str.splitlines(psychointradb4scan.decode('utf-8')))
+df4s = df4s[0].str.split(',', expand=True)
+df3s = pd.DataFrame(str.splitlines(psychointradb3scan.decode('utf-8')))
+df3s = df3s[0].str.split(',', expand=True)
+df2s = pd.DataFrame(str.splitlines(psychointradb2scan.decode('utf-8')))
+df2s = df2s[0].str.split(',', expand=True)
+df1s = pd.DataFrame(str.splitlines(psychointradb1scan.decode('utf-8')))
+df1s = df1s[0].str.split(',', expand=True)
+
+df=pd.concat([df1,df2,df3,df4,df1s,df2s,df3s,df4s],axis=0) #df2,
 
 df.to_csv(outp+"temp_psychintradb.csv",index=False)
