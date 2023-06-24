@@ -65,6 +65,16 @@ def idvisits(aabcarmsdf,keepsies):
     idvisit = idvisit.loc[~(idvisit.subject.astype(str).str.upper().str.contains('TEST'))]
     return idvisit
 
+def rollforward(aabcarmsdf,variable,event_start):
+    varinit=aabcarmsdf[['subject',variable,'redcap_event']]
+    print(varinit.shape)
+    varinit=varinit.loc[varinit.redcap_event==event_start].drop(columns=['redcap_event']).drop_duplicates()
+    print(varinit.shape)
+    print(varinit.head())
+    return aabcarmsdf.drop(columns=[variable]).merge(varinit)
+
+rollforward(inventorysnapshot,'legacy_yn','AF0')
+
 def concat(*args):
     return pd.concat([x for x in args if not x.empty],axis=0)
 

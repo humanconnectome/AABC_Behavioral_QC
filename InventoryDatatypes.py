@@ -517,9 +517,6 @@ AllCobra=pd.merge(Cobra,inventoryaabc[['PIN']],how='outer',on='PIN',indicator=Tr
 #Bad IDs
 print("TRACK DOWN BAD IDS FROM COBRAS:",AllCobra.loc[AllCobra._merge=='left_only'])
 
-#merge Cobra with later inventorysnapshot for upload
-
-
 #MOCA SPANISH  #############################################################
 ## no data yet
 
@@ -701,6 +698,8 @@ if ageav.shape[0]>0:
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira','weight_outlier_jira', 'height_missing_jira']].copy()
+bmiv.loc[bmiv.subject=='HCA8953805']
+
 #outliers
 #add in check against the extreme value confirmation and then relax the extremes
 
@@ -729,7 +728,6 @@ if bmiv.shape[0]>0:
 
 #check counterbalance distribution - 97 vs 82 (3 to 4) as o 1/27/23
 inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('register')].counterbalance_1st.value_counts()
-
 ##############################################################################
 
 #####
@@ -747,10 +745,13 @@ filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 #NOW DO a Fresh download of everything, drop all issues, and send snapshot.
 #Use inventory as  gold standard and make sure visit is complete.
 
-keepvars=['study_id','redcap_event_name','site','subject_id','v0_date','event_date','age','sex','ethnic','racial','legacy_yn','height_ft','height_in','bmi','psuedo_guid']
+keepvars=['study_id','subject_id','redcap_event_name','site','v0_date','event_date','age','age_visit','sex','ethnic','racial','legacy_yn','height_ft','height_in','bmi','psuedo_guid']
 aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 inventoryaabc=idvisits(aabcinvent,keepsies=keepvars)
 inventoryaabc['PIN']=inventoryaabc.subject+"_"+inventoryaabc.redcap_event
+inventoryaabc['event_age']=inventoryaabc.age
+inventoryaabc.loc[inventoryaabc.event_age=='','event_age']=inventoryaabc.age_visit
+
 subjects=aabcinvent[['study_id','register_visit_complete']]
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
 subjects=subjects.loc[subjects.register_visit_complete =='2'][['study_id']]
@@ -772,9 +773,41 @@ len(issues.PIN.unique())
 
 inventorysnapshot=pd.merge(inventoryaabc,issues.drop(columns=['PIN']),on=['subject','redcap_event'],how='outer',indicator=True)
 inventorysnapshot=inventorysnapshot.loc[inventorysnapshot._merge=='left_only'].drop(columns=['_merge'])
+inventorysnapshot['race']=inventorysnapshot.replace({'racial':
+                                       {'1':'American Indian/Alaska Native',
+                                        '2':'Asian',
+                                        '3':'Black or African American',
+                                        '4':'Hawaiian or Pacific Islander',
+                                        '5':'White',
+                                        '6':'More than one race',
+                                        '99':'Unknown or not reported'}})['racial']
+inventorysnapshot['ethnic_group']=inventorysnapshot.replace({'ethnic':
+                                           {'1':'Hispanic or Latino',
+                                            '2':'Not Hispanic or Latino',
+                                            '3':'unknown or not reported'}})['ethnic']
+inventorysnapshot['M/F']=inventorysnapshot.replace({'sex':
+                                           {'1':'M',
+                                            '2':'F'}})['sex']
+inventorysnapshot['Site']=inventorysnapshot.site.replace({'1':'MGH','2':'UCLA','3':'UMN','4':'WashU'})
+inventorysnapshot=inventorysnapshot.drop(columns={'datatype','sex','racial','ethnic','site','subject_id','age','age_visit'})
+
+inventorysnapshot=rollforward(inventorysnapshot,'legacy_yn','AF0')
+inventorysnapshot=rollforward(inventorysnapshot,'race','AF0')
+inventorysnapshot=rollforward(inventorysnapshot,'ethnic_group','AF0')
+inventorysnapshot=rollforward(inventorysnapshot,'M/F','AF0')
+inventorysnapshot=rollforward(inventorysnapshot,'Site','AF0')
+
 
 ################STOP HERE UNLESS YOU WANT T CREATE SNAPSHOTS ############################
 #########################################################################################
+
+
+#merge Cobra with later inventorysnapshot for upload
+#AllCobra
+
+#inventory
+#toolbox
+
 #ASA24
 BIGGESTTotalsRest,BIGGESTTotals2=PINfirst(BIGGESTTotals,"Totals",issuesfile,inventorysnapshot[['subject','redcap_event']],restrictedATotals);
 BIGGESTItemsRest,BIGGESTItems2=PINfirst(BIGGESTItems,"Items",issuesfile,inventorysnapshot[['subject','redcap_event']],restrictedAItems)
@@ -889,7 +922,15 @@ TLBX['TLBX']='YES'
 Act=CobraRestricted[['PIN']].copy()
 Act['Actigraphy_Cobra']='YES'
 
-InventA=inventorysnapshot.merge(Act.merge(TLBX.merge(Q,on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left')
+intradbtable="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/plenzini_6_23_2023_18_11_48.csv"
+IntraDB=pd.read_csv(intradbtable)
+IntraDB['subject']=IntraDB.Subject
+IntraDB['redcap_event']= IntraDB['MR ID'].str.split('_', expand=True)[1]
+IntraDB['IntraDB']='AABC_STG'
+IntraDB=IntraDB[['IntraDB','subject','redcap_event']]
+
+Invent0=inventorysnapshot.merge(IntraDB,on=['subject','redcap_event'],how='left')
+InventA=Invent0.merge(Act.merge(TLBX.merge(Q,on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left')
 InventB=InventA.merge(TS.merge(Resp,on='PIN',how='left'),on='PIN',how='left')
 InventoryRestricted=InventB.merge(TNS.merge(TINS.merge(Items.merge(Totals,on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left')
 InventoryRestricted.to_csv("AABC_Inventory_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
