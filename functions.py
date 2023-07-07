@@ -73,7 +73,7 @@ def rollforward(aabcarmsdf,variable,event_start):
     print(varinit.head())
     return aabcarmsdf.drop(columns=[variable]).merge(varinit)
 
-rollforward(inventorysnapshot,'legacy_yn','AF0')
+#rollforward(inventorysnapshot,'legacy_yn','AF0')
 
 def concat(*args):
     return pd.concat([x for x in args if not x.empty],axis=0)
