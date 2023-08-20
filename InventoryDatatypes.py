@@ -321,7 +321,7 @@ df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['TLBX']='YES'
 
 #now merge with inventory
-inventoryaabc4=pd.merge(inventoryaabc,df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
+inventoryaabc4=pd.merge(inventoryaabc.drop(columns=['PIN']),df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
 
 #find PINS with length greater than 10
 tlong=pd.DataFrame()
@@ -419,33 +419,70 @@ if missingAD.shape[0]>0:
 a1=a1[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 #a1 is concatenated later with other q2 codes
 #typo PIN PINbox is different that PINRedcap
-missmatch=inventoryaabc5.loc[(inventoryaabc5.PIN != inventoryaabc5.PIN_perBox) & (inventoryaabc5.asa24id != "")]
+missmatch=inventoryaabc5.loc[(inventoryaabc5.PIN != inventoryaabc5.PIN_perBox) & (inventoryaabc5.asa24id != "") & (inventoryaabc5.ASA24 =="YES")]
+
+#these ones are bad and associated with multiple ids
+misstype1=missmatch.loc[(missmatch.PIN != missmatch.PIN_perBox) & (~(missmatch.PIN.isnull()==True)) & (~(missmatch.PIN_perBox.isnull()==True))]
 a11=pd.DataFrame()
-if missmatch.shape[0]>0:
+if misstype1.shape[0]>0:
     print("ASA24 id matches to different study ids in Box vs Redcap")
-    print(missmatch[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
-    a11=missingAD.copy()
-    a11['reason']='ASA24 id associated with different study ids in Box vs Redcap.  Check for typos or missingness'
+    print(misstype1[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
+    a11=misstype1.copy()
+    a11['reason']='ASA24 id associated with multiple study ids in Box vs Redcap.  Check for typos in subject or visit, or for plain old missingness'
     a11['code']='GREEN'
     a11['datatype']='ASA24'
     a11['issueCode']='AE2001'
-    a11['subject_id']=a1['subject']
+    a11['subject_id']=a11['subject']
 a11=a11[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
-#typo same PIN but different asa24id
-missmatch2=pd.merge(inventoryaabc,AD,how='inner',left_on='PIN',right_on='PIN_perBox')
-mm=missmatch2.loc[missmatch2.UserName!=missmatch2.asa24id_y]
-a111=pd.DataFrame()
-if mm.shape[0]>0:
-    print("Subject associated with 2 ASA24 ids in Box vs Redcap")
-    print(mm[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN_perBox']])
-    a111=mm.copy()
-    a111['reason']='ASA id associated with different subject ids in Box and Redcap'
-    a111['code']='GREEN'
-    a111['datatype']='ASA24'
-    a111['issueCode']='AE2001'
-    a111['subject_id']=a1['subject']
-    a111=a111[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+misstype2=missmatch.loc[~((missmatch.PIN != missmatch.PIN_perBox) & (~(missmatch.PIN.isnull()==True)) & (~(missmatch.PIN_perBox.isnull()==True)))]
+
+# please check that data are placed under the correct id in REDCap and Box.
+misstype3=misstype2.loc[misstype2.PIN_perBox.isnull()==True]
+a13=pd.DataFrame()
+if misstype3.shape[0]>0:
+    print('please check that data are linked to the correct record in REDCap and Box via the ASA24 id')
+    print(misstype3[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
+    a13=misstype3.copy()
+    a13['reason']='please check that data are linked to the correct record in REDCap and Box via the ASA24 id'
+    a13['code']='GREEN'
+    a13['datatype']='ASA24'
+    a13['issueCode']='AE2001'
+    a13['subject_id']=a13['subject']
+a13=a13[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+
+#these ones have data in box but can't be linked to redcap (typo?)
+misstype4=misstype2.loc[misstype2.PIN_perBox.isnull()==False]
+a14=pd.DataFrame()
+if misstype4.shape[0]>0:
+    print('data in box but cant be linked to redcap (typo?)')
+    print(misstype4[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN','PIN_perBox']])
+    a14=misstype4.copy()
+    a14['reason']="Data exist in box but can't be linked to redcap. Please make sure there aren't typos and that the ASAid is recorded in the visit summary"
+    a14['code']='GREEN'
+    a14['datatype']='ASA24'
+    a14['issueCode']='AE2001'
+    a14['subject_id']=a14['subject']
+a14=a14[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+
+
+#
+##typo same PIN but different asa24id
+#missmatch2=pd.merge(inventoryaabc,AD,how='inner',left_on='PIN',right_on='PIN_perBox')
+#mm=missmatch2.loc[missmatch2.UserName!=missmatch2.asa24id_y]
+#a111=pd.DataFrame()
+#if mm.shape[0]>0:
+#    print("Subject associated with 2 ASA24 ids in Box vs Redcap")
+#    print(mm[['subject','redcap_event','site','event_date','asa24yn','asa24id','PIN_perBox']])
+#    a111=mm.copy()
+#    a111['reason']='Subject associated with 2 ASA24 ids in Box vs Redcap"'
+#    a111['code']='GREEN'
+#    a111['datatype']='ASA24'
+#    a111['issueCode']='AE2001'
+#    a111['subject_id']=a1['subject']
+#    a111=a111[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+
+
 
 #################################################################################
 #ACTIGRAPHY
@@ -676,7 +713,7 @@ if summv.shape[0]>0:
 
 agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
 ag=agev.loc[agev.age_visit !='']
-agemv=ag.loc[(ag.age_visit.astype('float')<=40) | (ag.age_visit.astype('float')>=95 )].copy()
+agemv=ag.loc[(ag.age_visit.astype('float')<=36) | (ag.age_visit.astype('float')>=95 )].copy()
 if agemv.shape[0]>0:
     print("AGE OUTLIERS:\n",agemv)
     agemv['code']='RED'
