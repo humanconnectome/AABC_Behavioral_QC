@@ -1,17 +1,13 @@
-
-
-## CHECK FILTER SO THAT ONLY FOLKS WHO HAVE REGISTERED FOR A VISIT GET SENT TO PRE-RELEASE FOLDERS
-# NOTE THAT THIS CODE IS TAILORED TO GRAB VARIABLES FROM IN PERSON VISITS AND PHONE-BASED REGISTRATION
+# NOTE THAT THIS CODE IS TAILORED TO GRAB VARIABLES FROM IN PERSON VISITS ATM
 # NOT general ENOUGH TO GRAB Followup Variables ATM
 # Output is a table and a slice dictionary
-
-#currently supports redcap, Q-interactive, and ASA24 totals
+# currently supports redcap, Q-interactive, and ASA24 totals
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-### CHANGE THIS SECTION #####
+### PLEASE CHANGE THIS SECTION #####
 ##########################################################################
 # INSTRUCTIONS
 # Create a directory containing this program
@@ -45,14 +41,17 @@ qvarlist=[]
 #Do you want caveman distribution plots?
 wantplots=True  # or False
 
-## Leave the rest of this code alone unless you want to add in other merges ######################
+
+##################################################################################################
+##################################################################################################
+# Leave the rest of this code alone unless you want to add in other merges ######################
 # All files have 'subject' and 'redcap_event' for this purpose but ###############################
 
 # read the aabc dictionary to grab list of registration variables
 AABCdict=pd.read_csv(tmpdir+aabcdictionary,low_memory=False)
 AABCdict.loc[AABCdict['Variable / Field Name'].isin(redcapvarlist)].to_csv(savefiles+'Slice_Dictionary.csv',index=False)
 
-#separate REDCap variables into those collected at registration and those collected any other time
+# separate REDCap variables into those collected at registration and those collected any other time
 RegisterVars=list(AABCdict.loc[AABCdict['Form Name']=='register_subject','Variable / Field Name'])
 inreg=[vars for vars in redcapvarlist if vars in RegisterVars]
 notinreg=[vars for vars in redcapvarlist if vars not in RegisterVars]
@@ -69,6 +68,8 @@ REDCapVisit=REDCapVisit.loc[REDCapVisit.redcap_event.str.contains('V')]
 REDCap=pd.merge(REDCapReg.loc[~(REDCapReg.subject=='')],REDCapVisit,on='subject',how='left')
 Alldata_a=pd.merge(REDCap,Totals,on=['subject','redcap_event'],how='left')
 Alldata=pd.merge(Alldata_a,Qdata,on=['subject','redcap_event'],how='left')
+
+# CHECK FILTER SO THAT ONLY FOLKS WHO HAVE REGISTERED FOR A VISIT GET SENT TO PRE-RELEASE FOLDERS
 
 #reorder
 rightcols=[col for col in Alldata.columns if (col != "redcap_event" and col !="subject")]
