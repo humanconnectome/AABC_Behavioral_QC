@@ -161,6 +161,12 @@ inventoryaabc['PIN']=inventoryaabc.subject+"_"+inventoryaabc.redcap_event
 print('test subjects:',inventoryaabc.loc[(inventoryaabc.subject_id.str.upper().str.contains('TEST'))])
 
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
+
+#drop anyone who hasn't completed a visit (after grabbing RED flag issues)
+reds=inventoryaabc.loc[inventoryaabc.register_visit_complete =='2'][['study_id']]
+legitreds=reds.study_id.to_list()
+inventoryaabc=inventoryaabc.loc[inventoryaabc.study_id.isin(legitreds)]
+
 #Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
 
 #QC checks
@@ -411,7 +417,7 @@ if missingAD.shape[0]>0:
     print("ASA24 cannot be found for")
     print(missingAD[['subject','redcap_event','site','event_date','asa24yn','asa24id']])
     a1=missingAD.copy()
-    a1['reason']='Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject/visit'
+    a1['reason']='Unable to locate ASA24 id in Redcap or ASA24 data in Box for this subject visit'
     a1['code']='GREEN'
     a1['datatype']='ASA24'
     a1['issueCode']='AE2001'
@@ -433,7 +439,7 @@ if misstype1.shape[0]>0:
     a11['datatype']='ASA24'
     a11['issueCode']='AE2001'
     a11['subject_id']=a11['subject']
-a11=a11[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a11=a11[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 misstype2=missmatch.loc[~((missmatch.PIN != missmatch.PIN_perBox) & (~(missmatch.PIN.isnull()==True)) & (~(missmatch.PIN_perBox.isnull()==True)))]
 
@@ -449,7 +455,7 @@ if misstype3.shape[0]>0:
     a13['datatype']='ASA24'
     a13['issueCode']='AE2001'
     a13['subject_id']=a13['subject']
-a13=a13[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a13=a13[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 #these ones have data in box but can't be linked to redcap (typo?)
 misstype4=misstype2.loc[misstype2.PIN_perBox.isnull()==False]
@@ -463,7 +469,7 @@ if misstype4.shape[0]>0:
     a14['datatype']='ASA24'
     a14['issueCode']='AE2001'
     a14['subject_id']=a14['subject']
-a14=a14[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
+    a14=a14[['subject_id','subject', 'study_id', 'redcap_event','redcap_event_name', 'site','reason','code','issueCode','v0_date','event_date','datatype']]
 
 
 #
@@ -681,7 +687,7 @@ if Hot2.shape[0]>0:
 # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
 ###################################################################################
 
-
+### ADD outlier and missing code flags for croms salaries
 ###################################################################################
 # NOW CHECK key REDCap AABC variables for completeness (counterbalance, inventory completeness, age, bmi and soon to be more)
 # inventory_complete
@@ -741,7 +747,7 @@ bmiv.loc[bmiv.subject=='HCA8953805']
 #add in check against the extreme value confirmation and then relax the extremes
 
 a=bmiv.loc[bmiv.bmi !=''].copy()
-a=a.loc[(a.bmi.astype('float')<=17.0) | (a.bmi.astype('float')>=41)].copy()
+a=a.loc[(a.bmi.astype('float')<=18.0) | (a.bmi.astype('float')>=40)].copy()
 a=a.loc[~((a.height_outlier_jira==1) | (a.weight_outlier_jira))]
 if a.shape[0]>0:
     print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 41)])
@@ -769,16 +775,16 @@ inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('re
 
 #####
 #all the flags for JIRA together
-QAAP=concat(Q1,Q2,a1,a11,a111,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']].drop_duplicates()
 QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
 ###REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED')) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
+filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>28)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>35)) ]
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
-
+#filteredQ=pd.read_csv('FilteredQC4Jira.csv')
 #NOW DO a Fresh download of everything, drop all issues, and send snapshot.
 #Use inventory as  gold standard and make sure visit is complete.
 
@@ -837,13 +843,6 @@ inventorysnapshot=rollforward(inventorysnapshot,'Site','AF0')
 
 ################STOP HERE UNLESS YOU WANT T CREATE SNAPSHOTS ############################
 #########################################################################################
-
-
-#merge Cobra with later inventorysnapshot for upload
-#AllCobra
-
-#inventory
-#toolbox
 
 #ASA24
 BIGGESTTotalsRest,BIGGESTTotals2=PINfirst(BIGGESTTotals,"Totals",issuesfile,inventorysnapshot[['subject','redcap_event']],restrictedATotals);
@@ -959,7 +958,7 @@ TLBX['TLBX']='YES'
 Act=CobraRestricted[['PIN']].copy()
 Act['Actigraphy_Cobra']='YES'
 
-intradbtable="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/plenzini_6_23_2023_18_11_48.csv"
+intradbtable="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/plenzini_8_28_2023_11_51_56.csv"
 IntraDB=pd.read_csv(intradbtable)
 IntraDB['subject']=IntraDB.Subject
 IntraDB['redcap_event']= IntraDB['MR ID'].str.split('_', expand=True)[1]
