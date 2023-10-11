@@ -5,6 +5,10 @@ config_files:
   box: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/BoxApp.json
   secrets: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/secrets.csv
 hcainventory: 1143354744443
+hca_pre: 126706803362
+aabc_pre: 161956162589
+aabc_pre_restricted: 203445756892
+encyclopedia: 1324516538017
 NonQBox:
   ASA24:
     WU: 164567251974
@@ -19,7 +23,7 @@ NonQBox:
   Cobras:
     WUSM: 1159525512055
     MGH: 1172144098420
-    UMN:
+    UMN: 1296045275648
     UCLA:
   Psychopy:
     WU: 164567123018

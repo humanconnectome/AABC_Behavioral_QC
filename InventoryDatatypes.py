@@ -6,8 +6,14 @@ from functions import *
 from config import *
 from datetime import date
 
-## get configuration files
+intradbtable="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/plenzini_10_1_2023_22_8_34.csv"
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
+aabcdictionary='AABC_REDCap_DataDictionary_2023-05-15.csv'                 # aabc REDCap data dictionary...necessary for automating variables at appropriate events - put in tmpdir
+#AABCdict=pd.read_csv(outp+aabcdictionary,low_memory=False)
+E=pd.read_csv(box.downloadFile(config['encyclopedia']),low_memory=False,encoding='ISO-8859-1')
+SSAGAvars=list(E.loc[E['Form / Instrument'].str.upper().str.contains('SSAGA'),'Variable / Field Name'])
+
+## get configuration files
 config = LoadSettings()
 secret=pd.read_csv(config['config_files']['secrets'])
 box = LifespanBox(cache="./tmp")
@@ -16,14 +22,17 @@ box = LifespanBox(cache="./tmp")
 pathp=box.downloadFile(config['hcainventory'])
 
 #get current version variable mask from BOX (for excluding variables just prior to sending snapshots to PreRelease for investigator access)
-Asnaps=161956162589
-Rsnaps=203445756892
+# add redundant race/ethnicity varas as well as hidden variables to restricted and remove from encyclopedia
+
+Asnaps=config['aabc_pre']
+Rsnaps=config['aabc_pre_restricted']
+
 a=box.downloadFile(config['variablemask'])
-rdrop=getlist(a,'AABC-ARMS-DROP')
-rrest=getlist(a,'AABC-ARMS-RESTRICTED')
-rraw=getlist(a,'TLBX-RAW-RESTRICTED')
-rscore=getlist(a,'TLBX-SCORES-RESTRICTED')
-restrictedQ=getlist(a,'Q-RESTRICTED')
+rdrop=getlist(a,'AABC-ARMS')
+rrest=getlist(a,'AABC-ARMS')
+rraw=getlist(a,'TLBX-RAW')
+rscore=getlist(a,'TLBX-SCORES')
+restrictedQ=getlist(a,'Q')
 restrictedATotals=getlist(a,'ASA24-Totals')
 restrictedAResp=getlist(a,'ASA24-Resp')
 restrictedATS=getlist(a,'ASA24-TS')
@@ -131,7 +140,7 @@ if not missingsubids.empty:
         print('CODE RED : Subject ID is MISSING in AABC REDCap Database Record with study id:',s4)
 
 #test subjects that need to be deleted
-tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST'))][['study_id',study_id,'redcap_event_name']]
+tests=aabcinvent.loc[(aabcinvent[study_id].str.upper().str.contains('TEST')) | (aabcinvent[study_id].str.upper().str.contains('PRAC'))][['study_id',study_id,'redcap_event_name']]
 qlist5=pd.DataFrame()
 if not tests.empty:
     tests['reason']='HOUSEKEEPING : Please delete test subject.  Use test database when practicing'
@@ -142,32 +151,58 @@ if not tests.empty:
     for s5 in list(tests[study_id].unique()):
         print('HOUSEKEEPING : Please delete test subject:', s5)
 
-#########################################################################################
-###concatenate Phase 0 flags for REDCap key variables
-Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
-try:
-    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist5])#qlist4
-except:
-    Q1=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
-#########################################################################################
-
-
-#########################################################################################
-# PHASE 1 Test that all dataypes expected are present
 # Get the REDCap AABC inventory (which may or may not agree with the reality of data found):
-
+# and remove the test subjects, since we have already flagged them
 inventoryaabc=idvisits(aabcinvent,keepsies=list(aabcinvent.columns))
 inventoryaabc['PIN']=inventoryaabc.subject+"_"+inventoryaabc.redcap_event
 print('test subjects:',inventoryaabc.loc[(inventoryaabc.subject_id.str.upper().str.contains('TEST'))])
-
 inventoryaabc = inventoryaabc.loc[~(inventoryaabc.subject_id.str.upper().str.contains('TEST'))].copy()
+
+# Croms checks
+#Flag anyone with problematic croms_income data
+inc1=inventoryaabc.loc[(inventoryaabc.croms_income.str.contains('999')) & (~(inventoryaabc.croms_income=='-9999'))].croms_income.value_counts()
+inc2=inventoryaabc.loc[(inventoryaabc.croms_income.str.contains('\,')) |(inventoryaabc.croms_income.str.contains('\$')) | (inventoryaabc.croms_income.str.upper().str.contains('Y')) | (inventoryaabc.croms_income.str.upper().str.contains('D')) | (inventoryaabc.croms_income.str.upper().str.contains('R'))]
+a=inventoryaabc.loc[(~(inventoryaabc.croms_income=='')) & (~(inventoryaabc.croms_income.str.contains('\-')))]
+a.croms_income.value_counts()
+formatx=a.loc[a.croms_income.str.contains(',')].copy()
+inc3a=a.loc[~(a.croms_income.str.contains(','))]
+inc3 = inc3a.loc[(inc3a.croms_income.astype(int) < 1000) | (inc3a.croms_income.astype(int) > 360000)]
+inc=pd.concat([inc1,inc2,inc3,formatx])
+print(inc.shape)
+inc=inc.loc[inc.croms_income.isnull()==False]
+print(inc.shape)
+qlist6=pd.DataFrame()
+if not inc.empty:
+    inc['reason']='Invalid Format or Suspicious Croms Income reported'
+    inc['code']='RED'
+    inc['issueCode'] = 'AE1001'
+    inc['datatype']='REDCap'
+    qlist6 = inc[['subject', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype','issueCode']]
+    qlist6 = qlist6.rename(columns={'subject':'subject_id'})
+    for s6 in list(inc['subject'].unique()):
+        if s6 !='':
+            print('CODE RED :',s6,': Invalid or Highly Suspicious Croms Income reported')
 
 #drop anyone who hasn't completed a visit (after grabbing RED flag issues)
 reds=inventoryaabc.loc[inventoryaabc.register_visit_complete =='2'][['study_id']]
 legitreds=reds.study_id.to_list()
 inventoryaabc=inventoryaabc.loc[inventoryaabc.study_id.isin(legitreds)]
 
-#Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
+###concatenate Phase 0 flags for REDCap key variables
+Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
+try:
+    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist5,qlist6])#qlist4
+except:
+    Q1=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
+
+Q1=Q1.rename(columns={'subject_id':'subject'})
+Q1.event_date=Q1.v0_date
+Q1['redcap_event']='V0'
+#hca_lastvisits has redcap_event (event though its registration
+
+#########################################################################################
+# NEXT: NOW Test that all dataypes expected are present
+# Q data grabber turned into a cron job via Qscratch and /Users/petralenzini/cron/runcron_AABC_QC.sh
 
 #QC checks
 qintreport = redreport(tok=secret.loc[secret.source=='qint','api_key'].reset_index().drop(columns='index').api_key[0],reportid='51037')
@@ -200,6 +235,13 @@ if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     q1['datatype']='RAVLT'
 
 inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(columns=['_merge'])
+
+#pull in the unusables again
+unuse=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])[['subjectid','visit','q_unusable']]
+unuse['redcap_event']="V"+unuse.visit
+unuse=unuse.rename(columns={'subjectid':'subject'}).copy()
+inventoryaabc3.drop(columns=['q_unusable']).merge(unuse,on=['subject','redcap_event'],how='left')
+inventoryaabc3=inventoryaabc3.loc[~(inventoryaabc3.q_unusable=='1')].copy()
 
 missingQ=inventoryaabc3.loc[(inventoryaabc3.redcap_event_name.str.contains('v')) & (~(inventoryaabc3.Qint=='YES')) & (~(inventoryaabc3.ravlt_collectyn=='0'))][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
 q2=pd.DataFrame()
@@ -314,10 +356,22 @@ if issues.shape[0]>0:
 
 #find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
 #extend this section by pivoting and subtracting dates, then searching for diffs>60 days.
+# still working on this...not sure how to turn into ticket...maybe just check with Angela
 dffull['Date']=dffull.DateFinished.str.split(' ', expand=True)[0]
 catchdups=dffull.loc[~(dffull.Date.isnull()==True)]
 c=catchdups.drop_duplicates(subset=['PIN','Date'])[['PIN','Date']]
-c.loc[c.duplicated(subset='PIN',keep=False)]
+first=c.loc[c.duplicated(subset='PIN',keep='first')]
+last=c.loc[c.duplicated(subset='PIN',keep='last')]
+#c.loc[c.duplicated(subset='PIN',keep=True)]
+cmerge=pd.merge(first,last,on='PIN',how='inner')
+cmerge['datediff']=(pd.to_datetime(cmerge['Date_x'])-pd.to_datetime(cmerge['Date_y'])).dt.days
+cmerge.loc[cmerge['datediff']>15]
+cmerge['reason']="Parts of Toolbox for "+cmerge.PIN+ "were completed > 4 weeks apart"
+cmerge['redcap_event']=cmerge.PIN.str.split("_",expand=True)[1]
+cmerge['subject']=cmerge.PIN.str.split("_",expand=True)[0]
+cmerge['redcap_event']=cmerge.PIN.str.split("_",expand=True)[1]
+#now merge with inventory
+cmerge=pd.merge(inventoryaabc[['site','subject','redcap_event']],cmerge,on=['subject','redcap_event'],how='inner')
 
 #add subject and visit
 df2=dffull.drop_duplicates(subset='PIN').copy()
@@ -687,7 +741,6 @@ if Hot2.shape[0]>0:
 # To DO: Forgot to CHECK FOR BUNK IDS IN PSYCHOPY AND ACTIGRAPHY
 ###################################################################################
 
-### ADD outlier and missing code flags for croms salaries
 ###################################################################################
 # NOW CHECK key REDCap AABC variables for completeness (counterbalance, inventory completeness, age, bmi and soon to be more)
 # inventory_complete
@@ -716,36 +769,39 @@ if summv.shape[0]>0:
     summv['reason']='Visit Summary Incomplete'
     summv=summv[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','datatype']]
     print("Visit Summary Incomplete:\n",summv)
+#
+#agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
+#ag=agev.loc[agev.age_visit !='']
+#agemv=ag.loc[(ag.age_visit.astype('float')<=36) | (ag.age_visit.astype('float')>=95 )].copy()
+#if agemv.shape[0]>0:
+#    print("AGE OUTLIERS:\n",agemv)
+#    agemv['code']='RED'
+#    agemv['issueCode']='AE7001'
+#    agemv['datatype']='REDCap'
+#    agemv['reason']='Age outlier. Please double check DOB and Event Date'
+#    agemv=agemv[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
-agev=inventoryaabc7.loc[inventoryaabc7.redcap_event_name.astype('str').str.contains('v')][['redcap_event', 'study_id', 'site','subject','redcap_event_name','age_visit','event_date','v0_date']]
-ag=agev.loc[agev.age_visit !='']
-agemv=ag.loc[(ag.age_visit.astype('float')<=36) | (ag.age_visit.astype('float')>=95 )].copy()
-if agemv.shape[0]>0:
-    print("AGE OUTLIERS:\n",agemv)
-    agemv['code']='RED'
-    agemv['issueCode']='AE7001'
-    agemv['datatype']='REDCap'
-    agemv['reason']='Age outlier. Please double check DOB and Event Date'
-    agemv=agemv[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
-
-aa=agev.loc[agev.age_visit=='']
-ab=agev.loc[~(agev.age_visit=='')]
-ageav=pd.concat([aa,ab.loc[(ab.age_visit.astype(float).isnull()==True)]])
-if ageav.shape[0]>0:
-    print("Missing Age:\n",ageav)
-    ageav['code']='RED'
-    ageav['datatype']='REDCap'
-    ageav['issueCode']='AE3001'
-    ageav['reason']='Missing Age. Please check DOB and Event Date'
-    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
+#aa=agev.loc[agev.age_visit=='']
+#ab=agev.loc[~(agev.age_visit=='')]
+#ageav=pd.concat([aa,ab.loc[(ab.age_visit.astype(float).isnull()==True)]])
+#if ageav.shape[0]>0:
+#    print("Missing Age:\n",ageav)
+#    ageav['code']='RED'
+#    ageav['datatype']='REDCap'
+#    ageav['issueCode']='AE3001'
+#    ageav['reason']='Missing Age. Please check DOB and Event Date'
+#    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
 bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira','weight_outlier_jira', 'height_missing_jira']].copy()
 bmiv.loc[bmiv.subject=='HCA8953805']
 
 #outliers
-#add in check against the extreme value confirmation and then relax the extremes
 
+#ADD in Check for moca_total
+print("Moca Values:",inventoryaabc.moca_sum.value_counts(dropna=False)
+
+#add in check against the extreme value confirmation and then relax the extremes
 a=bmiv.loc[bmiv.bmi !=''].copy()
 a=a.loc[(a.bmi.astype('float')<=18.0) | (a.bmi.astype('float')>=40)].copy()
 a=a.loc[~((a.height_outlier_jira==1) | (a.weight_outlier_jira))]
@@ -775,7 +831,8 @@ inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('re
 
 #####
 #all the flags for JIRA together
-QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
+#QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a2,P,C,summv,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
 QAAP['QCdate'] = date.today().strftime("%Y-%m-%d")
 QAAP['issue_age']=(pd.to_datetime(QAAP.QCdate) - pd.to_datetime(QAAP.event_date))
 QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCode','event_date','issue_age','datatype']].drop_duplicates()
@@ -788,7 +845,7 @@ filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 #NOW DO a Fresh download of everything, drop all issues, and send snapshot.
 #Use inventory as  gold standard and make sure visit is complete.
 
-keepvars=['study_id','subject_id','redcap_event_name','site','v0_date','event_date','age','age_visit','sex','ethnic','racial','legacy_yn','height_ft','height_in','bmi','psuedo_guid']
+keepvars=['study_id','subject_id','redcap_event_name','site','v0_date','event_date','age','age_visit','sex','ethnic','racial','legacy_yn','height_ft','height_in','weight','bmi','psuedo_guid']
 aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 inventoryaabc=idvisits(aabcinvent,keepsies=keepvars)
 inventoryaabc['PIN']=inventoryaabc.subject+"_"+inventoryaabc.redcap_event
@@ -865,7 +922,7 @@ box.upload_file("./tmp/AABC_"+"ASA24-"+ "Resp" +"_Restricted_" + date.today().st
 box.upload_file("./tmp/AABC_"+"ASA24-"+ "TS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("./tmp/AABC_"+"ASA24-"+ "TNS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("./tmp/AABC_"+"ASA24-"+ "INS" +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
-
+#PPPPPPPPP#
 #qintdf2 is already filtered for not unusables - inventory filtered for issues
 qintdf2uploadrestricted=pd.merge(inventorysnapshot[['subject','redcap_event']],qintdf2,left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='inner')
 qintdf2uploadrestricted['PIN']=qintdf2uploadrestricted.subject+"_"+qintdf2uploadrestricted.redcap_event
@@ -878,14 +935,37 @@ box.upload_file("AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.cs
 ###########################################################
 #REDCAP
 aabc=getframe(struct=aabcarms,api_url=config['Redcap']['api_url10'])
+
 #figure out drop/restr vars for redcap. these aren't right
 aabcidvisitsrestricted=idvisits(aabc,keepsies=list(aabc.columns))
 aabcidvisitsrestricted2=pd.merge(aabcidvisitsrestricted,inventorysnapshot[['subject','redcap_event']],on=['subject','redcap_event'],how='inner')
 aabcidvisits=aabcidvisitsrestricted2.drop(columns=rdrop+rrest)
+
+#PULL OUT THE SSAGA VARIABLES AND SEND TO ITS OWN FILES
+#need to subset these even furthur to those who completed the battery
+
+#isolate the SSAGA variables.
+allcols=list(aabcidvisits.columns)
+subssag=[c for c in SSAGAvars if c in allcols]
+ssaga=aabcidvisits[['subject','redcap_event']+subssag]
+ssaga=ssaga.loc[ssaga.redcap_event.str.contains('V')]
+aabcidvisits=aabcidvisits.drop(columns=subssag).copy()
+
+allrest=list(aabcidvisitsrestricted2)
+subssagrest=[t for t in SSAGAvars if t in allrest]
+ssagarest=aabcidvisitsrestricted2[['subject','redcap_event']+subssagrest]
+ssagarest=ssagarest.loc[ssagarest.redcap_event.str.contains('V')]
+aabcidvisitsrestricted2=aabcidvisitsrestricted2.drop(columns=subssagrest).copy()
+
 aabcidvisitsrestricted2.to_csv("AABC_REDCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 aabcidvisits.to_csv("AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 box.upload_file("AABC_REDCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+
+ssagarest.to_csv("AABC_SSAGA_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+ssaga.to_csv("AABC_SSAGA_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+box.upload_file("AABC_SSAGA_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_SSAGA_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
 
 ###########################################################
 #TOOLBOX
@@ -958,7 +1038,6 @@ TLBX['TLBX']='YES'
 Act=CobraRestricted[['PIN']].copy()
 Act['Actigraphy_Cobra']='YES'
 
-intradbtable="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/plenzini_8_28_2023_11_51_56.csv"
 IntraDB=pd.read_csv(intradbtable)
 IntraDB['subject']=IntraDB.Subject
 IntraDB['redcap_event']= IntraDB['MR ID'].str.split('_', expand=True)[1]
@@ -968,6 +1047,11 @@ IntraDB=IntraDB[['IntraDB','subject','redcap_event']]
 Invent0=inventorysnapshot.merge(IntraDB,on=['subject','redcap_event'],how='left')
 InventA=Invent0.merge(Act.merge(TLBX.merge(Q,on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left')
 InventB=InventA.merge(TS.merge(Resp,on='PIN',how='left'),on='PIN',how='left')
+InventB=InventB.rename(columns={'Site':'site','TLBX':'Curated_TLBX','Qint':'Curated_Q'}) #Curated_SSAGA
+InventB['height']=''
+InventB.loc[InventB.height_ft!='','height']=InventB.height_ft.astype(str)+"'"+InventB.height_in.astype(str)+'"'
+InventB=InventB.drop(columns=['height_ft','height_in','bmi'])
+InventB['DB_Source']='AABC - ARMS'
 InventoryRestricted=InventB.merge(TNS.merge(TINS.merge(Items.merge(Totals,on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left'),on='PIN',how='left')
 InventoryRestricted.to_csv("AABC_Inventory_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 box.upload_file("AABC_Inventory_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
