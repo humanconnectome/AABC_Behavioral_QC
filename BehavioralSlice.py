@@ -1,11 +1,10 @@
 #TO DO:
 # check various combos of instruments and studies
-# drop empty columns
-# subset to study
 # remove housekeeping variables
 # include notes variables ??
 # map events to harmonized version (e.g. for FU stuff)
-
+# check order of ages in harmonzied event
+# add harmonized event and cohort to Encyclopedia
 ##########################################################################
 ## INSTRUCTIONS
 
@@ -16,9 +15,9 @@
 # Output is a table, slice dictionary, plots, distributions, and receipt
 
 # ###########################################################################
-# Currently supports redcap, Q-interactive, ASA24 totals, NIH Toolbox, SSAGA for Visit, and registration, and Covid, Actigraphy events (not FU)
+# Currently supports redcap, Q-interactive, ASA24 totals, NIH Toolbox, SSAGA for all events
+# Does not merge with any of the tabular derivatives of specialty labs
 # ###########################################################################
-
 
 from ccf.box import LifespanBox
 import pandas as pd
@@ -26,6 +25,7 @@ import matplotlib.pyplot as plt
 import os
 from datetime import date
 from config import *
+import numpy as np
 
 # Unless you are an administrator, Please create a folder somewhere, such as 'PL_test' below.
 # Within that folder, create another folder called 'downloadedfiles'
@@ -54,7 +54,7 @@ IndividVars=['neo_n','neo_e']
 wantplots = True  # or False
 
 #Are you an administrator with API credentials in the Pre-Release BOX folder?
-isAdmin = False
+isAdmin = True
 
 #if you're not an admin, what is the name of the encyclopedia file you put in the downloadedfiles directory?
 encyclopedia_file="AABC_HCA_Encyclopedia_2023-10-03.csv" #if not an admin
@@ -195,15 +195,65 @@ if study=="HCA":
 
 #don't subset by event...drop missing rows
 wide['countmiss']=wide.isna().sum(axis=1)
-wide=wide.loc[wide.countmiss<(wide.shape[1]-14)]
+#wide=wide.loc[wide.countmiss<(wide.shape[1]-14)]
 wide.countmiss.value_counts()
+
 #drop empty columns
 wide.dropna(how='all', axis=1, inplace=True)
 wide=wide.drop(columns=['countmiss'])
+wide=wide.drop_duplicates().copy()
+#drop the CCF_PCMP_ITK subjects
+wide=wide.loc[~(wide.IntraDB=='CCF_PCMP_ITK')].copy()
+#make sure you're only getting subjects in the inventory
+wide=wide.loc[wide.event_age>0]
+
+
+harmony=wide.copy()
+harmony['Cohort']=''
+harmony['HCAAABC_event']=harmony.redcap_event
+harmony.loc[((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_1')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_2')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_3')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_4'))),'Cohort']='AABC A'
+harmony.loc[((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_5')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_6')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_7')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_8'))),'Cohort']='AABC B'
+harmony.loc[((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_9')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_10')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_11')))
+         | ((harmony.study=='AABC') & (harmony.redcap_event_name.str.contains('arm_12'))),'Cohort']='AABC C'
+harmony.loc[(harmony.study=='HCA'),'Cohort']='HCA Cross'
+v2list=list(harmony.loc[(harmony.redcap_event=='V2') & (harmony.study=='HCA'),'subject'].unique())
+harmony.loc[(harmony.study=='HCA') & (harmony.subject.isin(v2list)),'Cohort']='HCA Long'
+
+#check
+harmony.loc[(harmony.study=='HCA') & (harmony.redcap_event=='V1')].IntraDB.value_counts(dropna=False)
+harmony.loc[(harmony.study=='HCA') & (harmony.redcap_event=='V2')].IntraDB.value_counts(dropna=False)
+
+
+#assign the harmonized event, then double check order by age
+harmony.loc[(harmony.Cohort=='AABC A') & (harmony.redcap_event=='AF1'),'HCAAABC_event']='V3F1'
+harmony.loc[(harmony.Cohort=='AABC A') & (harmony.redcap_event=='AF2'),'HCAAABC_event']='V4F1'
+harmony.loc[(harmony.Cohort=='AABC A') & (harmony.redcap_event=='AF3'),'HCAAABC_event']='V4F2'
+harmony.loc[(harmony.Cohort=='AABC B') & (harmony.redcap_event=='AF1'),'HCAAABC_event']='V2F1'
+harmony.loc[(harmony.Cohort=='AABC B') & (harmony.redcap_event=='AF2'),'HCAAABC_event']='V3F1'
+harmony.loc[(harmony.Cohort=='AABC B') & (harmony.redcap_event=='AF3'),'HCAAABC_event']='V3F2'
+harmony.loc[(harmony.Cohort=='AABC C') & (harmony.redcap_event=='AF1'),'HCAAABC_event']='V1F1'
+harmony.loc[(harmony.Cohort=='AABC C') & (harmony.redcap_event=='AF2'),'HCAAABC_event']='V2F1'
+harmony.loc[(harmony.Cohort=='AABC C') & (harmony.redcap_event=='AF3'),'HCAAABC_event']='V2F2'
+harmony.loc[(harmony.redcap_event=='AFZ'),'HCAAABC_event']='VZ'
+harmony.loc[(harmony.redcap_event=='AF0'),'HCAAABC_event']='V0'
+harmony.loc[(harmony.Cohort=='HCA Cross') & (harmony.redcap_event=='F1'),'HCAAABC_event']='V1F1'
+harmony.loc[(harmony.Cohort=='HCA Cross') & (harmony.redcap_event=='F2'),'HCAAABC_event']='V1F2'
+harmony.loc[(harmony.Cohort=='HCA Cross') & (harmony.redcap_event=='F3'),'HCAAABC_event']='V1F3'
+harmony.loc[(harmony.Cohort=='HCA Long') & (harmony.redcap_event=='F1'),'HCAAABC_event']='V1F1'
+harmony.loc[(harmony.Cohort=='HCA Long') & (harmony.redcap_event=='F2'),'HCAAABC_event']='V2F1'
+harmony.loc[(harmony.Cohort=='HCA Long') & (harmony.redcap_event=='F3'),'HCAAABC_event']='V2F2'
 
 
 #create output
-sliceout = wide[wide.isna().sum(axis=1).ne(wide.shape[1]-3)] #subtracting subject and redcap from total number of missings
+sliceout = harmony[harmony.isna().sum(axis=1).ne(harmony.shape[1]-3)] #subtracting subject and redcap from total number of missings
 sliceout.to_csv(os.getcwd()+datarequestor+"/"+study+"_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 slicevars=[i for i in list(sliceout.columns) if i not in ['redcap_event','subject','study']]
 
@@ -214,8 +264,6 @@ Evars.loc[Evars['NIH Toolbox Prefix in Slice'].isnull()==False,'newname']= Evars
 D=pd.concat([headerE,Evars.loc[Evars['newname'].isin(slicevars)]])
 D=D.drop(columns=['newname'])
 D.to_csv(os.getcwd()+datarequestor+"/"+study+"_Slice_Dictionary_"+ date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-#    tlbxvars=E.loc[E['Form / Instrument']==k][['Variable / Field Name','NIH Toolbox Prefix in Slice']]
-#    tlbxvars['newname']=tlbxvars['NIH Toolbox Prefix in Slice']+'_'+tlbxvars['Variable / Field Name']
 
 #plots:
 skip_plots=['subject','redcap_event']
