@@ -32,15 +32,18 @@ statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behav
 statsfile='AABC_HCA_recruitmentstats.pdf'
 
 # Now complete the following
-datarequestor='jvando'  # name of folder in which you want to generate the slice.
+datarequestor='Ghahremani_2024_January_v2'  # name of folder in which you want to generate the slice.
 study="HCA-AABC" #or HCA
 
-#What instruments?  Please consult the Encyclopedia or check the boxes in the Data portal and use EXACT STRINGs (no extra spaces)
 #modify this list:
-BulkRequested=['Pre-Processed Imaging Sessions','Vasomotor Symptoms (VMS - Raw Bulk)']
-InstRequested=['Actigraphy', 'International Physical Activity Questionnaire (IPAQ)', 'Pittsburgh Sleep Quality Index (PSQI)','Actigraphy Data Summaries Produced By Cobra Lab','Covid 19 Remote Visit - International Physical Activity Questionnaire (IPAQ) (Ipaq)', 'Covid 19 Remote Visit - Pittsburgh Sleep Quality Index (PSQI)','Extended Covid 19 Survey - Pittsburgh Sleep Quality Index (PSQI)','International Physical Activity Questionnaire (IPAQ) (Actigraphy Pilot)','Apoe Genotypes','Subject Inventory And Basic Information','Review Of Inclusion/Exclusion Criteria','Montreal Cognitive Assessment (MOCA)','Lab Collection','Lab Results','Medications','Menstrual Cycle','STRAW+10','Face-Name','Face-Name Counterbalance Group','Positive And Negative Affect Schedule (PANAS)','Visit Summary,','Followup: Menstrual Cycle','Followup: STRAW+10','CES-D Scale','STRAW+10','Vasomotor Symptom Device (VMS)']
-DerivativesRequested=['Cognition Factor Analysis', 'Cardiometabolic Index and Allostatic Load','Imaging Derived Phenotypes','Vasomotor Symptoms (Processed)']
-OtherInstruments=['Hormones (FSH, LH, testosterone, estradiol)']
+BulkRequested=[]#'Pre-Processed Imaging Sessions','Vasomotor Symptoms (VMS - Raw Bulk)']
+#InstRequested=['Actigraphy', 'International Physical Activity Questionnaire (IPAQ)', 'Pittsburgh Sleep Quality Index (PSQI)','Actigraphy Data Summaries Produced By Cobra Lab','Covid 19 Remote Visit - International Physical Activity Questionnaire (IPAQ) (Ipaq)', 'Covid 19 Remote Visit - Pittsburgh Sleep Quality Index (PSQI)','Extended Covid 19 Survey - Pittsburgh Sleep Quality Index (PSQI)','International Physical Activity Questionnaire (IPAQ) (Actigraphy Pilot)','Apoe Genotypes','Subject Inventory And Basic Information','Review Of Inclusion/Exclusion Criteria','Montreal Cognitive Assessment (MOCA)','Lab Collection','Lab Results','Medications','Menstrual Cycle','STRAW+10','Face-Name','Face-Name Counterbalance Group','Positive And Negative Affect Schedule (PANAS)','Visit Summary,','Followup: Menstrual Cycle','Followup: STRAW+10','CES-D Scale','STRAW+10','Vasomotor Symptom Device (VMS)']
+I1=['Actigraphy Data Summaries Produced By Cobra Lab','Asa24 Food Diary Totals','Actigraphy', 'International Physical Activity Questionnaire (IPAQ)', 'Pittsburgh Sleep Quality Index (PSQI)','Actigraphy Data Summaries Produced By Cobra Lab','Lab Results','CES-D Scale']
+I2=['Extended Covid 19 Survey - Pittsburgh Sleep Quality Index (PSQI)','Extended Covid 19 Survey - International Physical Activity Questionnaire (IPAQ)','International Physical Activity Questionnaire (IPAQ) (Actigraphy Pilot)','Pittsburgh Sleep Quality Index (PSQI) (Actigraphy Pilot)','Covid 19 Remote Visit - International Physical Activity Questionnaire (IPAQ) (Ipaq)','Covid 19 Remote Visit - Pittsburgh Sleep Quality Index (PSQI)']
+InstRequested=I1+I2
+
+DerivativesRequested=['Cognition Factor Analysis', 'Cardiometabolic Index and Allostatic Load','Imaging Derived Phenotypes']
+OtherInstruments=[]#'Hormones (FSH, LH, testosterone, estradiol)']
 #any additional variables?
 IndividVars=[]
 #Do you want caveman distributions of plots?
@@ -169,6 +172,8 @@ for i in os.listdir(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'))
                 except:
                     pass
             if 'AABC' in i:
+                if "ASA24-Totals" in i:
+                    subtempA=subtempA.drop_duplicates(subset=['subject','redcap_event'],keep='last')
                 widefileAABC=pd.merge(widefileAABC,subtempA, on=['subject','redcap_event'],how='outer')
             if 'HCA' in i:
                 widefileHCA = pd.merge(widefileHCA, subtempA, on=['subject', 'redcap_event'], how='outer')
@@ -190,9 +195,16 @@ for i in os.listdir(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'))
 widefileAABC['study'] = 'AABC'
 widefileHCA['study'] = 'HCA'
 wide=pd.concat([widefileAABC,widefileHCA],axis=0).copy()
+wide=wide.drop_duplicates(subset=['subject','redcap_event'],keep='last')
+wide.to_csv("test.csv",index=False)
 
 #clean up age variable
 wide.event_age=wide.event_age.round(1)
+
+#add in any requested derivatives
+#DerivativesRequested=['Cognition Factor Analysis', 'Cardiometabolic Index and Allostatic Load','Imaging Derived Phenotypes']
+
+
 
 #subset by study
 if study=="HCA":
@@ -211,6 +223,9 @@ wide=wide.drop_duplicates().copy()
 wide=wide.loc[~(wide.IntraDB=='CCF_PCMP_ITK')].copy()
 #make sure you're only getting subjects in the inventory
 wide=wide.loc[wide.event_age>0]
+
+#Drop housekeeping variables from inventory
+wide=wide.drop(columns=["Curated_SSAGA","Curated_PennCNP","Actigraphy_Cobra","Curated_TLBX","Curated_Q","ASA_Totals","legacy_yn"])
 
 
 harmony=wide.copy()
@@ -276,7 +291,7 @@ harmony=harmony.loc[~(harmony.event_age <36)]
 #create output
 sliceout = harmony[harmony.isna().sum(axis=1).ne(harmony.shape[1]-3)] #subtracting subject and redcap from total number of missings
 #reorder columns
-firstcols=['study','Cohort','HCAAABC_event','subject','redcap_event','redcap_event_name','PIN','event_age','race','ethnic_group','M/F','site','IntraDB','Actigraphy_Cobra','Curated_TLBX','Curated_Q','ASA_Totals']
+firstcols=['study','Cohort','HCAAABC_event','subject','redcap_event','redcap_event_name','PIN','event_age','race','ethnic_group','M/F','site','IntraDB']
 lastcols=[col for col in sliceout.columns if col not in firstcols]
 sliceout[firstcols+lastcols].drop(columns='PIN').to_csv(os.path.join(os.getcwd(),datarequestor+"/"+study+"_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
 
@@ -375,14 +390,14 @@ print("Slice Univariate Plots:","/plots",file=file_object)
 box = LifespanBox(cache=os.path.join(os.getcwd(),datarequestor))
 if 'Cognition Factor Analysis' in DerivativesRequested:
     box.downloadFile(config['cogsHCAAABC'])
-    box.downloadFile(1331283608435) #readme
+    box.downloadFile(1331283608435) #the corresponding readme
     print("Cognition Factor Analysis: ",os.path.basename(box.downloadFile(config['cogsHCAAABC'])),file=file_object)
 if 'Cardiometabolic Index and Allostatic Load' in DerivativesRequested:
     box.downloadFile(config['cardiosHCA'])
     f=box.downloadFile(config['cardiosHCA'])
     os.rename(f,os.path.join(os.getcwd(),datarequestor,"HCA_Cardiometabolic_Essentials.xlsx"))
     print("Cardiometabolic Index and Allostatic Load: HCA_Cardiometabolic_Essentials.xlsx",file=file_object)
-    box.downloadFile(1287112770879)  #Readme
+    box.downloadFile(1287112770879)  #the Readme
 if 'Vasomotor Symptoms (Processed)' in DerivativesRequested:
     print("")
     print("NOT AVAILABLE: Processed Vasomotor Symptom Data", file=file_object)
@@ -402,17 +417,26 @@ print("Links:",file=file_object)
 print("", file=file_object)
 print("AABC Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
 print("HCA Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
-print("Encyclopedia: https://wustl.box.com/s/csumk9o2cir3mniyp59wtb735kz51hqc", file=file_object)
+print("Encyclopedia: https://wustl.box.com/s/kr7lfj1finvcblr0ye0ls39gglo9xqbx", file=file_object)
 print("", file=file_object)
 file_object.close()
 
-distrib_object = open(os.getcwd()+datarequestor+"/"+study+"_Slice_Univariate_Descriptions.txt", "w")
+distrib_object = open(os.getcwd()+"/"+datarequestor+"/"+study+"_Slice_Univariate_Descriptions.txt", "w")
 print("Slice_Univariate_Descriptions:",file=distrib_object)
 print("",file=distrib_object)
 for i in [j for j in sliceout.columns if j not in skip_plots]:
     print("************", file=distrib_object)
-    print(sliceout[i].describe(),file=distrib_object)
-
+    print("", file=distrib_object)
+    if len(sliceout[i].unique()) >= 25:
+        print("Continuous description "+i+":", file=distrib_object)
+        print("", file=distrib_object)
+        print(sliceout[i].describe(),file=distrib_object)
+        print("", file=distrib_object)
+    if len(sliceout[i].unique()) <25:
+        print("Categorical description for variable "+i+":", file=distrib_object)
+        print("", file=distrib_object)
+        print(sliceout[i].value_counts(dropna=False), file=distrib_object)
+        print("", file=distrib_object)
 print("",file=distrib_object)
 print("***************************************************************",file=distrib_object)
 distrib_object.close()
