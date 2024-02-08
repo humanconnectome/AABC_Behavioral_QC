@@ -10,6 +10,8 @@ from ccf.config import LoadSettings
 from creds import *
 from jira import JIRA, Issue
 from JiraConverter import LIST_JIRA_FIELDS_IN_ORDER, read_csv_cols
+#import requests
+#from requests.auth import HTTPBasicAuth
 
 config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
@@ -27,9 +29,9 @@ LIST_VALID_COMPONENTS = [
 
 # Custom Fields for Jira
 MAP_FIELD_TO_N = {
-    "error_code": 10800,
-    "event_n": 10801,
-    "event_date": 10802,
+    "error_code": 10038,
+    "event_n": 10039,
+    "event_date": 10037
 }
 
 
@@ -125,6 +127,7 @@ def create_if_not_exists(row: pd.Series) -> str:
     Side Effects:
         Prints to stdout whether ticket was created or not
     """
+    print(row)
     issues = search_for_ticket(row)
     if issues:
         print(f"Ticket(s) already exists: {issues}")
@@ -162,7 +165,8 @@ API_URL = (
 def main(csv_file, dry_run=False):
     global DRYRUN, jira
     DRYRUN = dry_run
-    jira = JIRA(API_URL, token_auth=BOT_PERSONAL_ACCESS_TOKEN)
+    #jira = JIRA(API_URL, token_auth=BOT_PERSONAL_ACCESS_TOKEN,user=)
+    jira = JIRA(API_URL,basic_auth=('plenzini@wustl.edu', BOT_PERSONAL_ACCESS_TOKEN))
     df = read_csv_cols(csv_file, LIST_JIRA_FIELDS_IN_ORDER)
     results = df.apply(create_if_not_exists, axis=1)
 
