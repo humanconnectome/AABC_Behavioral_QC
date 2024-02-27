@@ -172,6 +172,7 @@ def importTLBX(siteabbrev='WU',typed='scores'):
     # Strips the newline character
     for line in Lines:
         count += 1
+        print(count)
         subsetdf=pd.read_csv(line.strip("\n"))
         sitedf=pd.concat([sitedf,subsetdf],axis=0)
         sitedf['sitestr']=siteabbrev
@@ -179,6 +180,36 @@ def importTLBX(siteabbrev='WU',typed='scores'):
     run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
                 "rm -f /home/plenzini/tools/catTLBX/cache/* /home/plenzini/tools/catTLBX/datalist* ").stdout.read()
     return sitedf
+
+def getPCP(intradb,pipeline):
+    # TO TO: curl this with a JSESSION ID instead:
+    url = 'https://intradb.humanconnectome.org/xapi/pipelineControlPanel/project/AABC_STG/pipeline/'+pipeline+'/status'
+    params = {
+        'condensed': 'true',
+        'cached': 'true',
+        'dontWait': 'true',
+        'emailForEarlyReturn': 'false',
+        'limitedRefresh': 'false'
+    }
+    headers = {
+        'Accept': 'application/json'
+    }
+    user=intradb.user[0]
+    passw=intradb.auth[0]
+    response = requests.get(url, params=params, headers=headers, auth=(user,passw))
+
+    if response.status_code == 200:
+        data = response.json()
+        # Process the JSON data here
+    else:
+        print("Request failed with status code:", response.status_code)
+    ###############
+    PCP = pd.DataFrame.from_dict(data)#[['entityLabel', 'validated', 'issues','project']]
+    PCP['PIN'] = PCP.entityLabel.str.replace('_MR', '')
+    PCP['subject'] = PCP.PIN.str.split('_', expand=True)[0]
+    PCP['redcap_event'] = PCP.PIN.str.split('_', expand=True)[1]
+
+    return PCP #pd.DataFrame.from_dict(data).columns
 
 
 def filterdupass(instrument,dupvar,iset,dset):

@@ -18,7 +18,7 @@ outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behaviora
 config = LoadSettings("/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/config.yml")
 secret=pd.read_csv(config['config_files']['secrets'])
 box = LifespanBox(cache=outp)
-scratch=205351313707
+#scratch=205351313707
 
 folderqueue=['MGH','WU','UMN','UCLA']
 client = box.get_client()
