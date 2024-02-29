@@ -24,6 +24,15 @@ DNR = ["HCA7787304_V1", "HCA6276071_V1", "HCA6229365_V1", "HCA9191078_V1", "HCA6
 #These guys accidentally recruited as V2
 v2oops=['HCA6686191','HCA7296183']
 
+#fixed data
+gwasfamfile=statsdir+"HCA_imputed_geno0.02_final.fam"
+gwasHCA=list(pd.read_csv(gwasfamfile,sep='\t',header=None)[0].unique()) #949
+#fixed data APOE and metabolites
+#metabolites1 (change this to a config location)
+#metabolites2 (change this to a config location)
+
+
+
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
 aabcdictionary='AABC_REDCap_DataDictionary_2023-05-15.csv'                 # aabc REDCap data dictionary...necessary for automating variables at appropriate events - put in tmpdir
 #AABCdict=pd.read_csv(outp+aabcdictionary,low_memory=False)
@@ -367,6 +376,8 @@ dffull=filterdupass('NIH Toolbox List Sorting Working Memory Test Age 7+ v2.1','
 print(dffull.shape)
 dffull=filterdupass('NIH Toolbox Grip Strength Test Age 3+ v2.0','tlbxgrip_dups',iset,dffull)
 print(dffull.shape)
+dffull=filterdupass('NIH Toolbox Pattern Comparison Processing Speed Test Age 7+ v2.1','tlbxpcps_dups',iset,dffull)
+print(dffull.shape)
 
 #dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','psmt_dups',iset,dffull)
 
@@ -379,6 +390,8 @@ print(rf2full.shape)
 rf2full=filterdupass('NIH Toolbox List Sorting Working Memory Test Age 7+ v2.1','tlbxlist_dups',iset,rf2full)
 print(rf2full.shape)
 rf2full=filterdupass('NIH Toolbox Grip Strength Test Age 3+ v2.0','tlbxgrip_dups',iset,rf2full)
+print(rf2full.shape)
+rf2full=filterdupass('NIH Toolbox Pattern Comparison Processing Speed Test Age 7+ v2.1','tlbxpcps_dups',iset,rf2full)
 print(rf2full.shape)
 
 #find any non-identical duplicated Assessments still in data after patch
