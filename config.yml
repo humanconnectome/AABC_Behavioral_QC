@@ -4,11 +4,29 @@ root:
 config_files:
   box: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/BoxApp.json
   secrets: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/secrets.csv
-hcainventory: 1143354744443
+  PCP: /Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/creds/intradb.csv
+hcainventory: 1259915939081
+hcainventoryR: 1259915610798
 hca_pre: 126706803362
+hca_pre_restricted: 150224568988
 aabc_pre: 161956162589
 aabc_pre_restricted: 203445756892
-encyclopedia: 1324516538017
+unionfreeze1: 254375404389
+encyclopedia: 1482923843277 #1479089152531 #1475255790322 #1471210837366 #1458475437411 #1421823275517 #1334664654758 #old version: 1324516538017
+aabc_redcap_dict: 1334087303726
+hca_redcap_dict: 1334097479930
+hca_ssaga_dict: 937223124496
+hca_q_dict: 937222256246
+aabc_q_dict: 1324839066892
+cogsHCAAABC: 1331271599832
+cardiosHCA: 1287113034004
+PRS_HCA: 1085827349192
+mrsRatoi: 1479105306756
+strawadj: 1479043957418
+AD_Biom: 1457360572668
+Metabolites: 1457365295305
+NewAPOE: 1440497749500
+OldAPOE: 912948436019
 NonQBox:
   ASA24:
     WU: 164567251974
@@ -24,7 +42,7 @@ NonQBox:
     WUSM: 1159525512055
     MGH: 1172144098420
     UMN: 1296045275648
-    UCLA:
+    UCLA: 1375172178215
   Psychopy:
     WU: 164567123018
     MGH: 164567661061

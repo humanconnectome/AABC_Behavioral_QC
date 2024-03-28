@@ -1,3 +1,5 @@
+#DO NOT RUN THIS AS A SCRIPT.  IT IS THE HISTORY OF A SERIES OF UPLOAD PREP COMMANDS
+
 import pandas as pd
 # need to do this mostly by hand...
 from functions import *
@@ -18,6 +20,10 @@ aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
 aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','subject_id','redcap_event_name','site'])
 aabcidvisits.columns
 
+
+
+### STOP DO NOT RUN ANYTHING BUT THE CURRENT BATCH ###
+### BATCH 1 ###
 batch1file="Box 8856 A-C Cruchaga.xlsx"
 b1_1=pd.read_excel(outp+"batch1/"+batch1file, sheet_name='Albumin')[['ID','Results','Time Point']]
 b1_1=b1_1.rename(columns={'Results':'Albumin','ID':'subject','Time Point':'redcap_event'}).copy()
@@ -73,8 +79,9 @@ btemph=pd.read_excel(outp+"batch1/"+batch1_3rdfile, sheet_name=sheet)[['Combo','
 btemph = btemph.rename(columns={'Time Point':'redcap_event','Combo':'subject','Results':'HbA1c'}).copy()
 
 
+### STOP DO NOT RUN ANYTHING BUT THE CURRENT BATCH ###
+### BATCH 2 ###
 
-#BATCH 2
 batch2file="Copy of Box 8910 A-B E-F Cruchaga.xlsx"
 sheet="Box 8910 A-B, E-F Cruchaga"
 btemp2=pd.read_excel(outp+"batch2/"+batch2file, sheet_name=sheet,header=8)[['subject','Time Point','Test','Result']]
@@ -122,8 +129,6 @@ g.to_csv('Labs_Uploaded_2RedCap_'+date.today().strftime("%Y-%m-%d")+'.csv',index
 f[['study_id','redcap_event_name','friedewald_ldl']].to_csv('FriedLDL_Uploaded_2RedCap_'+date.today().strftime("%Y-%m-%d")+'.csv',index=False)
 f[['study_id','redcap_event_name','LDL Chol']].rename(columns={'LDL Chol': 'friedewald_ldl'}).to_csv('FriedLDL_2batchUploaded_2RedCap_'+date.today().strftime("%Y-%m-%d")+'.csv',index=False)
 
-
-
 #another batch2
 batch2file="Box 8910 E-F.2-Cruchaga.xlsx"
 sheet="Box 8910 E-F.2-Cruchaga"
@@ -154,3 +159,118 @@ f=f.merge(aabcidvisits,on=['subject','redcap_event'],how='inner').drop_duplicate
 g=f[['study_id','redcap_event_name','subject','redcap_event']+redcap]
 g.to_csv('Labs_Uploaded_2RedCap_'+date.today().strftime("%Y-%m-%d")+'.csv',index=False)
 
+
+
+### STOP DO NOT RUN ANYTHING BUT THE CURRENT BATCH ###
+### BATCH 3 ###
+batch3file="Batch 3 Cruchaga Results 110723.xlsx"
+sheet="Box 8939 A-C Cruchaga"
+btemp2=pd.read_excel(outp+"batch3/"+batch3file, sheet_name=sheet)[['Combined ID','Test','Result']]
+btemp2=btemp2.rename(columns={'Combined ID':'PIN'})
+btemp2=btemp2.loc[btemp2.PIN.isnull()==False]
+
+b2=pd.DataFrame(columns=['PIN'])
+for i in list(btemp2.Test.unique()):
+    try:
+        part = btemp2.loc[btemp2.Test==i]
+        part=part.rename(columns={'Result':i})
+        part=part.drop(columns=['Test'])
+        b2=pd.merge(b2,part,on=['PIN'],how='outer')
+    except:
+        print('error with',i)
+redcols=['PIN','dheas','hba1c','albumin','alkphos_total','alt_sgpt','ast_sgot','calcium','chloride','co2content','creatinine','hdl','friedewald_ldl','glucose','hscrp','nonhdl','potassium','sodium','totalbilirubin','cholesterol','totalprotein','triglyceride','ureanitrogen','cortisol','estradiol','fsh','insulin','lh','testosterone','vitamind']
+b2.columns=redcols
+aabcidvisits['PIN']=aabcidvisits.subject+'_'+aabcidvisits.redcap_event
+b2.shape
+b3=b2.merge(aabcidvisits,on='PIN',how='left')
+dropm=['PIN','subject','site','subject_id','redcap_event']
+b3.drop(columns=dropm).to_csv('Batch3_upload_4Dec2023.csv',index=False)
+
+### STOP DO NOT RUN ANYTHING BUT THE CURRENT BATCH ###
+### BATCH 4 ###
+batch4file1="02062024 Boxes 8939 B  8985 A - Cruchaga- DHEAS.xlsx"
+sheet="Modified"
+btemp4f1=pd.read_excel(outp+"batch4/"+batch4file1, sheet_name=sheet)[['Combination','Test','Result']]
+btemp4f1=btemp4f1.rename(columns={'Combination':'PIN'})
+btemp4f1=btemp4f1.loc[btemp4f1.PIN.isnull()==False]
+btemp4f1_1=btemp4f1.drop(columns='Test').rename(columns={'Result':'DHEA'}).copy()
+#typos
+s=['HCA7700265_V2','HCA8712883_V2']
+btemp4f1_1.loc[btemp4f1_1.PIN.isin(s),'PIN']=btemp4f1_1.PIN.str.replace('V2','V3')
+
+
+#need to loop through the sheets in this file because need to grab timepoint
+batch4file2="USE THIS Copy of Boxes 8985 C-G -Cruchaga.xlsx"
+b1_1=pd.read_excel(outp+"batch4/"+batch4file2, sheet_name='Albumin')[['TimePoint +ID','Result']]
+b1_1=b1_1.rename(columns={'Result':'Albumin','ID':'subject','TimePoint +ID':'PIN'}).copy()
+
+for lab in['Alk Phos','ALT','AST','Calcium','Chloride','CO2','Cortisol','Creatinine','HDL','Estradiol','FSH','LDL','Glucose','HbA1c','C-Reactive','Insulin','LH','Potassium','Sodium','Testosterone','Bili','TotalCHL','Protein','Triglycerides','BUN','Vit D']:
+    print(lab)
+    try:
+        btemp=pd.read_excel(outp+"batch4/"+batch4file2, sheet_name=lab)[['TimePoint +ID','Result']]
+        btemp = btemp.rename(columns={'Result': lab,'TimePoint +ID':'PIN'}).copy()
+        b1_1=pd.merge(b1_1,btemp,on=['PIN'],how='outer')
+    except:
+        print('error with',lab)
+btemp4f1.to_csv(outp+"batch4/"+'test.csv')
+batch4=pd.merge(b1_1,btemp4f1_1,on="PIN",how='outer')
+batch4['subject']=batch4.PIN.str.split('_',expand=True)[0]
+batch4['redcap_event']=batch4.PIN.str.split('_',expand=True)[1]
+
+batch4b=pd.merge(aabcidvisits,batch4,on=['subject','redcap_event'],how='right')#.drop(columns=['subject','site','subject_id','redcap_event','PIN'])
+
+cruchaga=['Albumin', 'Alk Phos', 'ALT', 'AST',
+       'Calcium', 'Chloride', 'CO2', 'Cortisol', 'Creatinine', 'HDL',
+       'Estradiol', 'FSH', 'LDL', 'Glucose', 'C-Reactive', 'Insulin', 'LH',
+        'Potassium', 'Sodium', 'Testosterone', 'TotalCHL', 'Protein',
+       'Triglycerides', 'BUN', 'Vit D', 'DHEA','HbA1c','Bili']
+
+redcap=['albumin',  'alkphos_total',  'alt_sgpt',  'ast_sgot',
+        'calcium', 'chloride',  'co2content', 'cortisol', 'creatinine',   'hdl',
+        'estradiol',   'fsh', 'friedewald_ldl', 'glucose','hscrp', 'insulin', 'lh',
+         'potassium','sodium','testosterone','cholesterol',  'totalprotein',
+        'triglyceride',   'ureanitrogen',  'vitamind','dheas','hba1c','totalbilirubin']
+
+renames=dict(zip(cruchaga,redcap))
+f=batch4b.rename(columns=renames)
+
+
+f.drop(columns=['subject','redcap_event','PIN','site']).to_csv(outp+"batch4/"+'Batch4_forUpload_v2.csv',index=False)
+
+#one more file for Batch 4 - received March 6, 2024
+batch4file3="Boxes 8995 A-B Cruchaga2.xlsx"
+sheet="Modified"
+btemp4f3=pd.read_excel(outp+"batch4/"+batch4file3, sheet_name=sheet)[['Combined','Test','Result']]
+btemp4f3=btemp4f3.rename(columns={'Combined':'PIN'})
+btemp4f3=btemp4f3.loc[btemp4f3.PIN.isnull()==False]
+b43=pd.DataFrame(columns={'PIN'})
+for i in list(btemp4f3.Test.unique()):
+    try:
+        part = btemp4f3.loc[btemp4f3.Test==i]
+        part=part.rename(columns={'Result':i})
+        part=part.drop(columns=['Test'])
+        b43=pd.merge(b43,part,on=['PIN'],how='outer')
+    except:
+        print('error with',i)
+
+cruchaga=['HbA1c', 'Albumin', 'Alk Phos, Total', 'ALT (SGPT)', 'AST (SGOT)', 'Calcium', 'Chloride', 'CO2 Content', 'Creatinine', 'Direct HDL Cholesterol', 'Friedewald LDL Chol', 'Glucose', 'HS C-Reactive Prot', 'Non-HDL Cholesterol', 'Potassium', 'Sodium',  'Total Bilirubin', 'Total Cholesterol', 'Total Protein', 'Triglycerides', 'Urea Nitrogen',  'Cortisol', 'Estradiol, e601', 'Follicle-Stimulating Hormone', 'Insulin', 'Luteinizing Hormone', 'Testosterone', 'Vitamin D']
+redcap= ['hba1c',  'albumin',  'alkphos_total',  'alt_sgpt',  'ast_sgot',   'calcium', 'chloride',  'co2content', 'creatinine',     'hdl',                  'friedewald_ldl',        'glucose',              'hscrp', 'non-hdl',           'potassium','sodium',  'totalbilirubin',     'cholesterol', 'totalprotein', 'triglyceride',     'ureanitrogen',    'cortisol', 'estradiol',      'fsh',                           'insulin', 'lh',                 'testosterone',    'vitamind'  ]
+
+renames=dict(zip(cruchaga,redcap))
+ff=b43.rename(columns=renames)
+
+aabcidvisits['PIN']=aabcidvisits['subject']+"_"+aabcidvisits['redcap_event']
+batch4_3=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='right').drop(columns=['PIN'])
+batch4_3.to_csv(outp+"batch4/"+'Batch4b_forUpload.csv',index=False)
+
+
+##typos
+#s=['HCA7700265_V2','HCA8712883_V2']
+#btemp4f1_1.loc[btemp4f1_1.PIN.isin(s),'PIN']=btemp4f1_1.PIN.str.replace('V2','V3')
+
+
+
+#sheet="Modified"
+#btemp4f2=pd.read_excel(outp+"batch4/"+batch4file2, sheet_name=sheet)[['Combo','Test','Result']]
+#btemp4f2=btemp4f2.rename(columns={'Combo':'PIN'})
+#btemp4f2=btemp4f2.loc[btemp4f2.PIN.isnull()==False]

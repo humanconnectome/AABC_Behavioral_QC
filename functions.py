@@ -181,9 +181,9 @@ def importTLBX(siteabbrev='WU',typed='scores'):
                 "rm -f /home/plenzini/tools/catTLBX/cache/* /home/plenzini/tools/catTLBX/datalist* ").stdout.read()
     return sitedf
 
-def getPCP(intradb,pipeline):
+def getPCP(intradb,project,pipeline):
     # TO TO: curl this with a JSESSION ID instead:
-    url = 'https://intradb.humanconnectome.org/xapi/pipelineControlPanel/project/AABC_STG/pipeline/'+pipeline+'/status'
+    url = 'https://intradb.humanconnectome.org/xapi/pipelineControlPanel/project/'+project+'/pipeline/'+pipeline+'/status'
     params = {
         'condensed': 'true',
         'cached': 'true',
@@ -219,10 +219,19 @@ def filterdupass(instrument,dupvar,iset,dset):
     fixass['PIN']=fixass.subject + '_' + fixass.redcap_event
     fixass=fixass.loc[~(fixass[dupvar]=='')][['PIN',dupvar]]
     fixass[dupvar]=fixass[dupvar].str.upper().str.replace('ASSESSMENT','').str.strip() #dont want to remove all alphanumeric...need more control over conventions
+    check1 = fixass.loc[fixass[dupvar] == '1 AND 2'].copy()
+    onetwo=''
+    try:
+        onetwo=list(check1.PIN)[0]
+    except:
+        pass
+    #fixass=pd.concat([check,fixass.loc[~(fixass[dupvar] == '1 AND 2')]])
     fixass['Assessment Name']="Assessment " + fixass[dupvar]
     fixass['Inst']=instrument
     dset=pd.merge(dset,fixass,on=['PIN','Inst','Assessment Name'],how='left')
     dset=dset.loc[~(dset[dupvar].isnull()==False)]
+    dset=dset.loc[~((dset['Assessment Name']=="Assessment 1") & (dset.Inst==instrument) & (dset.PIN==onetwo))]
+    dset=dset.loc[~((dset['Assessment Name'] == "Assessment 2") & (dset.Inst == instrument) & (dset.PIN == onetwo))]
     return dset
 
 def getredcap10Q(struct,studystr,curatedsnaps,goodies,idstring,config,restrictedcols=[]): #secret,config,
@@ -339,8 +348,9 @@ def folder_files(client, folders, extension='.csv', recursively=False):
 
     return folders #, result
 
-def removeIssues(dataset,issuefile,component='ASA24'):
-    issues=pd.read_csv(issuefile)#'All_Issues_'+date.today().strftime("%d%b%Y")+'.csv'
+def removeIssues(dataset,issuefila,component='ASA24'):
+    issues=pd.read_csv(issuefila)#'All_Issues_'+date.today().strftime("%d%b%Y")+'.csv'
+    print(issues.head())
     droplist=issues.loc[issues.datatype==component][['subject','redcap_event']].drop_duplicates()
     dset=pd.merge(dataset,droplist,on=['subject','redcap_event'],how='outer',indicator=True)
     return dset.loc[dset._merge=='left_only'].drop(columns='_merge')
@@ -353,16 +363,23 @@ def PINfirst(dataset,strname,issuefile,inventory,dropvars):
     dataset['redcap_event'] = dataset.PIN.str[11:13]
     print(dataset.shape)
     dataset2=pd.merge(dataset,inventory,on=['subject','redcap_event'],how='inner')
-    dataset3=removeIssues(dataset2,component='ASA24',issuefile=issuefile)
+    print(issuefile)
+    dataset3=removeIssues(dataset2,component='ASA24',issuefila=issuefile)
     a = list(dataset3.columns)
     b = dataset3[a[-3:] + a[:-3]].sort_values('PIN').drop_duplicates()
     print(b.shape)
-    #for the restricted folder
-    b.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-"+ strname +"_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
-    #for the regular folder
     c = b.drop(columns=dropvars)
     c.loc[b.PIN != ''].to_csv("./tmp/AABC_ASA24-" + strname + "_" + date.today().strftime("%Y-%m-%d") + ".csv",index=False)
     return b,c
+
+#subsetfreeze
+def subsetfreeze(df,strname,listfreeze,byPIN=True,bySUB=False):
+    if byPIN:
+        dff=df.loc[df.PIN.isin(listfreeze)]
+    if bySUB:
+        dff=df.loc[df.subject.isin(listfreeze)]
+    dff.loc[dff.PIN != ''].to_csv("./tmp/Freeze1_AABC_ASA24-" + strname + "_" + date.today().strftime("%Y-%m-%d") + ".csv",index=False)
+    return dff
 
 def getASA(client,folderqueue):
     TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()

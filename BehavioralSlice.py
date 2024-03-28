@@ -1,12 +1,3 @@
-# TO DO: turn special lists into config stuff
-v2oops=['HCA6686191','HCA7296183'] # Minimal HCA behavioral-only visit data for subjects that came in as v2 in AABC
-freeze1Subs=list(pd.read_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/Freeze1_n439_12Feb2024.csv',header=None)[0])
-PCMPlist=['HCA6426670','HCA6732980','HCA6780789','HCA6878504','HCA7025859','HCA7126865','HCA7411864','HCA8043765','HCA8343272','HCA8540678','HCA8715687','HCA8738598','HCA8858104','HCA8935904','HCA9137577','HCA9808700','HCA9814189']
-
-# TO DO: map events to harmonized version (e.g. for FU and Covid HCA stuff)
-##########################################################################
-# Output is a table, slice dictionary, plots, distributions, and receipt
-
 from ccf.box import LifespanBox
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,35 +7,44 @@ from datetime import date
 from config import *
 import numpy as np
 
+# TO DO: turn special lists into config stuff
+v2oops=['HCA6686191','HCA7296183'] # Minimal HCA behavioral-only visit data for subjects that came in as v2 in AABC
+v2oopsexp=['HCA6686191_V2', 'HCA7296183_V2','HCA6686191_F2', 'HCA7296183_F2','HCA6686191_F3', 'HCA7296183_F3','HCA6686191_Covid', 'HCA7296183_Covid','HCA6686191_CR', 'HCA7296183_CR']
+freeze1Subs=list(pd.read_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/Freeze1_n439_12Feb2024.csv',header=None)[0])
+PCMPlist=['HCA6426670','HCA6732980','HCA6780789','HCA6878504','HCA7025859','HCA7126865','HCA7411864','HCA8043765','HCA8343272','HCA8540678','HCA8715687','HCA8738598','HCA8858104','HCA8935904','HCA9137577','HCA9808700','HCA9814189']
+
+# TO DO: map events to harmonized version (e.g. for FU and Covid HCA stuff)
+##########################################################################
+# Output is a table, slice dictionary, plots, distributions, and receipt
+
 # Recruitment pdf (always the latest because synced to BOX from local machine)
 # replace with config location
-statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/'
+statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/'
 statsfile='AABC_HCA_recruitmentstats.pdf'
+gwasfamfile=statsdir+"HCA_imputed_geno0.02_final.fam"
+gwas=list(pd.read_csv(os.path.join(statsdir,gwasfamfile),sep='\t',header=None)[0].unique()) #949
 
 # Now complete the following
-datarequestor='PMaki_adjudication_wRestricted'  # name of folder in which you want to generate the slice.
+datarequestor='Nichols_CogFactorGen'  # name of folder in which you want to generate the slice.
 study="HCA-AABC" #or HCA
 #modify this list (many examples commented out):
-InstRequested=['Menstrual Cycle', 'STRAW+10']
-#I1=['Actigraphy Data Summaries Produced By Cobra Lab','Asa24 Food Diary Totals','Actigraphy', 'International Physical Activity Questionnaire (IPAQ)', 'Pittsburgh Sleep Quality Index (PSQI)','Actigraphy Data Summaries Produced By Cobra Lab','Lab Results','CES-D Scale']
-#I2=['Extended Covid 19 Survey - Pittsburgh Sleep Quality Index (PSQI)','Extended Covid 19 Survey - International Physical Activity Questionnaire (IPAQ)','International Physical Activity Questionnaire (IPAQ) (Actigraphy Pilot)','Pittsburgh Sleep Quality Index (PSQI) (Actigraphy Pilot)','Covid 19 Remote Visit - International Physical Activity Questionnaire (IPAQ) (Ipaq)','Covid 19 Remote Visit - Pittsburgh Sleep Quality Index (PSQI)']
-#InstRequested=I1+I2
-#InstRequested=['Actigraphy', 'International Physical Activity Questionnaire (IPAQ)', 'Pittsburgh Sleep Quality Index (PSQI)','Actigraphy Data Summaries Produced By Cobra Lab','Covid 19 Remote Visit - International Physical Activity Questionnaire (IPAQ) (Ipaq)', 'Covid 19 Remote Visit - Pittsburgh Sleep Quality Index (PSQI)','Extended Covid 19 Survey - Pittsburgh Sleep Quality Index (PSQI)','International Physical Activity Questionnaire (IPAQ) (Actigraphy Pilot)','Apoe Genotypes','Subject Inventory And Basic Information','Review Of Inclusion/Exclusion Criteria','Montreal Cognitive Assessment (MOCA)','Lab Collection','Lab Results','Medications','Menstrual Cycle','STRAW+10','Face-Name','Face-Name Counterbalance Group','Positive And Negative Affect Schedule (PANAS)','Visit Summary,','Followup: Menstrual Cycle','Followup: STRAW+10','CES-D Scale','STRAW+10','Vasomotor Symptom Device (VMS)']
+InstRequested=['Completeness Inventory','NIH Toolbox Pattern Comparison Processing Speed Test','NIH Toolbox Picture Sequence Memory Test','NIH Toolbox Picture Vocabulary Test','NIH Toolbox Visual Acuity Test','NIH Toolbox Words-In-Noise Test','NIH Toolbox Dimensional Change Card Sort Test','NIH Toolbox Flanker Inhibitory Control and Attention Test','NIH Toolbox List Sorting Working Memory Test','NIH Toolbox Oral Reading Recognition Test','Cognition Crystallized Composite','Cognition Fluid Composite','Cognition Total Composite Score','Montreal Cognitive Assessment (MOCA)','Trail Making Scores','Q-Interactive Ravlt']
 BulkRequested=[]#'Pre-Processed Imaging Sessions','Vasomotor Symptoms (VMS - Raw Bulk)']
 DerivativesRequested=[]#['Cognition Factor Analysis', 'Cardiometabolic Index and Allostatic Load','Imaging Derived Phenotypes']
 OtherInstruments=[]#'Hormones (FSH, LH, testosterone, estradiol)']
 IndividVars=[]
 
+
 #Do you want caveman distributions of plots?
-wantplots = True  # or False
+wantplots = False
 
 #Are you an administrator with API credentials in the Pre-Release BOX folder?
 isAdmin = True
-
+DownloadF = False
 #########################################################################################################
 ################################### Done with user specs #####################
 
-InstRequest1=['Subject Inventory And Basic Information']+InstRequested
+InstRequest1=['Completeness Inventory']+InstRequested
 InstRequest=list(pd.DataFrame(InstRequest1).drop_duplicates()[0])
 
 if isAdmin:
@@ -63,10 +63,11 @@ if isAdmin:
         aabc_pre=box.list_of_files([str(config['aabc_pre'])])
         E=pd.read_csv(box.downloadFile(config['encyclopedia']),low_memory=False,encoding='ISO-8859-1')
         Evars = E.loc[(E['Form / Instrument'].isin(InstRequest)) | (E['Variable / Field Name'].isin(IndividVars))]
+        Evars = Evars.loc[~(Evars.Unavailable == 'U')]
         t2 = Evars.loc[Evars.Unavailable == 'U']
         droplist=list(t2['Variable / Field Name'].unique())
 
-        print("Number of Requested Instruments:",len(InstRequested)-1)
+        print("Number of Requested Instruments:",len(InstRequested))
         print("Number of Instruments Found:",len(Evars['Form / Instrument'].unique()))
 
         #whittle down the list of files in the Pre-Release folder to the most recent subset
@@ -90,7 +91,8 @@ if isAdmin:
         hcaRfiles=hcaRfiles.sort_values('datestamp',ascending=False)
         hcaRfiles=hcaRfiles.drop_duplicates(subset='datatype',keep='first').copy()
         hcaRfiles['dropRlist'] = hcaRfiles.filename.str.replace('_Restricted', '')
-        dropRfiles=list(hcaRfiles.dropRlist.unique())
+        #also need to drop old APOE file in favor of new list
+        dropRfiles=list(hcaRfiles.dropRlist.unique())+['HCA_Apoe-Isoforms_2022-03-03.csv']
 
         aabcfiles=pd.DataFrame.from_dict(aabc_pre, orient='index')
         aabcfiles['datestamp']=aabcfiles.filename.str.split('_',expand=True)[2]
@@ -103,8 +105,11 @@ if isAdmin:
 
         #download
         for i in list(aabcfiles.fileid)+list(hcafiles.fileid) +list(hcaRfiles.fileid):
-            print("downloading",i,"...")
-            box.downloadFile(i)
+            if DownloadF:
+                print("downloading",i,"...")
+                box.downloadFile(i)
+            else:
+                print("already downloaded",i,"...")
     except:
         print("Something went wrong")
 ##### end Admin section
@@ -112,24 +117,33 @@ if isAdmin:
 # THen stack studies together, incorporating exceptions for APOE, FAMILIES, and REgistration variables
 widefileAABC=pd.DataFrame(columns=['study','subject','redcap_event'])
 widefileHCA=pd.DataFrame(columns=['study','subject','redcap_event'])
+#i='HCA_NIH-Toolbox-Scores_2022-01-28.csv'
+i='AABC_NIH-Toolbox-Scores_2024-03-21.csv'
 for i in os.listdir(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/')):
     if i in dropRfiles:
-        print("skipping",i,"in favor of restricted version")
+        print("skipping",i,"in favor of AABC combined or HCA restricted version")
     else:
         Evars2=list(Evars['Variable / Field Name'])+IndividVars
         if 'NIH' in i and 'Scores' in i:
             print(i)
             bulk=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'+i),low_memory=False)
-            bulk=bulk.loc[bulk.Inst.isin(InstRequest)]
+            l=[]
+            tlbxlist = [j for j in InstRequest if
+                        ('NIH' in j) or ('Cognition' in j and 'Composite' in j) or ('Summary (18+)' in j)]
+            for t in tlbxlist:
+                l2=[b for b in bulk.Inst.unique() if t in b]
+                l=l+l2
+            bulk=bulk.loc[bulk.Inst.isin(l)].copy()
             if not bulk.empty:
                 bulk['subject']=bulk.PIN.str.split('_',expand=True)[0]
                 bulk['redcap_event']=bulk.PIN.str.split('_',expand=True)[1]
-                tlbxlist=[j for j in InstRequest if 'NIH' in j]
                 for k in tlbxlist:
-                    tlbxvars=E.loc[E['Form / Instrument']==k][['Variable / Field Name','NIH Toolbox Prefix in Slice']]
+                    print(k)
+                    tlbxvars=Evars.loc[Evars['Form / Instrument']==k][['Variable / Field Name','NIH Toolbox Prefix in Slice','Unavailable']]
                     tlbxvars['newname']=tlbxvars['NIH Toolbox Prefix in Slice']+'_'+tlbxvars['Variable / Field Name']
+                    tlbxvars['newname']=tlbxvars.newname.str.replace(' ','_')
                     mapvars=dict(zip(list(tlbxvars['Variable / Field Name']),list(tlbxvars.newname)))#,tlbxvars['newname'])
-                    temp=bulk.loc[bulk.Inst==k][['subject','redcap_event']+list(tlbxvars['Variable / Field Name'])]
+                    temp=bulk.loc[bulk.Inst.str.contains(k)][['subject','redcap_event']+list(tlbxvars['Variable / Field Name'])]
                     temp=temp.rename(columns=mapvars)
                     for j in ['site', 'study', 'PIN', 'redcap_event_name', 'site', 'study_id', 'id', 'gender']:
                         try:
@@ -152,7 +166,7 @@ for i in os.listdir(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'))
             if 'HCA' in i:
                 widefileHCA = pd.merge(widefileHCA, subtempB, on=['subject', 'redcap_event'], how='outer')
 
-        if 'Inventory' not in i and 'Apoe' not in i and 'Encyclopedia' not in i and 'NIH' not in i and ".DS_Store" not in i and '-INS' not in i and '-Resp' not in i and '-Items' not in i and '-TS' not in i and '-TNS' not in i:
+        if 'Metabolites' not in i and 'Inventory' not in i and 'Apoe' not in i and 'Encyclopedia' not in i and 'NIH' not in i and 'Composite' not in i and ".DS_Store" not in i and '-INS' not in i and '-Resp' not in i and '-Items' not in i and '-TS' not in i and '-TNS' not in i:
             print(i)
             try:
                 temp=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'+i),low_memory=False)
@@ -169,20 +183,35 @@ for i in os.listdir(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'))
                 if 'HCA' in i:
                     widefileHCA = pd.merge(widefileHCA, subtempA, on=['subject', 'redcap_event'], how='outer')
             except:
-                print('error')
-
-        if 'Apoe' in i or 'FAMILY' in i:
+                pass
+#need to move Apoe
+        if 'FAMILY' in i:
             print(i)
             temp = pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/' + i), low_memory=False)
             subtempA = temp[temp.columns.intersection(set(['subject'] + Evars2))].copy()
-            for j in ['age','sex','site','study', 'PIN', 'redcap_event_name', 'site', 'study_id', 'id', 'gender','Specimen_ID','Specimen_Mass','Specimen_Type','DoExtraction','Protocol','DNA_barcode','DNA_volume','DNA_concentration','DNA_260_280','DNA_260_230','Notes_Pre_Run','Notes_During_Run','Notes_Post_Run','PI','Project','Final_Comments']+droplist:
+            for j in ['age','sex','site','study', 'PIN', 'redcap_event_name', 'site', 'study_id', 'id', 'gender']+droplist:
                 try:
                     subtempA = subtempA.drop(columns=[j]).copy()
                 except:
                     pass
-            if 'Apoe' in i:
-                subtempA=subtempA.drop_duplicates()
             widefileHCA=pd.merge(widefileHCA,subtempA,on='subject',how='outer')
+
+#APOE and Metabolites coming in from a combined HCA/AABC source -- read and merge later
+        if 'Metabolites' in i :
+            print(i)
+            try:
+                temp=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'+i),low_memory=False)
+                mergelaterMet=temp[temp.columns.intersection(set(['subject', 'redcap_event']+Evars2))]
+            except:
+                print('fail')
+        if 'APOE' in i.upper() :
+            print(i)
+            try:
+                temp=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/'+i),low_memory=False)
+                mergelaterAPOE=temp[temp.columns.intersection(set(['subject']+Evars2))]
+            except:
+                print('fail')
+
 
 widefileAABC['study'] = 'AABC'
 widefileHCA['study'] = 'HCA'
@@ -196,6 +225,9 @@ widefileHCA=widefileHCA.loc[~(widefileHCA.subject.isin(PCMPlist))]
 print(widefileHCA.shape)
 widefileHCA.redcap_event.value_counts()
 HCAsubs=list(widefileHCA.loc[widefileHCA.IntraDB.isin(['CCF_HCA_STG','Behavioral Only'])].subject.unique())
+widefileHCA.loc[widefileHCA.site=='UMinn','site']='UMN'
+#drop the v2ooops for behavioral only second visits
+
 
 print(widefileAABC.shape)
 widefileAABC=widefileAABC.drop_duplicates(subset=['subject','redcap_event'])
@@ -203,16 +235,15 @@ print(widefileAABC.shape)
 
 wide=pd.concat([widefileAABC,widefileHCA],axis=0).copy()
 wide=wide.drop_duplicates(subset=['subject','redcap_event'],keep='first')
-wide.redcap_event.value_counts()
 
+#merge in the 'mergelater' files (e.g. APOE and metabolites files that are produced for AABC and HCA combined)
+if not mergelaterMet.empty:
+    wide=pd.merge(wide,mergelaterMet,on=['subject','redcap_event','PIN'],how='left')
+if not mergelaterAPOE.empty:
+    wide=pd.merge(wide,mergelaterAPOE,on=['subject'],how='left')
 
 #clean up age variable
 wide.event_age=wide.event_age.round(1)
-
-
-#add in any requested derivatives
-#DerivativesRequested=['Cognition Factor Analysis', 'Cardiometabolic Index and Allostatic Load','Imaging Derived Phenotypes']
-
 
 #don't subset by event...drop missing rows
 wide['countmiss']=wide.isna().sum(axis=1)
@@ -224,13 +255,9 @@ wide.dropna(how='all', axis=1, inplace=True)
 wide=wide.drop(columns=['countmiss'])
 wide=wide.drop_duplicates().copy()
 #drop the CCF_PCMP_ITK subjects
-wide=wide.loc[~(wide.IntraDB=='CCF_PCMP_ITK')].copy()
+wide=wide.loc[~(wide.subject.isin(PCMPlist))].copy()
 #make sure you're only getting subjects in the inventory
 wide=wide.loc[wide.event_age>0]
-
-#Drop housekeeping variables from inventory
-wide=wide.drop(columns=["Curated_SSAGA","Curated_PennCNP","Actigraphy_Cobra","Curated_TLBX","Curated_Q","ASA_Totals","legacy_yn"])
-
 
 harmony=wide.copy()
 harmony['Cohort']=''
@@ -310,24 +337,56 @@ sliceout.loc[sliceout.HCA_Freeze1_Nov2023==1].redcap_event.value_counts()
 sliceout.loc[(sliceout.HCA_Freeze1_Nov2023==1) | (sliceout.AABC_Freeze1_Nov2023==1),'Union_Freeze1_Nov2023']=1
 sliceout.loc[sliceout.Union_Freeze1_Nov2023==1].redcap_event.value_counts()
 len(sliceout.loc[sliceout.Union_Freeze1_Nov2023==1].subject.unique())
+len(sliceout.loc[sliceout.AABC_Freeze1_Nov2023==1].subject.unique())
 
 sliceout.loc[sliceout.Union_Freeze1_Nov2023==1 & sliceout.IntraDB.isin(['CCF_HCA_STG','AABC_STG'])].redcap_event.value_counts()
 len(sliceout.loc[sliceout.Union_Freeze1_Nov2023==1 & sliceout.IntraDB.isin(['CCF_HCA_STG','AABC_STG'])].subject.unique())
 
 firstcols=['study','Cohort','subject','HCAAABC_event','PIN','event_age','race','ethnic_group','M/F','site','IntraDB','AABC_Freeze1_Nov2023','Union_Freeze1_Nov2023']
-lastcols=[col for col in sliceout.columns if col not in firstcols and col not in droplist]
-sliceout=sliceout[firstcols+lastcols].drop(columns=['PIN','redcap_event_name','HCA_Freeze1_Nov2023']).copy()
+lastcols=[col for col in sliceout.columns if col not in firstcols and col not in droplist ]
+sliceout=sliceout[firstcols+lastcols].drop(columns=['PIN','HCA_Freeze1_Nov2023','HCAAABC_event','IntraDB']).copy()
 sliceout.to_csv(os.path.join(os.getcwd(),datarequestor+"/"+study+"_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
-sliceout.loc[sliceout.AABC_Freeze1_Nov2023==1].redcap_event.value_counts()
-sliceout.loc[sliceout.Union_Freeze1_Nov2023==1].redcap_event.value_counts()
+UnionFreeze=sliceout.loc[(sliceout.Union_Freeze1_Nov2023==1) & (sliceout.redcap_event.isin(['V1','V2','V3']))]
+UnionFreeze.to_csv(os.path.join(os.getcwd(),datarequestor+"/"+study+"_FreezeSlice_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
+print("HCA-AABC Totals: \n",sliceout.loc[(sliceout.redcap_event.isin(['V1','V2','V3','V4']))].redcap_event.value_counts())
+print("AABC Freeze Totals: \n",sliceout.loc[(sliceout.AABC_Freeze1_Nov2023==1)  & (sliceout.redcap_event.isin(['V1','V2','V3','V4']))].redcap_event.value_counts())
+#print("AABC Freeze with Metabolites: \n",sliceout.loc[(sliceout.AABC_Freeze1_Nov2023==1) & (sliceout.Metabolites==1) & (sliceout.redcap_event.isin(['V1','V2','V3','V4']))].redcap_event.value_counts())
+#print("AABC Freeze with AD Biomarkers: \n",sliceout.loc[(sliceout.AABC_Freeze1_Nov2023==1) & (sliceout.AD_Biomarkers==1)].redcap_event.value_counts())
+
+print("HCA-AABC Union Freeze Totals: \n",sliceout.loc[(sliceout.Union_Freeze1_Nov2023==1) & (sliceout.redcap_event.isin(['V1','V2','V3','V4']))].redcap_event.value_counts())
+#print("HCA-AABC Union Freeze with Metabolites: \n",sliceout.loc[(sliceout.Union_Freeze1_Nov2023==1) & (sliceout.Metabolites==1) ].redcap_event.value_counts())
+#print("HCA-AABC Union Freeze with AD Biomarkers: \n",sliceout.loc[(sliceout.Union_Freeze1_Nov2023==1) & (sliceout.AD_Biomarkers==1) ].redcap_event.value_counts())
+len(sliceout.loc[(sliceout.Union_Freeze1_Nov2023==1)].subject.unique())
+len(sliceout.loc[(sliceout.AABC_Freeze1_Nov2023==1)].subject.unique())
+
+""" Special breakdown
+    notvar=['study','Plate','redcap_event','Olink Sample ID',
+     'Cohort',
+     'subject',
+     'HCAAABC_event',
+     'event_age',
+     'race',
+     'ethnic_group',
+     'M/F',
+     'site',
+     'IntraDB','Metabolites','AD_Biomarkers']
+    varlist = [i for i in sliceout.columns if 'Flag' not in i and 'Freeze1' not in i and 'ID' not in i and i not in notvar]
+    slicenumeric=sliceout.copy()
+    slicenumeric[varlist]=slicenumeric[varlist].apply(pd.to_numeric,errors='coerce')
+    N=slicenumeric.groupby('M/F')[varlist].count().transpose()
+    M=slicenumeric.groupby('M/F')[varlist].mean(numeric_only=True).transpose().rename(columns={'F':'F mean','M':'M mean'})
+    S=slicenumeric.groupby('M/F')[varlist].std().transpose().rename(columns={'F':'F SD','M':'M SD'})
+    pd.concat([N,M,S],axis=1).to_csv(os.path.join(os.getcwd(),datarequestor+"/"+"Metabolites_x_Sex.csv"))
+"""
 
 slicevars=[i for i in list(sliceout.columns)]# if i not in ['redcap_event','subject','study']]
 
-headerE=E.loc[(E['Variable / Field Name'].isin(['subject','redcap_event'])) & (E['Form / Instrument']=='SUBJECT INVENTORY AND BASIC INFORMATION')]
-Evars=Evars.copy()
+#headerE=Evars.loc[(Evars['Variable / Field Name'].isin(['subject','redcap_event'])) & (E['Form / Instrument']=='Completeness Inventory')]
+Evars2=Evars.copy()
 Evars['newname']=Evars['Variable / Field Name']
 Evars.loc[Evars['NIH Toolbox Prefix in Slice'].isnull()==False,'newname']= Evars['NIH Toolbox Prefix in Slice']+'_'+Evars['Variable / Field Name']
-D=pd.concat([headerE,Evars.loc[Evars['newname'].isin(slicevars)]])
+Evars.loc[Evars['NIH Toolbox Prefix in Slice'].isnull() == False, 'newname']=Evars.newname.str.replace(' ', '_')
+D=Evars.loc[Evars['newname'].isin(slicevars)]
 D=D.drop(columns=['newname'])
 D.to_csv(os.path.join(os.getcwd(),datarequestor+"/"+study+"_Slice_Dictionary_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
 
@@ -350,8 +409,10 @@ for i in os.listdir(os.path.join(os.getcwd(),datarequestor+"/downloadedfiles")):
 
 
 #plots:
+
 skip_plots=['subject','redcap_event','PIN','Actigraphy_Cobra','HCA_Freeze1_Nov2023']
 plotlist=[vars for vars in list(sliceout.columns) if vars not in skip_plots]
+
 if wantplots:
     if os.path.exists(os.path.join(os.getcwd(),datarequestor+"/plots")):
         pass
@@ -439,12 +500,12 @@ print("",file=file_object)
 for i in versionlist:
     print(i,file=file_object)
 print("", file=file_object)
-print("Links:",file=file_object)
-print("", file=file_object)
-print("AABC Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
-print("HCA Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
-print("Encyclopedia: https://wustl.box.com/s/kr7lfj1finvcblr0ye0ls39gglo9xqbx", file=file_object)
-print("", file=file_object)
+#print("Links:",file=file_object)
+#print("", file=file_object)
+#print("AABC Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
+#print("HCA Pre-Release Folder in Box: https://wustl.box.com/s/9gnrbyq7fybw0wtd82zfoagki2d5uky1", file=file_object)
+#print("Encyclopedia: https://wustl.box.com/s/kr7lfj1finvcblr0ye0ls39gglo9xqbx", file=file_object)
+#print("", file=file_object)
 file_object.close()
 
 distrib_object = open(os.getcwd()+"/"+datarequestor+"/"+study+"_Slice_Univariate_Descriptions.txt", "w")

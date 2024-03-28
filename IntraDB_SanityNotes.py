@@ -16,12 +16,12 @@ passw = intradb.auth[0]
 HOST = "hcpi-shadow22.nrg.wustl.edu"
 projects=["AABC_UMN_ITK","AABC_UCLA_ITK","AABC_MGH_ITK"]#"AABC_WU_ITK",
 #test
-curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:mrSessionData\&format=json\&columns=ID,label,project,xsiType,subject_label,URI\&project=AABC_MGH_ITK"
-curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:subjectData\&format=json\&columns=subject_label,yob\&project=AABC_MGH_ITK"
+#curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:mrSessionData\&format=json\&columns=ID,label,project,xsiType,subject_label,URI\&project=AABC_MGH_ITK"
+#curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:subjectData\&format=json\&columns=subject_label,yob\&project=AABC_MGH_ITK"
 
-os.system(curlcmd0)
-os.system(curlcmd0)
-
+##os.system(curlcmd0)
+#os.system(curlcmd0)
+PROJECT="AABC_WU_ITK"
 AllSanity=pd.DataFrame()
 for PROJECT in projects:
     curlcmd="curl -s -k -v -u "+user+":"+passw+" https://"+HOST+"/xapi/sanityChecksReports/project/"+PROJECT+"/failureReportCSV > "+outp+PROJECT+"_Sanity.csv"

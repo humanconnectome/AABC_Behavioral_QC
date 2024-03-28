@@ -25,8 +25,8 @@ DNR = ["HCA7787304_V1", "HCA6276071_V1", "HCA6229365_V1", "HCA9191078_V1", "HCA6
 v2oops=['HCA6686191','HCA7296183']
 
 #fixed data
-gwasfamfile=statsdir+"HCA_imputed_geno0.02_final.fam"
-gwasHCA=list(pd.read_csv(gwasfamfile,sep='\t',header=None)[0].unique()) #949
+#gwasfamfile=statsdir+"HCA_imputed_geno0.02_final.fam"
+#gwasHCA=list(pd.read_csv(gwasfamfile,sep='\t',header=None)[0].unique()) #949
 #fixed data APOE and metabolites
 #metabolites1 (change this to a config location)
 #metabolites2 (change this to a config location)
@@ -34,7 +34,7 @@ gwasHCA=list(pd.read_csv(gwasfamfile,sep='\t',header=None)[0].unique()) #949
 
 
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
-aabcdictionary='AABC_REDCap_DataDictionary_2023-05-15.csv'                 # aabc REDCap data dictionary...necessary for automating variables at appropriate events - put in tmpdir
+#aabcdictionary='AABC_REDCap_DataDictionary_2023-05-15.csv'                 # aabc REDCap data dictionary...necessary for automating variables at appropriate events - put in tmpdir
 #AABCdict=pd.read_csv(outp+aabcdictionary,low_memory=False)
 E=pd.read_csv(box.downloadFile(config['encyclopedia']),low_memory=False,encoding='ISO-8859-1')
 SSAGAvars=list(E.loc[E['Form / Instrument'].str.upper().str.contains('SSAGA'),'Variable / Field Name'])
@@ -229,7 +229,7 @@ if not inc.empty:
 ###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 try:
-    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist32,qlist5,qlist6])#qlist4
+    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist32,qlist5])#,qlist6])#qlist4
 except:
     Q1=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 
@@ -305,6 +305,8 @@ Q2['subject_id']=Q2.subject
 # # 4. send tickets that arent identical to ones already in Jira
 # # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
 # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
+#drop duplicates for purpose of generating QC flags.
+#rf2=rf2.drop_duplicates(subset='PIN').copy()
 
 rf2=pd.read_csv(outp+"temp_TLBX_RAW.csv",low_memory=False)
 
@@ -322,7 +324,7 @@ fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
 #nightmares have to be replaced by going into intradb, deleting the old record and uploading a new, fixed version
 nightmares=fixtypos.loc[fixtypos.nih_toolbox_upload_typo.str.upper().str.contains('NIGHTMARE')]
 #nightmares that are already fixed:
-f=['HCA8596099_V2','HCA7802172_V2','HCA8923391_V3']
+f=['HCA8596099_V2','HCA7802172_V2','HCA8923391_V3','HCA9372789_V3']
 nightmares=nightmares.loc[~(nightmares.PIN.isin(f))]
 #other nightmares that need to be addressed
 for i in list(nightmares.subject):
@@ -337,13 +339,13 @@ rf2.PIN.unique()
 #keep track of the full dataset so that you can drop anything with issues before sync
 rf2full=rf2.copy()
 rf2full=rf2full.drop_duplicates()
-
-#drop duplicates for purpose of generating QC flags.
-rf2=rf2.drop_duplicates(subset='PIN').copy()
+rf2full=rf2full.drop_duplicates(subset=['PIN', 'DeviceID', 'Assessment Name', 'InstOrdr', 'InstSctn', 'ItmOrdr', 'Inst', 'Locale', 'ItemID', 'Response', 'Score', 'Theta', 'TScore', 'SE', 'DataType', 'Position', 'ResponseTime', 'DateCreated', 'InstStarted', 'InstEnded', 'iPad Version'])
 
 
 #NOW THE SCORED DATA
 dffull=pd.read_csv(outp+"temp_TLBX_Scores.csv")
+dffull.PIN=dffull.PIN.replace(fixes)
+
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('TEST'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('HCP TESR'))]
 dffull=dffull.loc[~(dffull.PIN.str.upper().str.contains('HCA1111111_CR'))]
@@ -354,19 +356,28 @@ dffull=dffull.loc[~(dffull.PIN.str.contains('No line'))]
 dffull=dffull.loc[~(dffull.PIN=="HCA9202360_V3")].copy()
 #duplicate calculation for Cog Composites on different app.  not sure what happened.
 dffull=dffull.loc[~((dffull['App Version']=='1.27.7219') & (dffull.PIN=='HCA6597293_V2'))]
+dffull.shape
 dffull=dffull.loc[~((dffull['App Version']=='1.27.7219') & (dffull.PIN=='HCA8307773_V2'))]
+dffull.shape
 dffull=dffull.loc[~((dffull['App Version']=='1.27.7219') & (dffull.PIN=='HCA8904185_V3'))]
+dffull.shape
+dffull=dffull.loc[~((dffull['Inst']=='NIH Toolbox List Sorting Working Memory Test Age 7+ v2.1') & (dffull['Assessment Name']=='Assessment 3') & (dffull.PIN=='HCA9247483_V2') & (dffull['InstrumentRCReasonOther']=='App Interruption'))]
+dffull.shape
 
-dffull.PIN=dffull.PIN.replace(fixes)
+
 dffull=dffull.drop_duplicates()
+dffull=dffull.drop_duplicates(subset=['PIN', 'DeviceID', 'Assessment Name', 'Inst', 'RawScore', 'Theta', 'TScore', 'SE', 'ItmCnt', 'DateFinished', 'Column1', 'Column2', 'Column3', 'Column4', 'Column5', 'Language', 'Computed Score', 'Uncorrected Standard Score', 'Age-Corrected Standard Score', 'National Percentile (age adjusted)', 'Fully-Corrected T-score', 'Uncorrected Standard Scores Dominant', 'Age-Corrected Standard Scores Dominant', 'National Percentile (age adjusted) Dominant', 'Fully-Corrected T-scores Dominant', 'Uncorrected Standard Scores Non-Dominant', 'Age-Corrected Standard Scores Non-Dominant', 'National Percentile (age adjusted) Non-Dominant', 'Fully-Corrected T-scores Non-Dominant', 'Dominant Score', 'Non-Dominant Score', 'Raw Score Right Ear', 'Threshold Right Ear', 'Raw Score Left Ear', 'Threshold Left Ear', 'Static Visual Acuity logMAR', 'Static Visual Acuity Snellen', 'InstrumentBreakoff', 'InstrumentStatus2', 'InstrumentRCReason', 'InstrumentRCReasonOther', 'iPad Version'])
 
+#HCA6131550_V1 had two bad assessments for "NIH Toolbox Words-In-Noise Test Age 6+ v2.1"
+dffull=dffull.loc[~((dffull.PIN == "HCA6131550_V1") & (dffull.Inst == "NIH Toolbox Words-In-Noise Test Age 6+ v2.1") & (dffull['Assessment Name'].isin(['Assessment 1','Assessment 2'])))]
+rf2full=rf2full.loc[~((rf2full.PIN == "HCA6131550_V1") & (rf2full.Inst == "NIH Toolbox Words-In-Noise Test Age 6+ v2.1") & (rf2full['Assessment Name'].isin(['Assessment 1','Assessment 2'])))]
 
 
 #merge with patch fixes (i.e. delete duplicate specified in visit summary)
 # This is a single fix... need to generalized to all instruments and their corresponding dupvars:
 # -->HCA8596099_V3 has 2 assessments for Words in Noise - add patch note"
 iset=inventoryaabc
-dffull=filterdupass('NIH Toolbox Words-In-Noise Test Age 6+ v2.1','tlbxwin_dups_v2',iset,dffull)
+dffull=filterdupass('NIH Toolbox Words-In-Noise Test Age 6+ v2.1','tlbxwin_dups_v2',iset,dffull.copy())
 print(dffull.shape)
 dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','walkendur_dups',iset,dffull)
 print(dffull.shape)
@@ -377,6 +388,8 @@ print(dffull.shape)
 dffull=filterdupass('NIH Toolbox Grip Strength Test Age 3+ v2.0','tlbxgrip_dups',iset,dffull)
 print(dffull.shape)
 dffull=filterdupass('NIH Toolbox Pattern Comparison Processing Speed Test Age 7+ v2.1','tlbxpcps_dups',iset,dffull)
+print(dffull.shape)
+dffull=filterdupass('NIH Toolbox Picture Sequence Memory Test Age 8+ Form A v2.1','tlbxpsmt_dups',iset,dffull)
 print(dffull.shape)
 
 #dffull=filterdupass('NIH Toolbox 2-Minute Walk Endurance Test Age 3+ v2.0','psmt_dups',iset,dffull)
@@ -393,10 +406,12 @@ rf2full=filterdupass('NIH Toolbox Grip Strength Test Age 3+ v2.0','tlbxgrip_dups
 print(rf2full.shape)
 rf2full=filterdupass('NIH Toolbox Pattern Comparison Processing Speed Test Age 7+ v2.1','tlbxpcps_dups',iset,rf2full)
 print(rf2full.shape)
+rf2full=filterdupass('NIH Toolbox Picture Sequence Memory Test Age 8+ Form A v2.1','tlbxpsmt_dups',iset,rf2full)
+print(rf2full.shape)
 
 #find any non-identical duplicated Assessments still in data after patch
-dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)][['PIN','Assessment Name','Inst']]
-
+dupass=dffull.loc[dffull.duplicated(subset=['PIN','Inst'],keep=False)]#[['PIN','Assessment Name','Inst']]
+dupass.to_csv('testdups.csv')
 #TURN THIS INTO A TICKET
 duptix=dupass.drop_duplicates(subset='PIN').copy()
 if duptix.shape[0]>0:
@@ -409,12 +424,27 @@ if duptix.shape[0]>0:
     duptix=pd.merge(duptix,i3,on='PIN',how='left')
 
 #before sending the dffull and rf2full to BOX, need to drop the duplicates from rf2full
-rf2full.drop_duplicates().to_csv(outp+"tempclean_TLBX_RAW.csv",index=False)
-dffull.to_csv(outp+"tempclean_TLBX_SCORES.csv",index=False)
+#check:
+dropthem=[i for i in list(dffull.PIN.unique()) if i not in list(rf2full.PIN.unique())]+list(nightmares.PIN.unique())
+#['HCA9247483_V2', -- rescored?
+# 'HCA7299593_V3', rescored
+# 'HCA9493094_V3', rescored
+# 'HCA7943190_V3',rescored
+# 'HCA8743187_V3',rescored
+# 'HCA6276475_V3',rescored# ]
 
-#QC check:
-#Either scored or raw is missing in format expected:
-formats=pd.merge(dffull.PIN.drop_duplicates(),rf2,how='outer',on='PIN',indicator=True)[['PIN','_merge']]
+#HCA9372789_V3 is a nightmare that isn't fixed yet
+
+###
+#create a copy of cleaned data so that you don't have to regenerate when sending snapshot
+rf2full=rf2full.loc[~(rf2full.PIN.isin(dropthem+DNR))]
+rf2full.drop_duplicates().to_csv(outp+"tempclean_TLBX_RAW.csv",index=False)
+dffull=dffull.loc[~(dffull.PIN.isin(dropthem+DNR))]
+dffull.to_csv(outp+"tempclean_TLBX_SCORES.csv",index=False)
+###
+
+#create tickets missing in format expected:
+formats=pd.merge(dffull.PIN.drop_duplicates(),rf2full.PIN.drop_duplicates(),how='outer',on='PIN',indicator=True)[['PIN','_merge']]
 issues=formats.loc[~(formats._merge=='both')]
 t1=pd.DataFrame()
 if issues.shape[0]>0:
@@ -425,6 +455,7 @@ if issues.shape[0]>0:
     t1['reason']="Please re-export.  Raw or Scored data not found (make sure you don't export Narrow format)"
     print("Raw or Scored data not found (make sure you didn't export Narrow format)")
     print(issues[['PIN']])
+
 
 #find cases where PIN was reused (e.g. PIN is the same but date more than 3 weeks different
 #extend this section by pivoting and subtracting dates, then searching for diffs>60 days.
@@ -445,6 +476,9 @@ cmerge['redcap_event']=cmerge.PIN.str.split("_",expand=True)[1]
 #now merge with inventory
 cmerge=pd.merge(inventoryaabc[['site','subject','redcap_event']],cmerge,on=['subject','redcap_event'],how='inner')
 cflag=cmerge.loc[cmerge.datediff>22]
+#known time lag subject: HCA8889115_V3
+cflag=cflag.loc[~(cflag.PIN=='HCA8889115_V3')]
+
 tc=pd.DataFrame()
 if cflag.shape[0]>0:
     tc=cflag.copy()
@@ -455,7 +489,6 @@ if cflag.shape[0]>0:
     print("Time elapsed between TLBX start and TLBX finished is greater than 22 days")
     print(tc[['PIN']])
 
-
 #add subject and visit
 df2=dffull.drop_duplicates(subset='PIN').copy()
 df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
@@ -465,6 +498,7 @@ df2['TLBX']='YES'
 
 #now merge with inventory
 inventoryaabc4=pd.merge(inventoryaabc.drop(columns=['PIN']),df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
+test=pd.merge(inventoryaabc,df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
 
 #find PINS with length greater than 10
 tlong=pd.DataFrame()
@@ -481,14 +515,15 @@ if dflong.loc[dflong.PIN.str.len() > 13].shape[0] > 0 :
 #find toolbox records that aren't in AABC - typos are one thing...legit ids are bad because don't know which one is right unless look at date, which is missing for cog comps
 #turn this into a ticket
 t2=pd.DataFrame()
-if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
-    t2=inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].copy()
+if inventoryaabc4.loc[(inventoryaabc4._merge=='right_only') & (~(inventoryaabc4.PIN.isin(DNR)))].shape[0] > 0 :
+    t2=inventoryaabc4.loc[(inventoryaabc4._merge=='right_only') & (~(inventoryaabc4.PIN.isin(DNR)))].copy()
     t2['reason']='TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Typo?'
     t2['code']='ORANGE'
     t2['issueCode']='AE1001'
     t2['datatype']='TLBX'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
-    print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event','site','siteT']])
+    print(inventoryaabc4.loc[(inventoryaabc4._merge=='right_only') & (~(inventoryaabc4.PIN.isin(DNR)))][['PIN','subject','redcap_event','site','siteT']])
+
 t2b=pd.DataFrame()
 if df2.loc[df2.PIN.str.len()>13].shape[0] >0 :
     t2b=df2.loc[df2.PIN.str.len()>13].copy()
@@ -651,8 +686,13 @@ if [item for item, count in collections.Counter(actdata).items() if count > 1] !
 ActD=pd.DataFrame(actdata,columns=['PIN'])
 ActD['Actigraphy']='YES'
 #actigraphy_upload_typoyn
+
+#HCA6678495_V2 was incorrectly collected on 8/31-9/12/2023 as HCA6749088_V3.
+#HCA6749088_V3 was correctly collected  08/29/2023 to 09/05/2023as HCA6749088_V3
 fixtypos=inventoryaabc.loc[inventoryaabc.actigraphy_upload_typo!=''][['subject','redcap_event','actigraphy_upload_typo']]
 fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
+fixtypos=fixtypos.loc[~(fixtypos.actigraphy_upload_typo=='NIGHTMARE')]
+
 fixes=dict(zip(fixtypos.actigraphy_upload_typo, fixtypos.PIN))
 ActD.PIN=ActD.PIN.replace(fixes)
 
@@ -689,7 +729,7 @@ a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', '
 
 #temp drop subject because of incomplete issue reporting with Cobra
 #dropsubj=["HCA9226374_V3"]
-
+###HERE ####
 Cobra=pd.DataFrame()
 for studyshort in ['UCLA','WUSM','MGH','UMN']:
     box.downloadFile(config['NonQBox']['Cobras'][studyshort])
@@ -700,17 +740,41 @@ for studyshort in ['UCLA','WUSM','MGH','UMN']:
     WUCobra=WUCobra.rename(columns={"PARTICIPANT ID":"PIN"})
     WUCobra[['PIN','NIGHTS']]
     WUCobra=WUCobra.loc[WUCobra.NIGHTS.isnull()==False].copy()
+    WUCobra['SITE']=studyshort
     Cobra=pd.concat([Cobra,WUCobra])
 
 #For now just capture typos, since collection status is checked elsewhere
 #use fixes from above
-Cobra.PIN=Cobra.PIN.replace(fixes)
+Cobra['PIN']=Cobra.PIN.replace(fixes)
+
 #Cobra=Cobra.loc[~(Cobra.PIN.isin(dropsubj))]
+
 Cobra.to_csv(outp+"tempclean_Cobra.csv",index=False)
 
-AllCobra=pd.merge(Cobra,inventoryaabc[['PIN']],how='outer',on='PIN',indicator=True)
-#Bad IDs
-print("TRACK DOWN BAD IDS FROM COBRAS:",AllCobra.loc[AllCobra._merge=='left_only'])
+Cobra.PIN=Cobra.PIN.replace("HCA825487_V2","HCA7825487_V2") #UCLA
+Cobra.PIN=Cobra.PIN.replace("HCA6391879_V0","HCA6391879_V1") #WUSM
+Cobra.PIN=Cobra.PIN.replace("HCA7916692_V2","HCA7916692_V3") #WUSM
+Cobra.PIN=Cobra.PIN.replace("HCA6131550","HCA6131550_V1") #WUSM
+Cobra.loc[(Cobra.PIN=="HCA6749088_V3") & (Cobra.DATESTART.str.contains("Thursday 8/31/2023")),'PIN']="HCA6678495_V2"
+AllCobra=pd.merge(Cobra,inventoryaabc['PIN'],how='outer',on='PIN',indicator=True)
+
+#Bad IDs in COBRAS
+print("TRACK DOWN BAD IDS FROM COBRAS:",AllCobra.loc[AllCobra._merge=='left_only'][['PIN','SITE']])
+
+#which ones are expected but not finding?
+Cobra['Actigraphy']='YES'
+inventoryaabc3=pd.merge(inventoryaabc,Cobra,on='PIN',how='left')
+
+#Missing  : add exception for partial missing
+missingActCobra=inventoryaabc3.loc[(inventoryaabc3.redcap_event_name.str.contains('v')) & (~(inventoryaabc3.Actigraphy=='YES'))]
+missingActCobra.shape
+#people that have partial data and it isknown that actigraphy device data are missing
+partials=missingAct.loc[ (missingAct.actigraphy_collectyn == '2' ) & (missingAct.actigraphy_partial_1___1.astype('int')==0)][['PIN','actigraphy_collectyn','subject','actigraphy_partial_1___1']]
+#don't want to include these guys in the list
+missingAct=missingAct.loc[~missingAct.PIN.isin(list(partials.PIN))]
+#drop the ones that are definitely nos, too.
+missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn == '0' )].copy()
+#not missing any of the available Actigraphy records from the freeze
 
 #MOCA SPANISH  #############################################################
 ## no data yet
@@ -805,6 +869,7 @@ P=P.loc[~((P.subject=="HCA6487286") & (P.redcap_event=='V3'))]
 #NOTE: Maki's group to do the scoring and stuff.  We are just checking for IDs and typos
 HotFiles=pd.read_csv(outp+"temp_Hotties.csv")
 Hotties=pd.merge(inventoryaabc,HotFiles,on='PIN',how='outer',indicator=True)
+#Hotties.loc[Hotties.subject.isnull()==True]
 
 Typos=Hotties.loc[(Hotties._merge=='right_only')].copy()[['PIN']]
 #typo ids:
@@ -891,7 +956,7 @@ if summv.shape[0]>0:
 #    ageav=ageav[['subject','redcap_event','study_id', 'site','reason','issueCode','code','event_date','v0_date','datatype']]
 
 #calculate BMI: weight (lb) / [height (in)]2 x 703
-bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira','weight_outlier_jira', 'height_missing_jira']].copy()
+bmiv=inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('v')][['bmi','redcap_event','subject','study_id', 'site','event_date','height_outlier_jira','weight_outlier_jira', 'height_missing_jira','bmi_outlier']].copy()
 bmiv.loc[bmiv.subject=='HCA8953805']
 
 #outliers
@@ -902,9 +967,9 @@ print("Moca Values:",inventoryaabc.moca_sum.value_counts(dropna=False))
 #add in check against the extreme value confirmation and then relax the extremes
 a=bmiv.loc[~(bmiv.bmi=='')].copy()
 a=a.loc[(a.bmi.astype('float')<=18.0) | (a.bmi.astype('float')>=40)].copy()
-a=a.loc[~((a.height_outlier_jira==1) | (a.weight_outlier_jira))]
+a=a.loc[~((a.height_outlier_jira==1) | (a.weight_outlier_jira) | (a.bmi_outlier=='1'))]
 if a.shape[0]>0:
-    print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 17) | (a.bmi.astype('float') >= 41)])
+    print("BMI OUTLIERS:\n", a.loc[(a.bmi.astype('float') <= 18) | (a.bmi.astype('float') >= 40)])
     a['code']='PINK'
     a['datatype']='REDCap'
     a['reason']='BMI is an outlier.  Please double check height and weight'
@@ -938,7 +1003,8 @@ inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('re
 #all the flags for JIRA together
 #QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,C,summv,agemv,ageav,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
 
-QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,summv,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
+#QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,summv,a, bmiv,T,Hot1,Hot2b).drop(columns=['v0_date'])
+QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,summv,a, bmiv,T, Hot1,Hot2b).drop(columns=['v0_date'])
 
 #Drop this screenfailure from inventory and issues:
 #HCA6276071 V1
@@ -957,7 +1023,8 @@ QAAP=QAAP[['subject','redcap_event','study_id', 'site','reason','code','issueCod
 QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
 ###REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>36)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>45)) ]
+filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>50)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>45)) ]
+
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 #filteredQ=pd.read_csv('FilteredQC4Jira.csv')
 
