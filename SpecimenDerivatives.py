@@ -8,10 +8,15 @@ from datetime import date
 import requests
 import numpy as np
 
+
+# TO DO
+#Plate threshold= flag
+#80% failed = failed panel
+
 ###############
 DNR = ["HCA7787304_V1", "HCA6276071_V1", "HCA6229365_V1", "HCA9191078_V1", "HCA6863086_V1"]
 #These guys accidentally recruited as V2
-v2oops=['HCA6686191','HCA7296183']
+v2oops=['HCA6686191_V2','HCA7296183_V2']
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
 
 ## get configuration files
@@ -20,6 +25,14 @@ secret=pd.read_csv(config['config_files']['secrets'])
 intradb=pd.read_csv(config['config_files']['PCP'])
 box = LifespanBox(cache="./tmp")
 Asnaps=config['aabc_pre']
+freezefolder=config['unionfreeze1']
+
+freeze=pd.read_csv(outp+"Freeze1_n439_12Feb2024_MR_ID.csv")
+freeze.columns=['PIN']
+freezelist=list(freeze.PIN)
+pathp=box.downloadFile(config['hcainventory'])
+ids=pd.read_csv(pathp)[['PIN','redcap_event','IntraDB']]
+HCAlist=list(ids.loc[(~(ids.IntraDB=='CCF_PCMP_ITK')) & (ids.redcap_event.isin(['V1','V2'])) & (~(ids.PIN.isin(v2oops)))]['PIN'])
 
 #GWAS
 gwasfamfile=outp+"HCA_imputed_geno0.02_final.fam"
@@ -36,13 +49,14 @@ Mbody.subject=Mbody.subject.str.upper().str.replace('_V1','')
 Mbody.subject=Mbody.subject.str.upper().str.replace('_V2','')
 Mplates=Mbody.loc[Mbody['Olink Sample ID']=='Plate LOD'].iloc[:,3:]
 Mvalues=Mbody.loc[Mbody.subject.astype(str).str.contains('HCA')].copy()
+
 #create your flag variables based in plate number and metabolite.
 #loop for metabolites
 mets=[k for k in Mplates.columns if "Plate" not in k]
 for i in mets:
     Mvalues[i+"_Detection_Flags"]=''
     print(i)
-    #set nan thresholds to zero since no flags for Nans
+    #set nan thresholds to zero since no flags for Nans - also, LLOQ for these columns is orders of magnitude smaller than column values, so threshold probably non-issue
     Mplates.loc[Mplates[i] == '> ULOQ',i]=9999999
     Mplates.loc[Mplates[i].isnull() == True,i]=0
     #loop for the plate for that particular metabolite
@@ -64,11 +78,31 @@ for i in mets:
 
 Mvalues=Mvalues[reordereda+a].copy()
 Mvalues['Metabolites']=1
-Mvalues.to_csv(outp+'MetabolitesTable.csv',index=False)
+#find vars with <80% call rate and set variable to U in encyclopedia
 
 #check for duplicates
-len(Mvalues.PIN.unique())
+a=len(Mvalues.PIN.unique())
 
+#find plates with met callrates < .8
+plates_callrate=pd.DataFrame(columns=['M','plate'])
+for i in range(1,14):
+    print(i)
+    platevals=Mvalues[mets].loc[Mvalues.Plate==int(i)]
+    plate_missing = pd.DataFrame((platevals.isna().sum()/40)).reset_index()
+    plate_missing.columns=['M','dropit']
+    plate_missing['plate']=i
+    plates_callrate=pd.concat([plates_callrate,plate_missing.loc[plate_missing.dropit>0.2][['M','plate']]])
+
+#set values for this met to missing
+for index,row in plates_callrate.iterrows():
+    mm=row['M']
+    pp=float(row['plate'])
+    print(mm,pp)
+    Mvalues.loc[Mvalues.Plate==pp,mm]=np.nan
+    Mvalues.loc[Mvalues.Plate == pp, mm+"_Detection_Flags"] = "Plate CR < 80%"
+
+Mvalues['PIN']=Mvalues.subject+"_"+Mvalues.redcap_event
+Mvalues.to_csv(outp+'MetabolitesTable.csv',index=False)
 
 #AD biomarkers
 AD=pd.read_excel(box.downloadFile(config['AD_Biom']),sheet_name='AD Biomarkers, MSD S-plex')
@@ -79,7 +113,7 @@ AD['redcap_event']=AD.PIN.str.split('_',1,expand=True)[1]
 #AD.loc[AD.duplicated(subset=['PIN'])]
 
 #first duplicate for HCA9178894 v2 has a strikethrough.  keeping second
-AD=AD.drop_duplicates(subset=['PIN'],keep='last')[['subject','redcap_event']+marks]
+AD=AD.drop_duplicates(subset=['PIN'],keep='last')[['subject','redcap_event','PIN']+marks]
 
 #rename columns
 newcols=[i.replace("  "," ").replace(" ","_").replace("/","_") for i in AD.columns]
@@ -108,11 +142,25 @@ APOE_Union.to_csv(outp+'testAPOE.csv',index=False)
 print(APOE_Union.shape)
 print(len(APOE_Union.subject.unique()))
 
-SpecimenIDPs1=pd.merge(Mvalues,AD,on=['subject','redcap_event'],how='outer').drop(columns=['PIN'])
-SpecimenIDPs1.to_csv(outp+'AABC-HCA_Metabolites-AD-Biomarkers_2024-02-29.csv',index=False)
-box.upload_file(outp+'AABC-HCA_Metabolites-AD-Biomarkers_2024-02-29.csv', Asnaps)
+#nothing in the freeze so no special dataset needed.
+
+SpecimenIDPs1=pd.merge(Mvalues,AD,on=['subject','redcap_event','PIN'],how='outer')
+SpecimenIDPs1.shape
+Union=SpecimenIDPs1.loc[(SpecimenIDPs1.PIN.isin(freezelist+HCAlist))][['PIN']+[i for i in SpecimenIDPs1.columns if i != 'PIN' and i !='Metabolites']+['Metabolites']]
+
+SpecimenIDPs1.to_csv(outp+'AABC-HCA_Metabolites-AD-Biomarkers_2024-03-21.csv',index=False)
+Union.to_csv(outp+'Freeze1_AABC-HCA_Metabolites-AD-Biomarkers_2024-03-21.csv',index=False)
+box.upload_file(outp+'AABC-HCA_Metabolites-AD-Biomarkers_2024-03-21.csv', Asnaps)
+box.upload_file(outp+'Freeze1_AABC-HCA_Metabolites-AD-Biomarkers_2024-03-21.csv', freezefolder)
+
+union2=list(set([i.replace("_V1",'') for i in (HCAlist)]))
+union3=list(set([i.replace("_V2",'') for i in union2]))
+unionlist=list(set([i.replace("_V3",'') for i in union3]))
 
 #genotype based
 SpecimenIDPs2=pd.merge(PRS,APOE_Union,on=['subject'],how='outer').rename(columns={'Genotype':'APOE_Genotype'})
-SpecimenIDPs2.to_csv(outp+'AABC-HCA_APOE-PRS_2024-02-29.csv',index=False)
-box.upload_file(outp+'AABC-HCA_Apoe-PRS_2024-02-29.csv', Asnaps)
+Union2=SpecimenIDPs2.loc[(SpecimenIDPs2.subject.isin(unionlist))]
+SpecimenIDPs2.to_csv(outp+'AABC-HCA_APOE-PRS_2024-03-21.csv',index=False)
+Union2.to_csv(outp+'Freeze1_AABC-HCA_APOE-PRS_2024-03-21.csv',index=False)
+box.upload_file(outp+'AABC-HCA_Apoe-PRS_2024-03-21.csv', Asnaps)
+box.upload_file(outp+'Freeze1_AABC-HCA_Apoe-PRS_2024-03-21.csv', freezefolder)
