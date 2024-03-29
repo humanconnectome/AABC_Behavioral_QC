@@ -431,60 +431,80 @@ hcafiles=pd.concat([hcafiles,hcaRfiles],axis=0)
 v2oopsexp=['HCA6686191_V2', 'HCA7296183_V2','HCA6686191_F2', 'HCA7296183_F2','HCA6686191_F3', 'HCA7296183_F3','HCA6686191_Covid', 'HCA7296183_Covid','HCA6686191_CR', 'HCA7296183_CR']
 
 for i in list(hcafiles.fileid) + list(hcaRfiles.fileid):
-    datatype=hcafiles.loc[hcafiles.fileid==i]['datatype']
-    print("downloading", datatype, i, "...")
-    dfile=pd.read_csv(box.downloadFile(i),low_memory=False)
-    dfile['PIN']=dfile['subject']+'_'+dfile['redcap_event']
-    print(dfile.shape)
-    freezefile=dfile.loc[(dfile.subject.isin(HCAsubjects)) & (~(dfile.PIN.isin(v2oopsexp))) & (~(dfile.redcap_event.isin(['A','Covid','CR','F1','F2','F3'])))]
-    print(freezefile.shape)
-    #limit variables to those in Encyclopedia not "U"  non-covid variables
-    rall=list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0])==True) & (~(E['Unavailable']=='U')) & (~(E['Form / Instrument'].str.upper().str.contains("COVID")))]['Variable / Field Name'])
-    #keep track of dropped variables
-    rdrop = list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0]) == True) & ((E['Unavailable'] == 'U') | (E['Form / Instrument'].str.upper().str.contains("COVID"))) ]['Variable / Field Name'])
-    #checkbox variables get expanded during export, so have to account for ___ in names, and remove their root from varlist
-    #first find all of them
-    chks=[i for i in freezefile.columns if "___" in i]
-    chks1=[i.replace("___1","") for i in chks]
-    chks2 = [i.replace("___2", "") for i in chks1]
-    chks3 = [i.replace("___3", "") for i in chks2]
-    chks4 = [i.replace("___4", "") for i in chks3]
-    chks5 = [i.replace("___5", "") for i in chks4]
-    chks6 = [i.replace("___6", "") for i in chks5]
-    chks7 = [i.replace("___7", "") for i in chks6]
-    chks8 = [i.replace("___8", "") for i in chks7]
-    chks9 = [i.replace("___9", "") for i in chks8]
-    chks10 = [i.replace("___10", "") for i in chks9]
-    chks999 = [i.replace("___999", "") for i in chks10]
-    checks = list(set(chks999))
-    #now find the ones that were in the rdrop because will need to drop them from chks
-    dropchks=[i for i in rdrop if i in checks]
-    dchks = []
-    for d in dropchks:
-        dchks = dchks + [i for i in chks if d in i]
-    keepchecks=[k for k in chks if k not in dchks]
-    extra=[]
-    xdrop=[]
-    if datatype[0]=='RedCap':
-        extra=['redcap_event_name']
-        xdrop=['site']
-    #these not in HCA
-    if datatype[0]=='Q-Interactive':
-        xdrop='form'
-        HCAQlist = list(freezefile.PIN.unique())
-    if datatype[0]=='PennCNP':
-        HCAPennlist = list(freezefile.PIN.unique())
-        xdrop=['DDISC.SV_1wk_20', 'DDISC.SV_2wk_20', 'DDISC.SV_1mo_20', 'DDISC.SV_6mo_20', 'DDISC.SV_1yr_20', 'DDISC.SV_3yr_20', 'DDISC.SV_1wk_100', 'DDISC.SV_2wk_100', 'DDISC.SV_1mo_100', 'DDISC.SV_6mo_100', 'DDISC.SV_1yr_100', 'DDISC.SV_3yr_100', 'DDISC.ExperimentName', 'DDISC.AUC_20', 'DDISC.AUC_100', 'DDISC.CompareMoney', 'DDISC.CompareMoneyDelay', 'DDISC.CompareDelay']
-    rallchk=extra+list([i for i in rall if i not in checks and i not in dropchks and i not in xdrop])+keepchecks
-    if datatype[0]=='NIH-Toolbox-Scores':
-        HCATLBXlist=list(freezefile.PIN.unique())
-    fullfreeze=freezefile[rallchk]
-    fullfreeze=fullfreeze[['PIN','subject','redcap_event']+[i for i in fullfreeze.columns if i not in ['PIN','subject','redcap_event']]]
-    fullfreeze.to_csv("Freeze1_HCA_" + datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
-    if datatype[0]=='RedCap':
-        HCARed=fullfreeze.copy()
-    print("Shape of file",fullfreeze.shape)
-    #box.upload_file("Freeze1_HCA_"+datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+    if "Toolbox" in i:
+        pass
+    else:
+        datatype=hcafiles.loc[hcafiles.fileid==i]['datatype']
+        print("downloading", datatype, i, "...")
+        dfile=pd.read_csv(box.downloadFile(i),low_memory=False)
+        dfile['PIN']=dfile['subject']+'_'+dfile['redcap_event']
+        print(dfile.shape)
+        freezefile=dfile.loc[(dfile.subject.isin(HCAsubjects)) & (~(dfile.PIN.isin(v2oopsexp))) & (~(dfile.redcap_event.isin(['A','Covid','CR','F1','F2','F3'])))]
+        print(freezefile.shape)
+        #limit variables to those in Encyclopedia not "U"  non-covid variables
+        rall=list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0])==True) & (~(E['Unavailable']=='U')) & (~(E['Form / Instrument'].str.upper().str.contains("COVID")))]['Variable / Field Name'])
+        #keep track of dropped variables
+        rdrop = list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0]) == True) & ((E['Unavailable'] == 'U') | (E['Form / Instrument'].str.upper().str.contains("COVID"))) ]['Variable / Field Name'])
+        #checkbox variables get expanded during export, so have to account for ___ in names, and remove their root from varlist
+        #first find all of them
+        chks=[i for i in freezefile.columns if "___" in i]
+        chks1=[i.replace("___1","") for i in chks]
+        chks2 = [i.replace("___2", "") for i in chks1]
+        chks3 = [i.replace("___3", "") for i in chks2]
+        chks4 = [i.replace("___4", "") for i in chks3]
+        chks5 = [i.replace("___5", "") for i in chks4]
+        chks6 = [i.replace("___6", "") for i in chks5]
+        chks7 = [i.replace("___7", "") for i in chks6]
+        chks8 = [i.replace("___8", "") for i in chks7]
+        chks9 = [i.replace("___9", "") for i in chks8]
+        chks10 = [i.replace("___10", "") for i in chks9]
+        chks999 = [i.replace("___999", "") for i in chks10]
+        checks = list(set(chks999))
+        #now find the ones that were in the rdrop because will need to drop them from chks
+        dropchks=[i for i in rdrop if i in checks]
+        dchks = []
+        for d in dropchks:
+            dchks = dchks + [i for i in chks if d in i]
+        keepchecks=[k for k in chks if k not in dchks]
+        extra=[]
+        xdrop=[]
+        if datatype[0]=='RedCap':
+            extra=['redcap_event_name']
+            xdrop=['site']
+        #these not in HCA
+        if datatype[0]=='Q-Interactive':
+            xdrop='form'
+            HCAQlist = list(freezefile.PIN.unique())
+        if datatype[0]=='PennCNP':
+            HCAPennlist = list(freezefile.PIN.unique())
+            xdrop=['DDISC.SV_1wk_20', 'DDISC.SV_2wk_20', 'DDISC.SV_1mo_20', 'DDISC.SV_6mo_20', 'DDISC.SV_1yr_20', 'DDISC.SV_3yr_20', 'DDISC.SV_1wk_100', 'DDISC.SV_2wk_100', 'DDISC.SV_1mo_100', 'DDISC.SV_6mo_100', 'DDISC.SV_1yr_100', 'DDISC.SV_3yr_100', 'DDISC.ExperimentName', 'DDISC.AUC_20', 'DDISC.AUC_100', 'DDISC.CompareMoney', 'DDISC.CompareMoneyDelay', 'DDISC.CompareDelay']
+        rallchk=extra+list([i for i in rall if i not in checks and i not in dropchks and i not in xdrop])+keepchecks
+        fullfreeze=freezefile[rallchk]
+        fullfreeze=fullfreeze[['PIN','subject','redcap_event']+[i for i in fullfreeze.columns if i not in ['PIN','subject','redcap_event']]]
+        fullfreeze.to_csv("Freeze1_HCA_" + datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
+        if datatype[0]=='RedCap':
+            HCARed=fullfreeze.copy()
+        print("Shape of file",fullfreeze.shape)
+        box.upload_file("Freeze1_HCA_"+datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+
+for i in list(hcafiles.fileid):
+    print(i)
+    print(hcafiles.loc[hcafiles.fileid == i]['datatype'][0])
+    if "Toolbox" in hcafiles.loc[hcafiles.fileid == i]['datatype'][0]:
+        print(datatype)
+        datatype = hcafiles.loc[hcafiles.fileid == i]['datatype'][0]
+        print("downloading", datatype, i, "...")
+        dfile = pd.read_csv(box.downloadFile(i), low_memory=False)
+        dfile['PIN'] = dfile['subject'] + '_' + dfile['redcap_event']
+        print(dfile.shape)
+        Evars=list(E.loc[(E['Form / Instrument']==datatype+' File Column Descriptions') & (E.Unavailable != 'U')]['Variable / Field Name'])
+        freezefile = dfile.loc[(dfile.subject.isin(HCAsubjects)) & (~(dfile.PIN.isin(v2oopsexp))) & (~(dfile.redcap_event.isin(['A', 'Covid', 'CR', 'F1', 'F2', 'F3'])))]
+        HCATLBXlist = list(freezefile.PIN.unique())
+        print(len(HCATLBXlist))
+        freezefile=freezefile[Evars].copy()
+        freezefile.to_csv("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv')
+        box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+
 
     print("*********")
 
