@@ -204,6 +204,7 @@ qintdf2uploadfreeze=qintdf2upload.loc[qintdf2upload.PIN.isin(freezelist)]
 qintdf2uploadrestricted.to_csv("AABC_Q-Interactive_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 qintdf2upload.to_csv("AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 qintdf2uploadfreeze.to_csv("Freeze1_AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+
 box.upload_file("AABC_Q-Interactive_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
 box.upload_file("Freeze1_AABC_Q-Interactive_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
@@ -282,6 +283,7 @@ print(strawfreeze.shape)
 mvars=list(E.loc[(E['Form / Instrument']=='STRAW+10') & (~(E['Unavailable']=='U'))]['Variable / Field Name'])
 fvars=[i for i in strawfreeze.columns if i in mvars]
 strawfreeze[fvars].to_csv("Freeze1_AABC-HCA_Adjudicated-STRAW10_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+
 box.upload_file("Freeze1_AABC-HCA_Adjudicated-STRAW10_" + date.today().strftime("%Y-%m-%d") + '.csv',freezefolder)
 
 ###########################################################
@@ -486,23 +488,10 @@ for i in list(hcafiles.fileid) + list(hcaRfiles.fileid):
 
     print("*********")
 
-#####HERE
-
-#Harmlist=['iecr2nd_c','moca_sum','iihandwr','med_num','lan_know','ipaq_category','iadl1','mstrl1a','straw_code','trail1','weight','bld_draw','alt_sgpt','neo_n','psqi_global','gales_worst','asr1','oasr_ppl3','dental1','protocol_order','satisfaction1']
-Harmlist=['moca_sum','iihandwr','med_num','lan_know','ipaq_category','iadl1','mstrl1a','straw_code','trail1','weight','alt_sgpt','neo_n','psqi_global','gales_worst','asr1','oasr_ppl3','dental1']
-Harmlist2=['moca_complete','handedness_complete','medication_review_complete','language_experience_and_proficiency_questionnaire_complete','international_physical_activity_questionnaire_bloc_complete','lawton_instrumental_activities_of_daily_living_iad_complete','menstrual_cycle_block1_complete', 'straw10_block1_complete','trail_making_scores_complete','vital_signs_external_measures_complete','lab_results_complete','neo_complete','pittsburgh_sleep_quality_index_psqi_block1_complete','the_life_events_scale_gales_block2_complete','achenbach_adult_selfreport_asr_block2_complete','achenbach_older_adult_selfreport_oasr_block2_complete','dental_work_questionnaire_complete']
-renames=dict(zip(Harmlist,Harmlist2))
-HCARedHarm=HCARed[['subject','redcap_event']+Harmlist].copy()
-HCARedHarm=HCARedHarm.rename(columns=renames)
-HCARedHarm.replace('', pd.NA, inplace=True)
-for i in Harmlist2:
-    HCARedHarm.loc[HCARedHarm[i].isna()==False,i]='YES'
-
-#HCARedHarm.to_csv('testMissings.csv')
 
 
 ##################################################
-# NEXT: Completeness Inventory - All and Freeze
+# NEXT: Completeness Inventory - All and Freeze  HCA and AABC
 # first concat HCA and AABC inventory main vars (PIN, subject,'redcap_event')
 # then merge by subject, redcap event
 # then by subject (genotype)
@@ -522,13 +511,26 @@ for i in Harmlist2:
     penncnp
     redcap breakdown aabcidvisits and hcaredcap
 """
-#HCA and AABC inventories together
-#HCA
+
+#Need to grab representative indicators from HCA REDCap, which doesn't have form_complete variables.
+#Harmlist=['iecr2nd_c','moca_sum','iihandwr','med_num','lan_know','ipaq_category','iadl1','mstrl1a','straw_code','trail1','weight','bld_draw','alt_sgpt','neo_n','psqi_global','gales_worst','asr1','oasr_ppl3','dental1','protocol_order','satisfaction1']
+Harmlist=['moca_sum','iihandwr','med_num','lan_know','ipaq_category','iadl1','mstrl1a','straw_code','trail1','weight','alt_sgpt','neo_n','psqi_global','gales_worst','asr1','oasr_ppl3','dental1']
+Harmlist2=['moca_complete','handedness_complete','medication_review_complete','language_experience_and_proficiency_questionnaire_complete','international_physical_activity_questionnaire_bloc_complete','lawton_instrumental_activities_of_daily_living_iad_complete','menstrual_cycle_block1_complete', 'straw10_block1_complete','trail_making_scores_complete','vital_signs_external_measures_complete','lab_results_complete','neo_complete','pittsburgh_sleep_quality_index_psqi_block1_complete','the_life_events_scale_gales_block2_complete','achenbach_adult_selfreport_asr_block2_complete','achenbach_older_adult_selfreport_oasr_block2_complete','dental_work_questionnaire_complete']
+renames=dict(zip(Harmlist,Harmlist2))
+HCARedHarm=HCARed[['subject','redcap_event']+Harmlist].copy()
+HCARedHarm=HCARedHarm.rename(columns=renames)
+HCARedHarm.replace('', pd.NA, inplace=True)
+for i in Harmlist2:
+    HCARedHarm.loc[HCARedHarm[i].isna()==False,i]='YES'
+
 hcainventory=pd.read_csv(box.downloadFile(config['hcainventoryR']))
 hcainventory['PIN']=hcainventory.subject+"_"+hcainventory.redcap_event
 hcainventory=hcainventory.loc[~(hcainventory.IntraDB=='CCF_PCMP_ITK')]
-#set aside
+
+#set aside for later, since this is a HCA-AABC combined variable, like genotypes
 peds=hcainventory[['subject','pedid']].drop_duplicates()
+
+#do some clean up so that it can get merged with the aabc inventory
 hcainventory=hcainventory[['site',  'redcap_event',
        'redcap_event_name', 'REDCap_id', 'subject', 'race',
        'ethnic_group', 'M/F', 'event_age',
@@ -536,10 +538,9 @@ hcainventory=hcainventory[['site',  'redcap_event',
 hcainventory=hcainventory.rename(columns={'Curated_SSAGA':'SSAGA','REDCap_id':'study_id','site':'Site'})
 hcainventory.SSAGA.value_counts()
 hcainventory.loc[hcainventory.SSAGA.isin(['NE','NE PM','YES BUT','SEE V1','SEE V2']),'SSAGA']=''
-
 hcainventory=hcainventory.loc[(~(hcainventory.PIN.isin(v2oopsexp))) & (~(hcainventory.redcap_event.isin(['Covid','CR','A'])))]
-
 hcainventory['study']='HCA'
+#merge in the indicator variables.
 hcainventory=hcainventory.merge(HCARedHarm,on=['subject','redcap_event'],how='left')
 
 aabcinventory=inventorysnapshot.copy()
@@ -549,6 +550,7 @@ aabcinventory['PIN']=aabcinventory.subject+"_"+aabcinventory.redcap_event
 Inventory=pd.concat([hcainventory,aabcinventory],axis=0)
 Inventory['event_age']=Inventory.event_age.astype(float).round(1)
 
+#Inventory will only have the visits for now, since FU and Covid aren't harmonized in HCA
 Inventory=Inventory.loc[Inventory.redcap_event.isin(['V1','V2','V3','V4'])]
 
 #define cohorts
@@ -560,7 +562,8 @@ Inventory.loc[(~Inventory.PIN.isin(HCAlist)) & ((Inventory.redcap_event_name.str
 Inventory.loc[(~Inventory.PIN.isin(HCAlist)) & ((Inventory.redcap_event_name.str.contains("arm_9")) | (Inventory.redcap_event_name.str.contains("arm_10")) |(Inventory.redcap_event_name.str.contains("arm_11")) |(Inventory.redcap_event_name.str.contains("arm_12"))) ,'Cohort']='AABC C'
 Inventory.Cohort.value_counts(dropna=False)
 
-#grab indicators for all datatypes
+############################################################
+#grab indicators for all the rest of the datatypes (AABC REDCap has them built in, but HCA REDCap had to be grabbed above)
 Q=qintdf2upload[['PIN']].drop_duplicates(subset='PIN').copy()
 Q['RAVLT']='YES'
 print(Q.shape)
@@ -698,15 +701,13 @@ Inventory=Inventory[colorder]
 Inventory.loc[Inventory.SSAGA=='YES','medical_history_complete']='YES'
 
 
-#Now break it down by completed REDCap instrument (AABC).
-#where possible, pull in the variable from HCA redcap as surrogate indicator
-
+#Now break it down by completed REDCap instrument
 #Has score
 scores=['moca_complete','neo_complete','pittsburgh_sleep_quality_index_psqi_block1_complete',
  'international_physical_activity_questionnaire_bloc_complete','cesd_block4_complete',
  'lawton_instrumental_activities_of_daily_living_iad_complete','international_personality_inventory_pool_ipip_bloc_complete']
 scoresrename=['MOCA','NEO','PSQI','IPAQ','CESD','IADL','IPIP']
-#no score
+#no score (need attention from experts)
 noscore=['menstrual_cycle_block1_complete','straw10_block1_complete','greene_climacteric_scale_block1_complete',
  'achenbach_adult_selfreport_asr_block2_complete','achenbach_alerts_asr_block2_complete','achenbach_older_adult_selfreport_oasr_block2_complete','achenbach_alerts_oasr_block2_complete','the_life_events_scale_gales_block2_complete','duke_university_religion_index_durel_block3_complete',
  'neighborhood_disorderneighborhood_social_cohesion_complete','perceived_everyday_discrimination_block3_complete',
@@ -719,10 +720,9 @@ noscore=['menstrual_cycle_block1_complete','straw10_block1_complete','greene_cli
 noscore_rename=['Menstrual Cycle','STRAW10','GREENE','ASR','Achenbach Alerts','OASR','OASR Achenbach Alerts','GALES','DUREL','NDSC','PED',
                 'Ongoing Stress','Access to Health','Barriers to Health','Global Health','Medications','Substance Use Visit','Med Hx',
                 'Handedness','Demographics','LEAP','COPE','MFQ','Dental Work','Trails','Core Labs',
-                'Actigraphy Diary','VMS Diary','Vitals']#PANAS
+                'Actigraphy Diary','VMS Diary','Vitals']#PANAS - is in the followup and will be brought in for the next freeze
 scoreszip=dict(zip(scores,scoresrename))
 noscoreszip=dict(zip(noscore,noscore_rename))
-
 
 Inventory=Inventory.rename(columns=scoreszip)
 Inventory=Inventory.rename(columns=noscoreszip)
@@ -748,9 +748,7 @@ FreezeInventory=Inventory.loc[Inventory.PIN.isin(HCAlist+freezelist)].drop(colum
 FreezeInventory.to_csv("Union-Freeze1_AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 box.upload_file("Union-Freeze1_AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
 
-#some stats
-#TO DO: need to grab subjects with BEHAVIORAL ONLY
-
+#generate stats for power point presentations
 #All Completeness
 print("----------------------")
 print("All Available Data")
@@ -828,6 +826,8 @@ for i in dtypes+scoresrename+noscore_rename:
     except:
         print(i,": 0")
 print("----------------------")
-Efreeze=E.loc[~(E['Form / Instrument'].str.upper().str.contains('COVID'))]
+
+#upload the Freeze specific
+Efreeze=E.loc[~((E['Form / Instrument'].str.upper().str.contains('COVID')) | (E['Form / Instrument'].str.upper().str.contains('PANAS')))]
 Efreeze.to_csv("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 box.upload_file("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
