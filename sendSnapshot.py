@@ -258,16 +258,16 @@ freezeaabcidvisits=aabcidvisits.loc[aabcidvisits.subject.isin(freezesubjects)]
 #aabcidvisitsrestricted2=aabcidvisitsrestricted2.drop(columns=subsubsagrest).copy() #don't want to drop subject and redcap_event from export
 
 
-aabcidvisitsrestricted2.to_csv("AABC_REDCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-aabcidvisits.to_csv("AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-freezeaabcidvisits.to_csv("Freeze1_AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+aabcidvisitsrestricted2.to_csv("AABC_RedCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+aabcidvisits.to_csv("AABC_RedCap_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+freezeaabcidvisits.to_csv("Freeze1_AABC_RedCap_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 
 aabcidvisits.shape
 aabcidvisits.drop_duplicates(subset=['subject','redcap_event']).shape
 
-box.upload_file("AABC_REDCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
-box.upload_file("AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("Freeze1_AABC_REDCap_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+box.upload_file("AABC_RedCap_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
+box.upload_file("AABC_RedCap_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
+box.upload_file("Freeze1_AABC_RedCap_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
 
 ##THIS ALREADY DONE AND NO NEW DATA COLLECTED
 #ssagarest.to_csv("AABC_SSAGA_Restricted" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
@@ -367,7 +367,7 @@ box.upload_file("Freeze1_AABC_NIH-Toolbox-Scores_" + date.today().strftime("%Y-%
 
 ########################################################################
 #Cobra
-Cobra=pd.read_csv(outp+"tempclean_Cobra.csv")
+Cobra=pd.read_csv(outp+"tempclean_Cobra_standard.csv")
 Cobra['subject']=Cobra.PIN.str.split("_",1,expand=True)[0]
 Cobra['redcap_event']=Cobra.PIN.str.split("_",1,expand=True)[0]
 
@@ -380,6 +380,8 @@ CobraRestricted=CobraRestricted[['subject','redcap_event','PIN']+[i for i in lis
 
 CobraRestricted=CobraRestricted.loc[~(CobraRestricted.PIN.isin(Actissues))]
 CobraRestricted=CobraRestricted.loc[~(CobraRestricted.PIN.isin(DNR))]
+#other anomalies:
+CobraRestricted=CobraRestricted.loc[~(CobraRestricted.NIGHTS==0.0)]
 CobraRestricted=CobraRestricted.drop_duplicates(subset=['subject','redcap_event'])
 Cobras=CobraRestricted.drop(columns=RCOBRAS)
 FreezeCobras=Cobras.loc[Cobras.PIN.isin(freezelist)]
@@ -425,16 +427,16 @@ hcaRfiles.datestamp=hcaRfiles.datestamp.str.replace('.csv','')
 hcaRfiles.datestamp=pd.to_datetime(hcaRfiles.datestamp)
 hcaRfiles=hcaRfiles.sort_values('datestamp',ascending=False)
 hcaRfiles=hcaRfiles.drop_duplicates(subset='datatype',keep='first').copy()
-hcafiles=pd.concat([hcafiles,hcaRfiles],axis=0)
+hcafilesC=pd.concat([hcafiles,hcaRfiles],axis=0)
 
 #these are the IDs/events of the V2 behavioral data-only that need to be dropped from HCA for the freeze or there will be two sets of behavioral data for V2
 v2oopsexp=['HCA6686191_V2', 'HCA7296183_V2','HCA6686191_F2', 'HCA7296183_F2','HCA6686191_F3', 'HCA7296183_F3','HCA6686191_Covid', 'HCA7296183_Covid','HCA6686191_CR', 'HCA7296183_CR']
 
-for i in list(hcafiles.fileid) + list(hcaRfiles.fileid):
-    if "Toolbox" in i:
+for i in list(hcafilesC.fileid):
+    datatype = hcafilesC.loc[hcafilesC.fileid == i]['datatype'][0]
+    if "Toolbox" in datatype:
         pass
     else:
-        datatype=hcafiles.loc[hcafiles.fileid==i]['datatype']
         print("downloading", datatype, i, "...")
         dfile=pd.read_csv(box.downloadFile(i),low_memory=False)
         dfile['PIN']=dfile['subject']+'_'+dfile['redcap_event']
@@ -442,9 +444,9 @@ for i in list(hcafiles.fileid) + list(hcaRfiles.fileid):
         freezefile=dfile.loc[(dfile.subject.isin(HCAsubjects)) & (~(dfile.PIN.isin(v2oopsexp))) & (~(dfile.redcap_event.isin(['A','Covid','CR','F1','F2','F3'])))]
         print(freezefile.shape)
         #limit variables to those in Encyclopedia not "U"  non-covid variables
-        rall=list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0])==True) & (~(E['Unavailable']=='U')) & (~(E['Form / Instrument'].str.upper().str.contains("COVID")))]['Variable / Field Name'])
+        rall=list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype)) & (~(E['Unavailable']=='U')) & (~(E['Form / Instrument'].str.upper().str.contains("COVID")))]['Variable / Field Name'])
         #keep track of dropped variables
-        rdrop = list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype[0]) == True) & ((E['Unavailable'] == 'U') | (E['Form / Instrument'].str.upper().str.contains("COVID"))) ]['Variable / Field Name'])
+        rdrop = list(E.loc[(E['HCA Pre-Release File'].str.contains(datatype)) & ((E['Unavailable'] == 'U') | (E['Form / Instrument'].str.upper().str.contains("COVID"))) ]['Variable / Field Name'])
         #checkbox variables get expanded during export, so have to account for ___ in names, and remove their root from varlist
         #first find all of them
         chks=[i for i in freezefile.columns if "___" in i]
@@ -465,34 +467,33 @@ for i in list(hcafiles.fileid) + list(hcaRfiles.fileid):
         dchks = []
         for d in dropchks:
             dchks = dchks + [i for i in chks if d in i]
-        keepchecks=[k for k in chks if k not in dchks]
+        keepchecks=[]
         extra=[]
         xdrop=[]
-        if datatype[0]=='RedCap':
+        keepchecks = [k for k in chks if k not in dchks]
+        if datatype=='RedCap':
             extra=['redcap_event_name']
             xdrop=['site']
         #these not in HCA
-        if datatype[0]=='Q-Interactive':
+        if datatype=='Q-Interactive':
             xdrop='form'
             HCAQlist = list(freezefile.PIN.unique())
-        if datatype[0]=='PennCNP':
+        if datatype=='PennCNP':
             HCAPennlist = list(freezefile.PIN.unique())
             xdrop=['DDISC.SV_1wk_20', 'DDISC.SV_2wk_20', 'DDISC.SV_1mo_20', 'DDISC.SV_6mo_20', 'DDISC.SV_1yr_20', 'DDISC.SV_3yr_20', 'DDISC.SV_1wk_100', 'DDISC.SV_2wk_100', 'DDISC.SV_1mo_100', 'DDISC.SV_6mo_100', 'DDISC.SV_1yr_100', 'DDISC.SV_3yr_100', 'DDISC.ExperimentName', 'DDISC.AUC_20', 'DDISC.AUC_100', 'DDISC.CompareMoney', 'DDISC.CompareMoneyDelay', 'DDISC.CompareDelay']
         rallchk=extra+list([i for i in rall if i not in checks and i not in dropchks and i not in xdrop])+keepchecks
         fullfreeze=freezefile[rallchk]
         fullfreeze=fullfreeze[['PIN','subject','redcap_event']+[i for i in fullfreeze.columns if i not in ['PIN','subject','redcap_event']]]
-        fullfreeze.to_csv("Freeze1_HCA_" + datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
-        if datatype[0]=='RedCap':
+        fullfreeze.to_csv("Freeze1_HCA_" + datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', index=False)
+        if datatype=='RedCap':
             HCARed=fullfreeze.copy()
         print("Shape of file",fullfreeze.shape)
-        box.upload_file("Freeze1_HCA_"+datatype[0] + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+        box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
 
-for i in list(hcafiles.fileid):
-    print(i)
-    print(hcafiles.loc[hcafiles.fileid == i]['datatype'][0])
-    if "Toolbox" in hcafiles.loc[hcafiles.fileid == i]['datatype'][0]:
-        print(datatype)
-        datatype = hcafiles.loc[hcafiles.fileid == i]['datatype'][0]
+for i in list(hcafilesC.fileid):
+    datatype = hcafilesC.loc[hcafilesC.fileid == i]['datatype'][0]
+    print(datatype)
+    if "Toolbox" in datatype:
         print("downloading", datatype, i, "...")
         dfile = pd.read_csv(box.downloadFile(i), low_memory=False)
         dfile['PIN'] = dfile['subject'] + '_' + dfile['redcap_event']
@@ -502,10 +503,8 @@ for i in list(hcafiles.fileid):
         HCATLBXlist = list(freezefile.PIN.unique())
         print(len(HCATLBXlist))
         freezefile=freezefile[Evars].copy()
-        freezefile.to_csv("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv')
+        freezefile.to_csv("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
         box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
-
-
     print("*********")
 
 
@@ -640,6 +639,7 @@ straw['Menopause_Adjud']="YES"
 strawslim=straw[['PIN','Menopause_Adjud']].copy()
 Inventory=Inventory.merge(strawslim,on='PIN',how='left')
 
+### HERE
 import numpy as np
 Mets=pd.read_csv(outp+'AABC-HCA_Metabolites-AD-Biomarkers_2024-03-21.csv',low_memory=False)
 M=Mets[['PIN','AD_Biomarkers','Metabolites']].copy()
@@ -755,7 +755,7 @@ Inventory['Freeze1_Nov2023']=''
 #freezelist=list(InventoryRestricted.loc[(InventoryRestricted.redcap_event.isin(['V1','V2','V3','V4'])) & (InventoryRestricted['event_date']<"2023-11-01")]['study_id'])
 Inventory.loc[Inventory.PIN.isin(freezelist),"Freeze1_Nov2023"]='YES'
 
-print(Inventory.loc[Inventory.Freeze1_Nov2023==1].redcap_event.value_counts())
+print(Inventory.loc[Inventory.Freeze1_Nov2023=='YES']['redcap_event'].value_counts())
 Inventory=Inventory.drop_duplicates(subset=['subject','redcap_event'])
 
 #InventoryRestricted.to_csv("AABC_Inventory_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
@@ -848,6 +848,8 @@ for i in dtypes+scoresrename+noscore_rename:
 print("----------------------")
 
 #upload the Freeze specific
-Efreeze=E.loc[~((E['Form / Instrument'].str.upper().str.contains('COVID')) | (E['Form / Instrument'].str.upper().str.contains('PANAS')))]
+Efreeze=E.loc[~((E['Form / Instrument'].str.upper().str.contains('COVID')) | (E['Form / Instrument'].str.upper().str.contains('PANAS')))].copy()
+Efreeze['Freeze1 HCA Source']='Freeze1_' + Efreeze['HCA Pre-Release File']
+Efreeze['Freeze1 AABC Source']='Freeze1_'+ Efreeze['AABC Pre-Release File']
 Efreeze.to_csv("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 box.upload_file("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
