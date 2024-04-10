@@ -867,7 +867,7 @@ P=P.loc[~((P.subject=="HCA6487286") & (P.redcap_event=='V3'))]
 ##################################################################################
 #HOT FLASH DATA
 #NOTE: Maki's group to do the scoring and stuff.  We are just checking for IDs and typos
-HotFiles=pd.read_csv(outp+"temp_Hotties.csv")
+HotFiles=pd.read_csv(outp+"temp_HotFlash.csv")
 Hotties=pd.merge(inventoryaabc,HotFiles,on='PIN',how='outer',indicator=True)
 #Hotties.loc[Hotties.subject.isnull()==True]
 

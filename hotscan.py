@@ -36,4 +36,4 @@ for i in HotSites:  # [0:3]:
         subdb['PIN']=new[1].str[:13]#.str.split(' ',expand=True)[[0]]
         HotFiles = HotFiles.append(subdb)
 
-HotFiles.to_csv(outp+"temp_Hotties.csv",index=False)
+HotFiles.to_csv(outp+"temp_HotFlash.csv",index=False)
