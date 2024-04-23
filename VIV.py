@@ -21,7 +21,7 @@ statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behav
 statsfile='AABC_HCA_recruitmentstats.pdf'
 
 # Now complete the following
-datarequestor='VIV_Distribution_Plots'  # name of folder in which you want to generate the slice.
+datarequestor='AVIV2'  # name of folder in which you want to generate the slice.
 study="HCA-AABC" #or HCA
 
 #Do you want caveman distributions of plots?
@@ -118,6 +118,11 @@ sss=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/',ss[0]
 rhh=pd.merge(rh,sss,on=['PIN','redcap_event','subject'],how='left')
 
 R=pd.concat([ra,rhh],axis=0)
+#special merge
+SpecialAF0=R.loc[R.redcap_event=='AF0'][['subject','croms_income','tics_score','cbf1_1','cbf2_1']].copy()
+SpecialAF0.columns=['subject','croms_income_AF0','tics_score_AF0','cbf1_1_AF0','cbf2_1_AF0']
+R=pd.merge(R,SpecialAF0,on='subject',how='left')
+
 R['PIN'] = R['subject'] + "_" + R['redcap_event']
 widefile=pd.merge(widefile,R,on=['subject', 'redcap_event','PIN'],how='left')
 print(i,widefile.shape)
@@ -174,6 +179,7 @@ print(i,widefile.shape)
 #clean up age variable
 widefile.event_age=widefile.event_age.round(1)
 
+
 #calculate BMI from height and weight for HCA
 widefile.loc[widefile.height_ft.isnull(),'height_ft']=widefile.height.str.split("'",expand=True)[0]
 widefile.loc[widefile.height_in.isnull(),'height_in']=widefile.height.str.split("'",expand=True)[1]
@@ -212,12 +218,19 @@ extras=['PIN','Cohort',
      'pedid',
      'M/F']
 sliceout=pd.merge(C[extras],sliceout,on='PIN',how='left')
+
+#clean up missing vars
+
 if VIV:
     sliceout.to_csv(os.path.join(os.getcwd(),datarequestor+"/Union-Freeze_AABC-HCA_VIV_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
     #box.upload_file(os.path.join(os.getcwd(),datarequestor+"/Union-Freeze_AABC-HCA_VIV_"+ date.today().strftime("%Y-%m-%d") + '.csv'), '250512318481')
 
+
+
 #probably a bug here
-#check that dictionary has all the variables
+#fix so that its grabbing all the checkbox variables!!!!!!
+#line 213 of sendSnapshot
+
 if VIV==False:
     sliceout.to_csv(os.path.join(os.getcwd(),datarequestor+"/Union-Freeze_AABC-HCA_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
     D=D.loc[D['newname'].isin(list(sliceout.columns)+extras)]
@@ -230,7 +243,7 @@ D.drop(columns=['newname']).to_csv(os.path.join(os.getcwd(),datarequestor+"/"+"F
 y = [i for i in listfiles if i != '.DS_Store']
 
 #plots:
-skip_plots=['subject','redcap_event','PIN','Actigraphy_Cobra','HCA_Freeze1_Nov2023']
+skip_plots=['subject','redcap_event','PIN','Actigraphy_Cobra','HCA_Freeze1_Nov2023','COMMENTS','Notes']
 plotlist=[vars for vars in list(sliceout.columns) if vars not in skip_plots]
 if wantplots:
     if os.path.exists(os.path.join(os.getcwd(),datarequestor+"/plots")):
