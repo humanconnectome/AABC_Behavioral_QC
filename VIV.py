@@ -21,12 +21,12 @@ statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behav
 statsfile='AABC_HCA_recruitmentstats.pdf'
 
 # Now complete the following
-datarequestor='AVIV2'  # name of folder in which you want to generate the slice.
+datarequestor='AVIV3'  # name of folder in which you want to generate the slice.
 study="HCA-AABC" #or HCA
 
 #Do you want caveman distributions of plots?
 wantplots = True  # or False
-DownloadF = True
+DownloadF = False
 
 #can do either the VIV or a specific instrument list
 VIV=True
@@ -132,6 +132,31 @@ qfiles=[q for q in listfiles if 'Q-Interactive' in q]
 Q=pd.concat([pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/',qfiles[0])), pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/',qfiles[1]))],axis=0)
 widefile=widefile.merge(Q,on=['subject','redcap_event','PIN'],how='left')
 print(i,widefile.shape)
+#add RAVLT calculations
+#Immediate Recall
+widefile.ravlt_pea_ravlt_sd_trial_i_tc=widefile.ravlt_pea_ravlt_sd_trial_i_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_ii_tc=widefile.ravlt_pea_ravlt_sd_trial_ii_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_iii_tc=widefile.ravlt_pea_ravlt_sd_trial_iii_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_iv_tc=widefile.ravlt_pea_ravlt_sd_trial_iv_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_v_tc=widefile.ravlt_pea_ravlt_sd_trial_v_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_vi_tc=widefile.ravlt_pea_ravlt_sd_trial_vi_tc.str.upper().str.replace("*NULL",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_i_tc=widefile.ravlt_pea_ravlt_sd_trial_i_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_ii_tc=widefile.ravlt_pea_ravlt_sd_trial_ii_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_iii_tc=widefile.ravlt_pea_ravlt_sd_trial_iii_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_iv_tc=widefile.ravlt_pea_ravlt_sd_trial_iv_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_v_tc=widefile.ravlt_pea_ravlt_sd_trial_v_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_vi_tc=widefile.ravlt_pea_ravlt_sd_trial_vi_tc.str.upper().str.replace("NULL*",'',regex=False)
+widefile.ravlt_pea_ravlt_sd_trial_i_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_i_tc,errors='coerce')
+widefile.ravlt_pea_ravlt_sd_trial_ii_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_ii_tc,errors='coerce')
+widefile.ravlt_pea_ravlt_sd_trial_iii_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_iii_tc,errors='coerce')
+widefile.ravlt_pea_ravlt_sd_trial_iv_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_iv_tc,errors='coerce')
+widefile.ravlt_pea_ravlt_sd_trial_v_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_v_tc,errors='coerce')
+widefile.ravlt_pea_ravlt_sd_trial_vi_tc = pd.to_numeric(widefile.ravlt_pea_ravlt_sd_trial_vi_tc,errors='coerce')
+
+
+
+widefile['ravlt_immediate_recall']=widefile.ravlt_pea_ravlt_sd_trial_i_tc.astype(float)+widefile.ravlt_pea_ravlt_sd_trial_ii_tc.astype(float)+widefile.ravlt_pea_ravlt_sd_trial_iii_tc.astype(float)+widefile.ravlt_pea_ravlt_sd_trial_iv_tc.astype(float)+widefile.ravlt_pea_ravlt_sd_trial_v_tc.astype(float)
+widefile['ravlt_learning_score']=widefile.ravlt_pea_ravlt_sd_trial_v_tc.astype(float)-widefile.ravlt_pea_ravlt_sd_trial_i_tc.astype(float)
 
 #Toolbox needs to be transposed.
 Tfiles=[t for t in listfiles if 'NIH' in t and "Scores" in t]
@@ -176,8 +201,8 @@ if not bulk.empty:
 
 widefile=pd.merge(widefile,wide,on=['subject','redcap_event','PIN'],how='left')
 print(i,widefile.shape)
-#clean up age variable
-widefile.event_age=widefile.event_age.round(1)
+#DONT clean up age variable - not good for cog factor consistency.  Better to make note in Known issues and FAQ
+#widefile.event_age=widefile.event_age.round(1)
 
 
 #calculate BMI from height and weight for HCA
@@ -309,11 +334,11 @@ print("",file=file_object)
 print("Data Returned:",file=file_object)
 print("",file=file_object)
 shutil.copyfile(statsdir+statsfile,os.path.join(os.getcwd(),datarequestor+"/"+statsfile))
-print("Most Recent Recruitment Report:",statsfile,file=file_object)
-print("Slice:","Freeze1_AABC-HCA_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv',file=file_object)
-print("Slice Dictionary:","Freeze1_AABC-HCA_Slice_Dictionary_"+ date.today().strftime("%Y-%m-%d") + '.csv',file=file_object)
-print("Slice Univariate Descriptions:","Freeze1_AABC-HCA_Slice_Univariate_Descriptions.txt",file=file_object)
-print("Slice Univariate Plots:","/plots",file=file_object)
+#print("Most Recent Recruitment Report:",statsfile,file=file_object)
+#print("Slice:","Freeze1_AABC-HCA_Slice_"+ date.today().strftime("%Y-%m-%d") + '.csv',file=file_object)
+#print("Slice Dictionary:","Freeze1_AABC-HCA_Slice_Dictionary_"+ date.today().strftime("%Y-%m-%d") + '.csv',file=file_object)
+#print("Slice Univariate Descriptions:","Freeze1_AABC-HCA_Slice_Univariate_Descriptions.txt",file=file_object)
+#print("Slice Univariate Plots:","/plots",file=file_object)
 #point to new download location which is the same as the slice:
 #box = LifespanBox(cache=os.path.join(os.getcwd(),datarequestor))
 #if 'Cognition Factor Analysis' in DerivativesRequested:
