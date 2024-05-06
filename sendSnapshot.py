@@ -236,7 +236,11 @@ for dropcheckboxvars in dropcheckboxvarbs:
 droprallchk=list([i for i in rdrop if i not in dropcheckboxvarbs]+droprchk)
 subcols=[i for i in aabcidvisitsrestricted2 if i not in droprallchk]
 aabcidvisits=aabcidvisitsrestricted2[subcols]
-freezeaabcidvisits=aabcidvisits.loc[aabcidvisits.subject.isin(freezesubjects)]
+freezeaabcidvisits=aabcidvisits.loc[aabcidvisits.subject.isin(freezesubjects)].copy()
+
+#replace -9999 with nothing
+for i in ['bp_sitting_systolic','bp_sitting_diastolic','bp_standing_systolic','bp_standing_diastolic']:
+    freezeaabcidvisits.loc[freezeaabcidvisits[i].isin(['-9999']),i]=''#[['subject','redcap_event',i]]
 
 #ALREADY PULLED OUT THE SSAGA VARIABLES AND only set to restricted
 #ALREADY changed the Inventory so that it wouldn't try to keep these variables
@@ -290,12 +294,22 @@ box.upload_file("Freeze1_AABC-HCA_Adjudicated-STRAW10_" + date.today().strftime(
 #TOOLBOX
 rf2full=pd.read_csv(outp+"tempclean_TLBX_RAW.csv",low_memory=False)
 rf2full['subject']=rf2full.PIN.str.split("_",1,expand=True)[0]
-rf2full['redcap_event']=rf2full.PIN.str.split("_",1,expand=True)[0]
+rf2full = rf2full.loc[~(rf2full.Inst.astype(str).str.upper().str.contains("PRACTICE"))]
+rf2full = rf2full.loc[~(rf2full.Inst.astype(str).str.upper().str.contains("INSTRUCTIONS"))]
+rf2full = rf2full.loc[~(rf2full.Inst.astype(str).str.upper().str.contains("AGES 3-7"))]
+rf2full = rf2full.loc[~(rf2full.Inst.astype(str).str.upper().str.contains("AGES 3-9"))]
+
+rf2full['redcap_event']=rf2full.PIN.str.split("_",1,expand=True)[1]
 rlist=list(rf2full.PIN.unique())
 
 dffull=pd.read_csv(outp+"tempclean_TLBX_SCORES.csv",low_memory=False)
 dffull['subject']=dffull.PIN.str.split("_",1,expand=True)[0]
-dffull['redcap_event']=dffull.PIN.str.split("_",1,expand=True)[0]
+dffull = dffull.loc[~(dffull.Inst.astype(str).str.upper().str.contains("PRACTICE"))]
+dffull = dffull.loc[~(dffull.Inst.astype(str).str.upper().str.contains("INSTRUCTIONS"))]
+dffull = dffull.loc[~(dffull.Inst.astype(str).str.upper().str.contains("AGES 3-7"))]
+dffull = dffull.loc[~(dffull.Inst.astype(str).str.upper().str.contains("AGES 3-9"))]
+
+dffull['redcap_event']=dffull.PIN.str.split("_",1,expand=True)[1]
 slist=list(dffull.PIN.unique())
 
 rwlist=[value for value in rlist if value in slist]
@@ -363,13 +377,13 @@ dffullrestricted.loc[dffullrestricted.PIN.isin(TLBXissues)]
 
 box.upload_file("AABC_NIH-Toolbox-Scores_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_NIH-Toolbox-Scores_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("Freeze1_AABC_NIH-Toolbox-Scores_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+#box.upload_file("Freeze1_AABC_NIH-Toolbox-Scores_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
 
 ########################################################################
 #Cobra
 Cobra=pd.read_csv(outp+"tempclean_Cobra_standard.csv")
 Cobra['subject']=Cobra.PIN.str.split("_",1,expand=True)[0]
-Cobra['redcap_event']=Cobra.PIN.str.split("_",1,expand=True)[0]
+Cobra['redcap_event']=Cobra.PIN.str.split("_",1,expand=True)[1]
 
 cvars=list(E.loc[(E['Form / Instrument']=='Actigraphy Data Summaries Produced By Cobra Lab')]['Variable / Field Name'])
 RCOBRAS=list(E.loc[(E['Form / Instrument']=='Actigraphy Data Summaries Produced By Cobra Lab') & (E['Unavailable']=='U')]['Variable / Field Name'])
@@ -388,11 +402,11 @@ FreezeCobras=Cobras.loc[Cobras.PIN.isin(freezelist)]
 
 CobraRestricted.to_csv("AABC_Actigraphy-Summary_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 Cobras.to_csv("AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-FreezeCobras.to_csv("Freeze1_AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
+#FreezeCobras.to_csv("Freeze1_AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
 
 box.upload_file("AABC_Actigraphy-Summary_Restricted_" + date.today().strftime("%Y-%m-%d") + '.csv', Rsnaps)
 box.upload_file("AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv', Asnaps)
-box.upload_file("Freeze1_AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+#box.upload_file("Freeze1_AABC_Actigraphy-Summary_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
 
 # waiting for confirmation of 'cleanliness' from Cobra's lab
 
@@ -474,6 +488,10 @@ for i in list(hcafilesC.fileid):
         if datatype=='RedCap':
             extra=['redcap_event_name']
             xdrop=['site']
+            #scrub inconsistent 999 values in bp and labs
+            misslist=['bp_sitting','bp_standing','bld_core_d2ph','bld_core_d2pm','bld_core_p2fh','bld_core_p2fm','hba1c', 'hscrp','insulin','vitamind', 'albumin','alkphos_total','alt_sgpt','ast_sgot','calcium','chloride','co2content','creatinine','glucose','potassium','sodium','totalbilirubin','totalprotein','ureanitrogen','friedewald_ldl','hdl','cholesterol','triglyceride','ldl','estradiol','testosterone','lh','fsh']
+            for j in misslist:
+                freezefile.loc[freezefile[j].isin(['-9999','99999','9999']), i] = ''
         #these not in HCA
         if datatype=='Q-Interactive':
             xdrop='form'
@@ -488,16 +506,22 @@ for i in list(hcafilesC.fileid):
         if datatype=='RedCap':
             HCARed=fullfreeze.copy()
         print("Shape of file",fullfreeze.shape)
-        box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+        #box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
 
 for i in list(hcafilesC.fileid):
     datatype = hcafilesC.loc[hcafilesC.fileid == i]['datatype'][0]
-    print(datatype)
+    #print(datatype)
     if "Toolbox" in datatype:
         print("downloading", datatype, i, "...")
         dfile = pd.read_csv(box.downloadFile(i), low_memory=False)
         dfile['PIN'] = dfile['subject'] + '_' + dfile['redcap_event']
-        print(dfile.shape)
+        print("yes practice",dfile.shape)
+        dfile=dfile.loc[~(dfile.Inst.astype(str).str.upper().str.contains("PRACTICE"))]
+        dfile = dfile.loc[~(dfile.Inst.astype(str).str.upper().str.contains("PRACTICE"))]
+        dfile = dfile.loc[~(dfile.Inst.astype(str).str.upper().str.contains("INSTRUCTIONS"))]
+        dfile = dfile.loc[~(dfile.Inst.astype(str).str.upper().str.contains("AGES 3-7"))]
+        dfile = dfile.loc[~(dfile.Inst.astype(str).str.upper().str.contains("AGES 3-9"))]
+        print("no practice",dfile.shape)
         Evars=list(E.loc[(E['Form / Instrument']==datatype+' File Column Descriptions') & (E.Unavailable != 'U')]['Variable / Field Name'])
         freezefile = dfile.loc[(dfile.subject.isin(HCAsubjects)) & (~(dfile.PIN.isin(v2oopsexp))) & (~(dfile.redcap_event.isin(['A', 'Covid', 'CR', 'F1', 'F2', 'F3'])))]
         HCATLBXlist = list(freezefile.PIN.unique())
@@ -766,7 +790,7 @@ box.upload_file("AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%
 
 FreezeInventory=Inventory.loc[Inventory.PIN.isin(HCAlist+freezelist)].drop(columns=['Freeze1_Nov2023'])
 FreezeInventory.to_csv("Union-Freeze1_AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-box.upload_file("Union-Freeze1_AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
+#box.upload_file("Union-Freeze1_AABC-HCA_Completeness_Inventory_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
 
 #generate stats for power point presentations
 #All Completeness
@@ -851,5 +875,6 @@ print("----------------------")
 Efreeze=E.loc[~((E['Form / Instrument'].str.upper().str.contains('COVID')) | (E['Form / Instrument'].str.upper().str.contains('PANAS')))].copy()
 Efreeze['Freeze1 HCA Source']='Freeze1_' + Efreeze['HCA Pre-Release File']
 Efreeze['Freeze1 AABC Source']='Freeze1_'+ Efreeze['AABC Pre-Release File']
+Efreeze.drop(columns=['HCA Pre-Release File','AABC Pre-Release File'])
 Efreeze.to_csv("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-box.upload_file("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
+#box.upload_file("Union-Freeze1_AABC-HCA_Encyclopedia_" + date.today().strftime("%Y-%m-%d") + '.csv', '250512318481')
