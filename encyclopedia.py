@@ -22,7 +22,7 @@ Q2=pd.read_csv(box.downloadFile(config['hca_q_dict']),low_memory=False,encoding=
 Q=pd.concat([Q1,Q2],axis=0).drop_duplicates(subset=['Variable / Field Name'])
 Q=Q.loc[~(Q['Form Name'].isin(['wais','wisc','wppsi']))]
 Q.loc[Q['Field Note'].isnull()==False,'Field Label']=Q['Field Note']
-Q.drop(columns=['Field Note']).to_csv('test.csv')
+#Q.drop(columns=['Field Note']).to_csv('test.csv')
 
 Echeck1=E.merge(A,on='Variable / Field Name',how='outer',indicator=True)
 Echeck1=Echeck1.loc[~(Echeck1['Field Type']=='descriptive')]
@@ -59,13 +59,15 @@ Echeck3.to_csv('Echeck3.csv')
 Echeck4=Echeck3.merge(Q,on='Variable / Field Name',how='outer',indicator=True)
 Echeck4=Echeck4.loc[~(Echeck4['Field Type']=='descriptive')]
 Echeck4.loc[Echeck4.Variable_description.isnull()==True,'Variable_description'] = Echeck4['Field Label']
-Echeck4.loc[(Echeck4['Variable / Field Name']=='form'),'HCA Pre-Release File']=''
 Echeck4=Echeck4.drop(columns=['Form Name', 'Section Header',
        'Field Type', 'Field Label', 'Choices, Calculations, OR Slider Labels',
        'Field Annotation',]).rename(columns={'_merge':'mergeQ'})
-Echeck4.loc[(Echeck4.mergeQ.isin(['right_only','both'])) & (Echeck4['HCA Pre-Release File'].isnull()==True),'HCA Pre-Release File']='HCA_Q-Interactive_<date>.csv'
-Echeck4.loc[(Echeck4.mergeQ.isin(['right_only','both'])) & (Echeck4['AABC Pre-Release File'].isnull()==True),'AABC Pre-Release File']='AABC_Q-Interactive_<date>.csv'
+Echeck4.loc[(Echeck4.mergeQ.isin(['right_only','both'])) & (Echeck4['HCA Pre-Release File'].isnull()==True) & (~(Echeck4['Variable / Field Name'].isin(['redcap_event','subject']))),'HCA Pre-Release File']='HCA_Q-Interactive_<date>.csv'
+Echeck4.loc[(Echeck4.mergeQ.isin(['right_only','both'])) & (Echeck4['AABC Pre-Release File'].isnull()==True) & (~(Echeck4['Variable / Field Name'].isin(['redcap_event','subject','id']))),'AABC Pre-Release File']='AABC_Q-Interactive_<date>.csv'
+Echeck4.loc[(Echeck4['Variable / Field Name']=='form'),'AABC Pre-Release File']=''
+Echeck4.loc[(Echeck4['Variable / Field Name']=='id'),'HCA Pre-Release File']=''
 Echeck4.loc[(Echeck4.mergeQ.isin(['right_only','both'])) & (Echeck4['Form / Instrument'].isnull()==True),'Form / Instrument']='Q-INTERACTIVE RAVLT'
+Echeck4.loc[Echeck4['Form / Instrument']=='Q-INTERACTIVE RAVLT','Order']=71
 Echeck4.to_csv('Echeck4.csv')
 
 #Load existing Restricted and housekeeping variables
@@ -111,11 +113,16 @@ Echeck5.loc[Echeck5['Variable / Field Name']=='subject','Variable_description']=
 Echeck5.loc[Echeck5['Variable / Field Name']=='site','Variable_description']="Recruitment Site"
 Echeck5.loc[Echeck5['Variable / Field Name']=='site','Options']="1=MGH, 2=UCLA, 3=UMN, 4=WU"
 Echeck5.loc[Echeck5['Variable / Field Name']=='pseudo_guid','Variable_description']='NDA subjectkey'
+Echeck5.loc[Echeck5['Variable / Field Name']=='race','Variable_description']='Self-reported race: Native American/Alaskan Native, Asian, Black or African American, Native Hawaiian or Other Pacific Is, White , More than one race, OR Unknown or Not reported'
+Echeck5.loc[Echeck5['Variable / Field Name']=='ethnic_group','Variable_description']='Self-reported ethnicity: Hispanic or Latino, Not Hispanic or Latino, Unknown or not reported'
 
 #Beautify
+
+Echeck5.loc[(Echeck5['Variable / Field Name'].isin(['site','subject','redcap_id','race','ethnic_group'])) & (Echeck5['Form / Instrument']=='SUBJECT INVENTORY AND BASIC INFORMATION'),'Order']=0
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.title()
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Nih-','NIH-')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace(' Nih',' NIH')
+Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Nih','NIH')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Tlbx','TLBX')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Nida','NIDA')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Ssaga','SSAGA')
@@ -150,14 +157,15 @@ Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace(' Ocd ',' 
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace(' Ff ',' FF ')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace(' Cat ',' CAT ')
 Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('International Physical Activity Questionnaire','International Physical Activity Questionnaire (IPAQ)')
+Echeck5['Form / Instrument']=Echeck5['Form / Instrument'].str.replace('Penn Cnp','Penn CNP')
 
 print(Echeck5.columns)
 
 Echeck5[['Order','Form / Instrument', 'Variable / Field Name', 'Unavailable','Variable_description','Options',
        'HCA Pre-Release File', 'AABC Pre-Release File',
-       'NIH Toolbox Prefix in Slice']].to_csv('Echeck5.csv')
+       'NIH Toolbox Prefix in Slice']].to_csv('Echeck5.csv',index=False)
 
-# final tweaks by hand and uploaded as new version 10-14-2024
+# final tweaks by hand (missing orders and instruments) and uploaded as new version 10-14-2024
 # REPLACE the encyclopedia fileid in the Config file so you can do this again next time.
 
 
