@@ -5,3 +5,4 @@ This bare bones repo, when run weekly by hand, produces QC flags as outlined her
 
 Eventually these flags will be turned into Jira tickets and automated.  Hopefully the urgency of that task will remain low.
 
+Have a nice day
