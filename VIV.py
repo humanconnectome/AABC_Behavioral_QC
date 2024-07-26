@@ -21,14 +21,15 @@ statsdir='/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behav
 statsfile='AABC_HCA_recruitmentstats.pdf'
 
 # Now complete the following
-datarequestor='AVIV3'  # name of folder in which you want to generate the slice.
+datarequestor='AVIV4'  # name of folder in which you want to generate the slice.
 study="HCA-AABC" #or HCA
+currentcogfolder=262328612623 # Nichols_2024-03-27  Nichols_CogFactorRegen_6May2024
 
 #Do you want caveman distributions of plots?
-wantplots = True  # or False
-DownloadF = False
+wantplots = False
+DownloadF = True
 
-#can do either the VIV or a specific instrument list
+#can do either the VIV or a specific instrument list - Instrument lists need to be case sensitive strings from Encyclopedia
 VIV=True
 InstRequested=[]
 #InstRequested=['Completeness Inventory','NIH Toolbox Pattern Comparison Processing Speed Test','NIH Toolbox Picture Sequence Memory Test','NIH Toolbox Picture Vocabulary Test','NIH Toolbox Visual Acuity Test','NIH Toolbox Words-In-Noise Test','NIH Toolbox Dimensional Change Card Sort Test','NIH Toolbox Flanker Inhibitory Control and Attention Test','NIH Toolbox List Sorting Working Memory Test','NIH Toolbox Oral Reading Recognition Test','Cognition Crystallized Composite','Cognition Fluid Composite','Cognition Total Composite Score','Montreal Cognitive Assessment (MOCA)','Trail Making Scores','Q-Interactive Ravlt']
@@ -204,7 +205,18 @@ print(i,widefile.shape)
 #DONT clean up age variable - not good for cog factor consistency.  Better to make note in Known issues and FAQ
 #widefile.event_age=widefile.event_age.round(1)
 
+#merge in cognitive factors
+COGFACTORSALL=pd.DataFrame(columns=['subject','redcap_event'])
+for f in ['Tr35-60y','Tr35-80y','Tr60-90y']:
+    coglist = pd.DataFrame(box.list_of_files([str(currentcogfolder)])).transpose()
+    cogf=coglist.loc[coglist.filename.str.contains(f)].reset_index()['index'][0]
+    #cf=cogf.reset_index()['index'][0]
+    facts=pd.read_csv(box.downloadFile(cogf), low_memory=False, encoding='ISO-8859-1')[['subject','Visit','Memory','FluidIQ','CrystIQ']]
+    facts.columns=['subject','redcap_event','Memory_'+f.replace('-','_'),'FluidIQ_'+f.replace('-','_'),'CrystIQ_'+f.replace('-','_')]
+    print(facts.shape)
+    COGFACTORSALL=pd.merge(COGFACTORSALL,facts,on=['subject','redcap_event'],how='outer')
 
+widefile=pd.merge(widefile,COGFACTORSALL,on=['subject','redcap_event'],how='left')
 #calculate BMI from height and weight for HCA
 widefile.loc[widefile.height_ft.isnull(),'height_ft']=widefile.height.str.split("'",expand=True)[0]
 widefile.loc[widefile.height_in.isnull(),'height_in']=widefile.height.str.split("'",expand=True)[1]
