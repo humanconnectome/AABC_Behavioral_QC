@@ -14,17 +14,19 @@ intradb=pd.read_csv(config['config_files']['PCP'])
 user = intradb.user[0]
 passw = intradb.auth[0]
 HOST = "hcpi-shadow22.nrg.wustl.edu"
-projects=["AABC_MGH_ITK","AABC_UMN_ITK","AABC_UCLA_ITK"]#"AABC_WU_ITK",
+projects=["AABC_MGH_ITK","AABC_UMN_ITK","AABC_UCLA_ITK","AABC_WU_ITK"]
 #test
 #curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:mrSessionData\&format=json\&columns=ID,label,project,xsiType,subject_label,URI\&project=AABC_MGH_ITK"
 #curlcmd0 = "curl -s -k -v -u "+user+":"+passw+" https://intradb.humanconnectome.org/data/experiments?xsiType=xnat:subjectData\&format=json\&columns=subject_label,yob\&project=AABC_MGH_ITK"
 
+PROJECT='AABC_WU_ITK'
 AllSanity=pd.DataFrame()
 for PROJECT in projects:
     curlcmd="curl -s -k -v -u "+user+":"+passw+" https://"+HOST+"/xapi/sanityChecksReports/project/"+PROJECT+"/failureReportCSV > "+outp+PROJECT+"_Sanity.csv"
     os.system(curlcmd)
     sanitydf=pd.read_csv(outp+PROJECT+"_Sanity.csv")
     sanitydf['scanID'] = sanitydf['scanID'].fillna(-1)
+    sanitydf=sanitydf.loc[sanitydf.scanner.isnull()==False].copy()
     sanitydf['scanID'] = sanitydf['scanID'].astype(int)
     sanitydf['scanID'] = sanitydf['scanID'].astype(str)
     sanitydf['scanID'] = sanitydf['scanID'].replace('-1', '')
@@ -63,8 +65,35 @@ print(AllSanity.shape)
 #print(sub5.shape)
 #sub5=sub5.loc[~((sub5.imageSessionLabel.str.contains('TEST')) | (sub5.imageSessionLabel.str.contains('incomplete')) | (sub5.imageSessionLabel.str.contains('7T')) | (sub5.imageSessionLabel.str.contains('phantom')))]
 
+#drop stuff we know is bogus:
+AllSanity=AllSanity.loc[~(AllSanity.imageSessionLabel.str.upper().str.contains("TEST"))]
+print(AllSanity.shape)
+AllSanity=AllSanity.loc[~(AllSanity.imageSessionLabel.str.upper().str.contains("PHANTOM"))]
+AllSanity=AllSanity.loc[~(AllSanity.imageSessionLabel.str.upper().str.contains("AGAR"))]
+
+
 AllSanity.imageSessionLabel.value_counts()
 AllSanity.PROJECT.value_counts()
 AllSanity=AllSanity.drop(columns=['imageSessionID','label','site','ID'])
-AllSanity=AllSanity.rename(columns={'imageSessionLabel':'MR_Session'})
+AllSanity=AllSanity.rename(columns={'':'MR_Session'})
 AllSanity.to_csv(outp+'SanityChecksWithNotes_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
+
+
+inventory=pd.read_csv('Union-Freeze_AABC-HCA_VIV_2024-05-13.csv')
+inventory=inventory[['Site','PIN']].copy()
+inventory.to_csv('FreezeTemp.csv',index=False)
+allscans=pd.read_csv('HCAABC_ITK.csv',low_memory=False)
+
+allscans['PIN']=allscans['MR ID'].str[:13]
+allscans.to_csv('ITK.csv',index=False)
+check=allscans.merge(inventory,on='PIN',how='right').copy()
+m7=check[(check['MR ID'].str.contains('7T')==True) | (check['MR ID'].str.upper().str.contains('MRS')==True)][['MR ID','PIN','Date']].drop_duplicates()
+d3A=check[check['MR ID'].str.contains('_A')==True][['MR ID','PIN','Date']].drop_duplicates()
+d3B=check[check['MR ID'].str.contains('_B')==True][['MR ID','PIN','Date']].drop_duplicates()
+MRS=check.loc[check.PIN.isin(list7)]#.to_csv('MRSdates.csv',index=False)
+A=check.loc[check.PIN.isin(list3A)]
+B=check.loc[check.PIN.isin(list3B)]
+MRSmerge=m7.rename(columns={'Date':'7T date','MR ID':'7T MR ID'}).merge(d3A.rename(columns={'Date':'3T Session A Date','MR ID':'3T Session A MR ID'}),how='left',on='PIN')
+MRSmerge=MRSmerge.merge(d3B.rename(columns={'Date':'3T Session B Date','MR ID':'3T Session B MR ID'}),how='left',on='PIN')
+#MRSmerge['3A to 7T days passed']=(date(MRSmerge['7T date'])-date(MRSmerge['3T Session A Date']))
+MRSmerge.drop(columns=['PIN'])[['3T Session A MR ID','3T Session A Date','3T Session B MR ID','3T Session B Date','7T MR ID','7T date']].to_csv('MRSdates.csv',index=False)
