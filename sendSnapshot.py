@@ -528,7 +528,7 @@ for i in list(hcafilesC.fileid):
         print(len(HCATLBXlist))
         freezefile=freezefile[Evars].copy()
         freezefile.to_csv("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv',index=False)
-        box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
+        #box.upload_file("Freeze1_HCA_"+datatype + "_" + date.today().strftime("%Y-%m-%d") + '.csv', freezefolder)
     print("*********")
 
 
@@ -591,7 +591,8 @@ aabcinventory['study']='AABC'
 aabcinventory['PIN']=aabcinventory.subject+"_"+aabcinventory.redcap_event
 
 Inventory=pd.concat([hcainventory,aabcinventory],axis=0)
-Inventory['event_age']=Inventory.event_age.astype(float).round(1)
+#DONT ROUND per April 2024 discussion with Tom
+#Inventory['event_age']=Inventory.event_age.astype(float).round(1)
 
 #Inventory will only have the visits for now, since FU and Covid aren't harmonized in HCA
 Inventory=Inventory.loc[Inventory.redcap_event.isin(['V1','V2','V3','V4'])]
