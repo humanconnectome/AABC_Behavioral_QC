@@ -21,7 +21,7 @@ box = LifespanBox(cache=outp)
 scratch=205351313707
 
 #scan BOX
-folderqueue=['WU','UMN','MGH','UCLA']
+folderqueue=['UMN','WU','MGH','UCLA']
 actdata=[]
 #studyshort='WU'
 for studyshort in folderqueue:
@@ -39,6 +39,7 @@ for studyshort in folderqueue:
             f=box.downloadFile(fid, download_dir="tmp", override_if_exists=False)
             print(f)
             file_one = open(f, "r")
+            print(dir(file_one))
             variable = file_one.readline(1)
             if not variable=='':
                 for l in file_one.readlines():
@@ -48,8 +49,10 @@ for studyshort in folderqueue:
                         print("Inner",f,"has",hcaid)
                         actsubs=actsubs+[hcaid]
             file_one.close()
+            os.remove(outp+f.split('/')[1])
         except:
             print("Something the matter with file",f)
     actdata=actdata+list(actsubs)#list(set(actsubs))
+
 
 pd.DataFrame(actdata,columns=['PIN']).to_csv(outp+"temp_actigraphy.csv",index=False)

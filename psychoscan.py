@@ -86,5 +86,7 @@ df1s = pd.DataFrame(str.splitlines(psychointradb1scan.decode('utf-8')))
 df1s = df1s[0].str.split(',', expand=True)
 
 df=pd.concat([df1,df2,df3,df4,df1s,df2s,df3s,df4s],axis=0) #df2,
+df.columns=['PIN']
+df.loc[df.PIN.str.contains("ÔÄä")]
 
 df.to_csv(outp+"temp_psychintradb.csv",index=False)
