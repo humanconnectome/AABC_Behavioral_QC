@@ -143,7 +143,7 @@ def create_if_not_exists(row: pd.Series) -> str:
     return issues
 
 
-DRYRUN = False
+DRYRUN = True
 jira = None
 BOT_PERSONAL_ACCESS_TOKEN = (
     secret.loc[secret.source == "JIRA_PERSONAL_ACCESS_TOKEN", "api_key"]
