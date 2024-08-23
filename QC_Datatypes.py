@@ -147,6 +147,20 @@ if not ft2.empty:
         print('CODE RED :',s2,': Subject found in AABC REDCap Database with an ID from HCP-A study but no legacyYN not checked')
 
 
+
+# %%
+# Check if subject fail the screen but came in for visit
+pass_failed=aabcinvent.loc[(aabcinvent.passedscreen =='2') & (aabcinvent['subject_id'].astype(str).str.strip() != '')][['subject_id', 'study_id', 'redcap_event_name', 'site','v0_date']]
+qlist4=pd.DataFrame()
+if not pass_failed.empty:
+    pass_failed['reason']='subject did not pass screen but came in for imaging - need confirmation'
+    pass_failed['code']='RED'
+    pass_failed['issueCode'] = 'AE1001'
+    pass_failed['datatype']='REDCap'
+    qlist4 = pass_failed[['subject_id', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','datatype']]
+    for s4 in list(pass_failed[study_id].unique()):
+        print('CODE RED :',s4,': subject did not pass screen but came in for imaging - need confirmation')
+
 # %%
 #if legacy v1 and enrolled as if v3 or v4 or legacy v2 and enrolled v4
 #get last visit
@@ -258,7 +272,7 @@ if not inc.empty:
 ###concatenate Phase 0 flags for REDCap key variables
 Q0=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 try:
-    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist32,qlist5,qlist6])#qlist4
+    Q1 = concat(*[Q0,qlist1,qlist2,qlist3,qlist4,qlist32,qlist5,qlist6])
 except:
     Q1=pd.DataFrame(columns=['subject_id', 'study_id', 'redcap_event_name', 'site','reason','issue_code','code','v0_date','event_date'])
 
@@ -1231,11 +1245,20 @@ QAAP
 # %%
 ###REDUCE by Color code.... need to be able to change these values.
 filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>36)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>45)) ]
+
+SubExc = ["delete (HCA6318465 refusal)", "delete (HCA9198092 refusal)"]
+filteredQ=filteredQ.loc[~(filteredQ.subject.isin(SubExc))].copy()
+
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 #filteredQ=pd.read_csv('FilteredQC4Jira.csv')
 
 # %%
 filteredQ
+
+# %%
+# Convert 'issue_age' from string to integer
+filteredQ['issue_age'] = filteredQ['issue_age'].astype(str)
+filteredQ['issue_age'] = filteredQ['issue_age'].str.extract('(\d+)').astype(int)
 
 # %%
 show(
@@ -1246,10 +1269,6 @@ show(
 )
 
 # %%
-# Convert 'age_days' from string to integer
-filteredQ['issue_age'] = filteredQ['issue_age'].astype(str)
-filteredQ['issue_age'] = filteredQ['issue_age'].str.extract('(\d+)').astype(int)
-
 # Define a threshold for old tickets (e.g., tickets older than 365 days)
 old_ticket_threshold = 300
 
