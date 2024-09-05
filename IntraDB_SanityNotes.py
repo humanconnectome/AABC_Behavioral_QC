@@ -71,8 +71,11 @@ print(AllSanity.shape)
 AllSanity=AllSanity.loc[~(AllSanity.imageSessionLabel.str.upper().str.contains("PHANTOM"))]
 AllSanity=AllSanity.loc[~(AllSanity.imageSessionLabel.str.upper().str.contains("AGAR"))]
 
+AllSanity[['imageSessionLabel','PROJECT']]
+worstsubs=AllSanity.imageSessionLabel.value_counts().reset_index()
+worstsubs.columns=['imageSessionLabel','misdemeanors']
 
-AllSanity.imageSessionLabel.value_counts()
+pd.merge(worstsubs,AllSanity[['imageSessionLabel','PROJECT','imageSessionDate']].drop_duplicates(),on='imageSessionLabel',how='left').to_csv(outp+'WorstSessions_'+date.today().strftime("%d%b%Y")+'.csv')
 AllSanity.PROJECT.value_counts()
 AllSanity=AllSanity.drop(columns=['imageSessionID','label','site','ID'])
 AllSanity=AllSanity.rename(columns={'':'MR_Session'})
