@@ -966,7 +966,6 @@ df.PIN_AB=df.PIN_AB.str.replace('t','').str.strip()
 
 # %%
 psymiss=pd.merge(ci,df, on='PIN_AB',how='outer',indicator=True).drop_duplicates()
-
 p1=pd.DataFrame()
 if psymiss.loc[psymiss._merge=='left_only'].shape[0]>0:
     p1 = pd.DataFrame(psymiss.loc[psymiss._merge=='left_only'].PIN_AB.unique())
@@ -1001,11 +1000,16 @@ if p.shape[0]>0:#,columns='PIN_AB')
 # %%
 #dont worry about duplicates in IntraDB - these will be filtered.
 #find subjects in AABC but not in IntraDB or BOX
-PSY2=psymiss.drop_duplicates(subset='subject')[['subject','redcap_event']]
+# scan_collectyn = 2 ->
+psymiss['redcap_event'] = psymiss['redcap_event'].str.strip()
+PSY2=psymiss.drop_duplicates(subset=['subject','redcap_event'])[['subject','redcap_event']]
 PSY2['Psychopy']='YES'
 inventoryaabc7=pd.merge(inventoryaabc,PSY2,on=['subject','redcap_event'],how='left')
 missingPY=inventoryaabc7.loc[(inventoryaabc7.redcap_event_name.str.contains('v')) & (~(inventoryaabc7.Psychopy=='YES'))].copy()
-dropm=inventoryaabc7.loc[(inventoryaabc7.missscan4=='1') | (inventoryaabc7.missscan4=='2') | (inventoryaabc7.scan_collectyn=='0')][['PIN']]
+dropm=inventoryaabc7.loc[(inventoryaabc7.missscan4=='1') | (inventoryaabc7.missscan4=='2') | (inventoryaabc7.scan_collectyn=='0') | (inventoryaabc7.scan_collectyn=='2')][['PIN']]
+
+
+# %%
 missingPY=missingPY.loc[~(missingPY.PIN.isin(list(dropm.PIN.unique())))].copy()
 missingPY['subject_id']=missingPY.subject
 #missingPY=missingPY.loc[~(missingPY.asa24yn=='0')]
