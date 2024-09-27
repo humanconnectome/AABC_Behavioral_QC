@@ -1,3 +1,4 @@
+### DOUBLE CHECK THAT PASSEDSCREEN=1 for all participants
 
 from ccf.box import LifespanBox
 import pandas as pd
