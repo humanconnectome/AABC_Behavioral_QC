@@ -46,6 +46,7 @@ for PROJECT in projects:
     SanityChecksWithNotes.to_csv(outp+'SanityChecksWithNotes'+PROJECT+"_"+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
 AllSanity['imageSessionDate']=pd.to_datetime(AllSanity.imageSessionDate)
+#AllSanity['Freeze1']=AllSanity.loc[AllSanity.imageSessionDate<"11/01/2023"]
 
 ### These commented out filters were to drop sanity check failures due to XA30 when generating lists to sites
 ### -- this issue should be resolved post-freeze, so we won't filter them out again without good reason
@@ -81,6 +82,7 @@ AllSanity=AllSanity.drop(columns=['imageSessionID','label','site','ID'])
 AllSanity=AllSanity.rename(columns={'':'MR_Session'})
 AllSanity.to_csv(outp+'SanityChecksWithNotes_'+date.today().strftime("%d%b%Y")+'.csv',index=False)
 
+#####
 
 inventory=pd.read_csv('Union-Freeze_AABC-HCA_VIV_2024-05-13.csv')
 inventory=inventory[['Site','PIN']].copy()
