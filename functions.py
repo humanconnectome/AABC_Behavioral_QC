@@ -512,3 +512,13 @@ def getASA(client,folderqueue):
             BIGGESTResp = BIGGESTResp.append(BigResp)
 
     return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS
+
+def swapmeds(oldDF=HCPDparentmeds, medmap=MAP, medvarlist=medlist):
+    ### Function maps a list of medication typos (or some other map dictionary) to a clean df of medication names or a yes/no class (or whatever is being replaced).
+    DP=oldDF.copy()
+    for m in medvarlist:
+        print(m,'before clean:',str(len(DP[m].unique())))
+        DP[m]=DP[m].str.upper().str.strip()
+        DP[m] = DP[m].str.upper().str.strip().map(medmap)
+        print(m,'after clean:',str(len(DP[m].unique())))
+    return DP
