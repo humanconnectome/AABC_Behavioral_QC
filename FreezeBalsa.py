@@ -1,3 +1,4 @@
+#Grabs existing data from Freeze1, incorporates addendum, applys new naming decisions (CODEX) and outputs table for John to upload to BALSA
 from ccf.box import LifespanBox
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -61,22 +62,42 @@ fullredHCA=fullredHCA.drop(columns=actvars).copy()
 
 fullredAABC=getfullRedExport('aabcarms',secret)
 #fullredAABC=fullredbak.copy()
-#fullredbak=fullredAABC.copy()
+fullredbak=fullredAABC.copy()
 
 #note that we're not rolling up the croms_sexorient variable, just the croms_sexorientother.  This is because the croms_sexorient is a checkbox and we need to handle that separately.
 rollup=fullredAABC.loc[fullredAABC.redcap_event_name.str.contains('register')][['study_id','subject_id']]
 AF0vars=['psuedo_guid','tics_score','croms_educ','croms_income','diagnosis_mci_ad','croms_cog','croms_occupation','croms_marital','croms_livingsit','croms_language','croms_insurance','croms_gender_identity','croms_gender_idother','croms_sexorientother']
-rolltofirstV=fullredAABC.loc[fullredAABC.redcap_event_name.str.contains('register')][['subject_id']+AF0vars]
+extra0=['fips_state','fips_county','fips_censustract','fips_censusblock','site','sex']
+
+rolltofirstV=fullredAABC.loc[fullredAABC.redcap_event_name.str.contains('register')][['subject_id']+AF0vars+extra0]
 rolltofirstV=rolltofirstV.rename(columns={'subject_id':'subject'})
 
 fullredAABC=pd.merge(rollup,fullredAABC.drop(columns=['subject_id']),on=['study_id'],how='right').rename(columns={'subject_id':'subject','study_id':'id'})
 fullredAABC['redcap_event'] = fullredAABC.replace({'redcap_event_name':
                                                config['Redcap']['datasources']['aabcarms']['AABCeventmap']})['redcap_event_name']
 
+#UNRELATED TO FREEZE
+#data pull section for random requests that require a rollup.
+dr=fullredAABC.loc[(fullredAABC.redcap_event_name.str.contains('inperson')) & ((fullredAABC.redcap_event_name.str.contains('arm_3')) |(fullredAABC.redcap_event_name.str.contains('arm_7')) | (fullredAABC.redcap_event_name.str.contains('arm_11')) )][['id','subject','redcap_event','age_visit','event_date','bld_draw','bld_draw_nc','bld_serum','bld_serum_centrifuge','bld_serum_cryovials','bld_serum_miss']]
+dr=pd.merge(dr,rolltofirstV[['subject','sex','site']],on=['subject'])
+Jenslist=pd.read_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/AMH_WU.csv')
+Jenslist.subject=Jenslist.subject.str.strip()
+Jenslist.redcap_event=Jenslist.redcap_event.str.strip()
+
+dr=pd.merge(dr,Jenslist,how='outer',on=['subject','redcap_event'],indicator=True)
+dr['MergeStatus']=''
+dr.loc[dr._merge=='left_only','MergeStatus']='Not in Jens AMH Box'
+dr.loc[dr._merge=='right_only','MergeStatus']='Only in Jens AMH Box - check for typo'
+dr.loc[dr._merge=='both','MergeStatus']='In Jens Box'
+drsave=dr.loc[dr._merge=='left_only']
+
+drsave.drop(columns=['_merge','Visit ID']).rename(columns={'visit_date':'Jens_date'}).to_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/MergeStatus_AMH_26March2025.csv',index=False)
+#####
+
 fullredAABC=pd.merge(C[['subject','redcap_event']],fullredAABC,on=['subject','redcap_event'],how='inner')
 #drop unused forms and remnants of HCA that aren't carried forward from AABC (such as SSAGA)
 cdn=[i for i in fullredAABC.columns if ('caffeine_' in i ) or ('nicotine_' in i) or ('drug_' in i)]
-fullredAABC=fullredAABC.drop(columns=cdn+AF0vars).copy()
+fullredAABC=fullredAABC.drop(columns=cdn+AF0vars+extra0).copy()
 
 
 #get redcap_event of first AABC visit so that you pull in the rolltofirstV variables
@@ -87,6 +108,10 @@ fullredfirstroll=pd.merge(fullredfirst,rolltofirstV,on=['subject'],how='left')
 fullredfirstroll=fullredfirstroll.copy()
 fullredAABC=fullredAABC.copy()
 fullredAABC=pd.merge(fullredAABC,fullredfirstroll,on=['subject','redcap_event'])
+
+#FIPS to limited then drop
+pd.merge(C[['subject','redcap_event']],fullredAABC[['subject','event_date','redcap_event']+extra0],how='inner',on=['redcap_event','subject']).to_csv("Union-Freeze_AABC-HCA_VIV_Limited-FIPS_2025-03-19.csv",index=False)
+fullredAABC=fullredAABC.drop(columns=extra0).copy()
 
 fullredAABCbakbak=fullredAABC.copy()
 
@@ -630,7 +655,7 @@ for i in widefile.columns[widefile.isin(['YES']).any()]:
 
 widefile.to_csv("AABC-HCA_Release1_BALSA_data_2025-03-07.csv", index=False)
 vlist=list(finalvars.loc[finalvars['BALSA VIV'].astype('str').str.contains('V')]['BALSA Variable'])
-widefile[vlist].to_csv("AABC-HCA_Release1_BALSA_VIV_2025-03-07.csv", index=False))
+widefile[vlist].to_csv("AABC-HCA_Release1_BALSA_VIV_2025-03-07.csv", index=False)
 
 #plots:
 skip_plots=['id_event','subject','redcap_event','PIN','Actigraphy_Cobra','HCA_Freeze1_Nov2023','COMMENTS','Notes','pseudo_guid','study']
