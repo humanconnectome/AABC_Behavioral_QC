@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import yaml
 import ccf
 from ccf.box import LifespanBox
@@ -79,10 +80,17 @@ def concat(*args):
     return pd.concat([x for x in args if not x.empty],axis=0)
 
 def parse_content(content):
+    #section_headers = [
+    #    'Subtest,,Raw score',
+    #    'Subtest,,Scaled score',
+    #    'Subtest,Type,Total',  # this not in aging or RAVLT
+    #    'Subtest,,Completion Time (seconds)',
+    #    'Subtest,Type,Yes/No',
+    #    'Item,,Raw score'
+    #]
     section_headers = [
         'Subtest,,Raw score',
         'Subtest,,Scaled score',
-        'Subtest,Type,Total',  # this not in aging or RAVLT
         'Subtest,,Completion Time (seconds)',
         'Subtest,Type,Yes/No',
         'Item,,Raw score'
@@ -97,6 +105,7 @@ def parse_content(content):
         row = row.strip(' "')
         if row in section_headers:
             capture_flag = True
+            #print(row)
 
         elif row == '':
             capture_flag = False
@@ -181,25 +190,25 @@ def TLBXreshape(results1):
 #    return sitedf
 
 
-def importTLBX(siteabbrev='WU',typed='scores',username='w.zijian@login3.chpc.wustl.edu'):
+def importTLBX(siteabbrev='WU',typed='scores',username='plenzini@login3.chpc.wustl.edu'):
     if typed=='scores': 
         run_ssh_cmd(username,
-                    'find /ceph/intradb/archive/AABC_' + siteabbrev + '_ITK/resources/toolbox_endpoint_data/ -type f  -name "*Scores*" ! \( -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/w.zijian/tools/catTLBX/datalist.csv').stdout.read()
+                    'find /ceph/intradb/archive/AABC_' + siteabbrev + '_ITK/resources/toolbox_endpoint_data/ -type f  -name "*Scores*" ! \( -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     else:
         run_ssh_cmd(username,
-                        'find /ceph/intradb/archive/AABC_'+siteabbrev+'_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/w.zijian/tools/catTLBX/datalist.csv').stdout.read()
+                        'find /ceph/intradb/archive/AABC_'+siteabbrev+'_ITK/resources/toolbox_endpoint_data/ -type f  ! \( -name "*Scores*" -o -name "*Narrow*" -o -name "*Regist*" -o -name "*catalog*" \) > /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     run_ssh_cmd(username,
-                'cd /home/w.zijian/tools/catTLBX/cache; while read i; do cp "$i" .; done < /home/w.zijian/tools/catTLBX/datalist.csv').stdout.read()
+                'cd /home/plenzini/tools/catTLBX/cache; while read i; do cp "$i" .; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     #run_ssh_cmd('plenzini@login3.chpc.wustl.edu',
     #                    'while read i; do cp "$i" /home/plenzini/tools/catTLBX/cache/.; done < /home/plenzini/tools/catTLBX/datalist.csv').stdout.read()
     run_ssh_cmd(username,
-                'for f in /home/w.zijian/tools/catTLBX/cache/*\ *; do mv "$f" "${f// /_}"; done').stdout.read()
+                'for f in /home/plenzini/tools/catTLBX/cache/*\ *; do mv "$f" "${f// /_}"; done').stdout.read()
     run_ssh_cmd(username,
-                'find /home/w.zijian/tools/catTLBX/cache/ -type f > /home/w.zijian/tools/catTLBX/datalist2.csv').stdout.read()
+                'find /home/plenzini/tools/catTLBX/cache/ -type f > /home/plenzini/tools/catTLBX/datalist2.csv').stdout.read()
     run_ssh_cmd(username,
-                "sed -i 's/\/home\/w.zijian/\/Users\/w.zijian\/chpc3/g' /home/w.zijian/tools/catTLBX/datalist2.csv").stdout.read()
+                "sed -i 's/\/home\/plenzini/\/Users\/plenzini\/chpc3/g' /home/plenzini/tools/catTLBX/datalist2.csv").stdout.read()
     # Using readlines()
-    file1 = open('/Users/w.zijian/chpc3/tools/catTLBX/datalist2.csv', 'r')
+    file1 = open('/Users/plenzini/chpc3/tools/catTLBX/datalist2.csv', 'r')
     Lines = file1.readlines()
     sitedf=pd.DataFrame()
     count = 0
@@ -472,9 +481,11 @@ def subsetfreeze(df,strname,listfreeze,byPIN=True,bySUB=False):
 
 
 def getASA(client,folderqueue):
-    TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
+    Totals = pd.DataFrame();
+    #TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
     allsubdb = pd.DataFrame(); CORRUPT=pd.DataFrame();ALLSUBS=pd.DataFrame();
-    BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
+    BIGGESTTotals = pd.DataFrame();
+    #BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
 
     for studyshort in folderqueue:
         print("Study:",studyshort)
@@ -485,11 +496,12 @@ def getASA(client,folderqueue):
         for i in subfolders:#[0:3]:
             if studyshort=='UCLA':
                 subsubfolders = folder_files(client, [i])
-                for i in subsubfolders:  # [0:3]:
-                    subfilelist = box.list_of_files([i])
-                    f = client.folder(folder_id=i).get()
+                for j in subsubfolders:  # [0:3]:
+                    subfilelist = box.list_of_files([j])
+                    f = client.folder(folder_id=j).get()
                     subdb = pd.DataFrame(subfilelist).transpose()
                     subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+                    print(studyshort+":"+j)
                     allsubdb = allsubdb.append(subdb)
             else:
                 subfilelist = box.list_of_files([i])
@@ -499,26 +511,26 @@ def getASA(client,folderqueue):
                 allsubdb = allsubdb.append(subdb)
         ALLSUBS = ALLSUBS.append(allsubdb)
         print("shape", ALLSUBS.shape)
-        dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()
-        dbitemsINS = allsubdb.loc[allsubdb.filename.str.contains('INS')].copy()
-        dbitemsTS = allsubdb.loc[allsubdb.filename.str.contains('TS')].copy()
+        #dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()
+        #dbitemsINS = allsubdb.loc[allsubdb.filename.str.contains('INS')].copy()
+        #dbitemsTS = allsubdb.loc[allsubdb.filename.str.contains('TS')].copy()
         dbitemsTotals = allsubdb.loc[allsubdb.filename.str.contains('Totals')].copy()
-        dbitemsItems = allsubdb.loc[allsubdb.filename.str.contains('Items')].copy()
-        dbitemsResp = allsubdb.loc[allsubdb.filename.str.contains('Responses')].copy()
-        TNS = TNS.append(dbitemsTNS)
-        INS = INS.append(dbitemsINS)
-        TS = TS.append(dbitemsTS)
+        #dbitemsItems = allsubdb.loc[allsubdb.filename.str.contains('Items')].copy()
+        #dbitemsResp = allsubdb.loc[allsubdb.filename.str.contains('Responses')].copy()
+        #TNS = TNS.append(dbitemsTNS)
+        #INS = INS.append(dbitemsINS)
+        #TS = TS.append(dbitemsTS)
         Totals = Totals.append(dbitemsTotals)
-        Items = Items.append(dbitemsItems)
-        Resp = Resp.append(dbitemsResp)
+        #Items = Items.append(dbitemsItems)
+        #Resp = Resp.append(dbitemsResp)
 
         Corrupted1 = pd.DataFrame();Corrupted2 = pd.DataFrame();Corrupted3 = pd.DataFrame();Corrupted4 = pd.DataFrame();Corrupted5 = pd.DataFrame();Corrupted6 = pd.DataFrame();
         BigTotals = pd.DataFrame()
-        BigItems = pd.DataFrame()
-        BigResp = pd.DataFrame()
-        BigTNS = pd.DataFrame()
-        BigINS = pd.DataFrame()
-        BigTS = pd.DataFrame()
+        #BigItems = pd.DataFrame()
+        #BigResp = pd.DataFrame()
+        #BigTNS = pd.DataFrame()
+        #BigINS = pd.DataFrame()
+        #BigTS = pd.DataFrame()
 
         for f in list(Totals.fileid):
             try:
@@ -531,77 +543,78 @@ def getASA(client,folderqueue):
                 #corrupt['f'] = f
                 #corrupt['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
                 #Corrupted1 = Corrupted1.append(corrupt)
-        for f in Items.fileid:
-            try:
-                k = box.read_csv(f)
-                if not k.empty:
-                    k['PIN']= Items.loc[Items.fileid == f, "PIN"][0]
-                    BigItems = BigItems.append(k)
-            except:
-                print("Couldn't read", f)
-                #corrupt['f'] = f
-                #corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
-                #Corrupted2 = Corrupted2.append(corrupt)
-        for f in Resp.fileid:
-            try:
-                k = box.read_csv(f)
-                if not k.empty:
-                    k['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
-                    BigResp = BigResp.append(k)
-            except:
-                print("Couldn't read", f)
-                #corrupt['f'] = f
-                #corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
-                #Corrupted3 = Corrupted3.append(corrupt)
-        for f in TNS.fileid:
-            try:
-                k = box.read_csv(f)
-                if not k.empty:
-                    k['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
-                    BigTNS = BigTNS.append(k)
-            except:
-                print("Couldn't read", f)
-                #corrupt['f'] = f
-                #corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
-                #Corrupted4 = Corrupted4.append(corrupt)
-        for f in INS.fileid:
-            try:
-                k = box.read_csv(f)
-                if not k.empty:
-                    k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
-                    BigINS = BigINS.append(k)
-            except:
-                print("Couldn't read", f)
-                #corrupt['f'] = f
-                #corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
-                #Corrupted5 = Corrupted5.append(corrupt)
-        for f in TS.fileid:
-            try:
-                k = box.read_csv(f)
-                if not k.empty:
-                    k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
-                    BigTS = BigTS.append(k)
-            except:
-                print("Couldn't read", f)
-                #corrupt['f'] = f
-                #corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
-                #Corrupted6 = Corrupted6.append(corrupt)
-        #CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
-        #print("Study:", studyshort)
+        #for f in Items.fileid:
+        #    try:
+        #        k = box.read_csv(f)
+        #        if not k.empty:
+        #            k['PIN']= Items.loc[Items.fileid == f, "PIN"][0]
+        #            BigItems = BigItems.append(k)
+        #    except:
+        #        print("Couldn't read", f)
+        #        #corrupt['f'] = f
+        #        #corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
+        #        #Corrupted2 = Corrupted2.append(corrupt)
+        #for f in Resp.fileid:
+        #    try:
+        #        k = box.read_csv(f)
+        #        if not k.empty:
+        #            k['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+        #            BigResp = BigResp.append(k)
+        #    except:
+        #        print("Couldn't read", f)
+        #        #corrupt['f'] = f
+        #        #corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+        #        #Corrupted3 = Corrupted3.append(corrupt)
+        #for f in TNS.fileid:
+        #    try:
+        #        k = box.read_csv(f)
+        #        if not k.empty:
+        #            k['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+        #            BigTNS = BigTNS.append(k)
+        #    except:
+        #        print("Couldn't read", f)
+        #        #corrupt['f'] = f
+        #        #corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+        #        #Corrupted4 = Corrupted4.append(corrupt)
+        #for f in INS.fileid:
+        #    try:
+        #        k = box.read_csv(f)
+        #        if not k.empty:
+        #            k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+        #            BigINS = BigINS.append(k)
+        #    except:
+        #        print("Couldn't read", f)
+        #        #corrupt['f'] = f
+        #        #corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+        #        #Corrupted5 = Corrupted5.append(corrupt)
+        #for f in TS.fileid:
+        #    try:
+        #        k = box.read_csv(f)
+        #        if not k.empty:
+        #            k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+        #            BigTS = BigTS.append(k)
+        #    except:
+        #        print("Couldn't read", f)
+        #        #corrupt['f'] = f
+        #        #corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+        #        #Corrupted6 = Corrupted6.append(corrupt)
+        ##CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
+        ##print("Study:", studyshort)
         if not BigTotals.empty:
             BIGGESTTotals=BIGGESTTotals.append(BigTotals)
-        if not BigItems.empty:
-            BIGGESTItems = BIGGESTItems.append(BigItems)
-        if not BigTNS.empty:
-            BIGGESTTNS=BIGGESTTNS.append(BigTNS)
-        if not BigINS.empty:
-            BIGGESTINS = BIGGESTINS.append(BigINS)
-        if not BigTS.empty:
-            BIGGESTTS = BIGGESTTS.append(BigTS)
-        if not BigResp.empty:
-            BIGGESTResp = BIGGESTResp.append(BigResp)
+        #if not BigItems.empty:
+        #    BIGGESTItems = BIGGESTItems.append(BigItems)
+        #if not BigTNS.empty:
+        #    BIGGESTTNS=BIGGESTTNS.append(BigTNS)
+        #if not BigINS.empty:
+        #    BIGGESTINS = BIGGESTINS.append(BigINS)
+        #if not BigTS.empty:
+        #    BIGGESTTS = BIGGESTTS.append(BigTS)
+        #if not BigResp.empty:
+        #    BIGGESTResp = BIGGESTResp.append(BigResp)
 
-    return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS
+    return ALLSUBS, BIGGESTTotals
+    #return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS
 
 #PRESTONs ASA_3
 def getASA_3(client, folderqueue):
@@ -764,6 +777,7 @@ def merge_prefixed_columns(df, prefixes):
 
 
 def clean_croms_income(value):
+    import numpy as np
     # Remove punctuation (commas, periods)
     value = re.sub(r'[,.]', '', str(value)).strip()
 
