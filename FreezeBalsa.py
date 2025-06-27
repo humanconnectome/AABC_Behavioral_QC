@@ -76,23 +76,23 @@ fullredAABC=pd.merge(rollup,fullredAABC.drop(columns=['subject_id']),on=['study_
 fullredAABC['redcap_event'] = fullredAABC.replace({'redcap_event_name':
                                                config['Redcap']['datasources']['aabcarms']['AABCeventmap']})['redcap_event_name']
 
-#UNRELATED TO FREEZE
-#data pull section for random requests that require a rollup.
-dr=fullredAABC.loc[(fullredAABC.redcap_event_name.str.contains('inperson')) & ((fullredAABC.redcap_event_name.str.contains('arm_3')) |(fullredAABC.redcap_event_name.str.contains('arm_7')) | (fullredAABC.redcap_event_name.str.contains('arm_11')) )][['id','subject','redcap_event','age_visit','event_date','bld_draw','bld_draw_nc','bld_serum','bld_serum_centrifuge','bld_serum_cryovials','bld_serum_miss']]
-dr=pd.merge(dr,rolltofirstV[['subject','sex','site']],on=['subject'])
-Jenslist=pd.read_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/AMH_WU.csv')
-Jenslist.subject=Jenslist.subject.str.strip()
-Jenslist.redcap_event=Jenslist.redcap_event.str.strip()
-
-dr=pd.merge(dr,Jenslist,how='outer',on=['subject','redcap_event'],indicator=True)
-dr['MergeStatus']=''
-dr.loc[dr._merge=='left_only','MergeStatus']='Not in Jens AMH Box'
-dr.loc[dr._merge=='right_only','MergeStatus']='Only in Jens AMH Box - check for typo'
-dr.loc[dr._merge=='both','MergeStatus']='In Jens Box'
-drsave=dr.loc[dr._merge=='left_only']
-
-drsave.drop(columns=['_merge','Visit ID']).rename(columns={'visit_date':'Jens_date'}).to_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/MergeStatus_AMH_26March2025.csv',index=False)
-#####
+##UNRELATED TO FREEZE
+##data pull section for random requests that require a rollup.
+#dr=fullredAABC.loc[(fullredAABC.redcap_event_name.str.contains('inperson')) & ((fullredAABC.redcap_event_name.str.contains('arm_3')) |(fullredAABC.redcap_event_name.str.contains('arm_7')) | (fullredAABC.redcap_event_name.str.contains('arm_11')) )][['id','subject','redcap_event','age_visit','event_date','bld_draw','bld_draw_nc','bld_serum','bld_serum_centrifuge','bld_serum_cryovials','bld_serum_miss']]
+#dr=pd.merge(dr,rolltofirstV[['subject','sex','site']],on=['subject'])
+#Jenslist=pd.read_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/AMH_WU.csv')
+#Jenslist.subject=Jenslist.subject.str.strip()
+#Jenslist.redcap_event=Jenslist.redcap_event.str.strip()
+#
+#dr=pd.merge(dr,Jenslist,how='outer',on=['subject','redcap_event'],indicator=True)
+#dr['MergeStatus']=''
+#dr.loc[dr._merge=='left_only','MergeStatus']='Not in Jens AMH Box'
+#dr.loc[dr._merge=='right_only','MergeStatus']='Only in Jens AMH Box - check for typo'
+#dr.loc[dr._merge=='both','MergeStatus']='In Jens Box'
+#drsave=dr.loc[dr._merge=='left_only']##
+#
+#drsave.drop(columns=['_merge','Visit ID']).rename(columns={'visit_date':'Jens_date'}).to_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/MergeStatus_AMH_26March2025.csv',index=False)
+######
 
 fullredAABC=pd.merge(C[['subject','redcap_event']],fullredAABC,on=['subject','redcap_event'],how='inner')
 #drop unused forms and remnants of HCA that aren't carried forward from AABC (such as SSAGA)
@@ -113,6 +113,7 @@ fullredAABC=pd.merge(fullredAABC,fullredfirstroll,on=['subject','redcap_event'])
 pd.merge(C[['subject','redcap_event']],fullredAABC[['subject','event_date','redcap_event']+extra0],how='inner',on=['redcap_event','subject']).to_csv("Union-Freeze_AABC-HCA_VIV_Limited-FIPS_2025-03-19.csv",index=False)
 fullredAABC=fullredAABC.drop(columns=extra0).copy()
 
+#BACK UP CHECKPOINT
 fullredAABCbakbak=fullredAABC.copy()
 
 #merge in fullredAABC and fullredHCA
@@ -387,10 +388,10 @@ R=swapmeds(R, dict(zip(medcurate.upcaseTrimOriginal,medcurate.cleanMedRough1)), 
 renamemeds=dict(zip(Rmedlist,[i+'_abc' for i in Rmedlist]))
 R=R.rename(columns=renamemeds)
 
-#Quick export of meds_abc
-med_add=['subject','redcap_event']+[i for i in R.columns if '_abc' in i]
-R[med_add].to_csv(outp+'Freeze1-add_AABC-HCA_Basic-Clean-Medications_2025-02-28.csv',index=False)
-R.shape
+##Quick export of meds_abc
+#med_add=['subject','redcap_event']+[i for i in R.columns if '_abc' in i]
+#R[med_add].to_csv(outp+'Freeze1-add_AABC-HCA_Basic-Clean-Medications_2025-02-28.csv',index=False)
+#R.shape
 
 #subset, rename, and reorder vars according to Encyclopedia
 harmonize=['height','bld_fasting','bld_core_fast','height_ft','height_in','cobra_meantst','bp_sitting_systolic','bp_sitting_diastolic','bp_standing_systolic','bp_standing_diastolic']
@@ -513,6 +514,14 @@ t1=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/',Tfiles
 t2=pd.read_csv(os.path.join(os.getcwd(),datarequestor+'/downloadedfiles/',Tfiles[1]),low_memory=False)
 T=pd.concat([t1,t2],axis=0)
 
+#an aside to merge AABC toolbox registration files with freeze list
+dfreg=pd.read_csv("/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/temp3_TLBX_Registration.csv",low_memory=False)
+dfregslim=dfreg[['PIN','MothersEducation']].drop_duplicates().copy()
+Reg=pd.merge(C[['PIN','TLBX','study']].loc[(C.study=='AABC')],dfregslim,on='PIN',how='left')
+Reg.loc[Reg.MothersEducation==999,'MothersEducation']=np.nan
+Reg[['PIN','MothersEducation']].to_csv('/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/Freeze1-AABC_NIH-Toolbox_Mothers-Education_2025Jun23.csv',index=False)
+
+
 bulk = T.copy()
 l = []
 wide=C[['subject', 'redcap_event','PIN']]
@@ -611,7 +620,7 @@ result.to_csv(outp+'ColCounts.csv')
 #emptycols['nonmissing']=2247-emptycols.number_missing
 #emptycols.to_csv(outp+'EmptyCols.csv')
 
-#widefilelastbak=widefile.copy()
+widefilelastbak=widefile.copy()
 #widefile=widefilelastbak.copy()
 
 #finalvars=E.loc[E.Access.isin(['O','R'])][['Balsa_var','VarOrder','CatOrder']]
@@ -638,6 +647,15 @@ widefile.bp_sitting=widefile.bp_sitting.str.replace('_','')
 widefile.bp_standing=widefile.bp_standing.str.replace('_','')
 widefile.loc[widefile.dm17b.isin(['-99999','-999']),'dm17b']='-9999'
 
+widefile.loc[(widefile.Bulk_Imaging=='YES') & (widefile.MR_QC_Issue_Codes.isnull()==True),'MR_QC_Issue_Codes']='None'
+
+for i in ['tMRI_CARIT_PctCompl','tMRI_FACENAME_PctCompl','tMRI_VISMOTOR_PctCompl']:
+    widefile.loc[(widefile.Bulk_Imaging == 'YES') & (widefile[i].isnull() == True), i] = '0%'
+
+widefile.loc[widefile.med_yn==2,'med_num']=0
+
+
+
 #widefile['tics_score2'] = pd.to_numeric(widefile['tics_score'], errors='coerce')
 ## Fill NaNs with a default value (e.g., 0) and convert to int
 #widefile['tics_score2'] = widefile['tics_score2'].fillna('').astype(int)
@@ -653,14 +671,14 @@ for i in widefile.columns[widefile.isin(['YES']).any()]:
     print('with Nos')
     print(widefile[i].value_counts())
 
-widefile.to_csv("AABC-HCA_Release1_BALSA_data_2025-03-07.csv", index=False)
+widefile.to_csv("AABC-HCA_Release1_BALSA_data_2025-04-14.csv", index=False)
 vlist=list(finalvars.loc[finalvars['BALSA VIV'].astype('str').str.contains('V')]['BALSA Variable'])
-widefile[vlist].to_csv("AABC-HCA_Release1_BALSA_VIV_2025-03-07.csv", index=False)
+widefile[vlist].to_csv("AABC-HCA_Release1_BALSA_VIV_2025-04-14.csv", index=False)
 
 #plots:
 skip_plots=['id_event','subject','redcap_event','PIN','Actigraphy_Cobra','HCA_Freeze1_Nov2023','COMMENTS','Notes','pseudo_guid','study']
 vlabel=list(finalvars.loc[finalvars['BALSA VIV'].astype('str').str.contains('V')]['BALSA Display Name'])
-  abel_dict=dict(zip(vlist,vlabel))
+  label_dict=dict(zip(vlist,vlabel))
 label_dict = {key: re.sub(r'\s*\([^)]*\)', '', value) for key, value in label_dict.items()}
 
 plotlist=[vars for vars in vlist if vars not in skip_plots]
