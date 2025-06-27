@@ -892,17 +892,18 @@ T.to_csv(outp+'ToolboxTix.csv',index=False)
 
 
 # %%
-totals=process_files.loc[(process_files.filename.str.contains('Totals'))].copy()
-totals['datestamp']=totals.filename.str.split('_',expand=True)[2]
-totals['datatype']=totals.filename.str.split('_',expand=True)[1]
-totals=totals.loc[(totals.datestamp.str.contains('.csv')==True) & (totals.datestamp.str.contains('-'))].copy()
-totals.datestamp=totals.datestamp.str.replace('.csv','')
-totals.datestamp=pd.to_datetime(totals.datestamp)
-totals=totals.sort_values('datestamp',ascending=False)
-totals=totals.drop_duplicates(subset='datatype',keep='first').copy()
+#totals=process_files.loc[(process_files.filename.str.contains('Totals'))].copy()
+#totals['datestamp']=totals.filename.str.split('_',expand=True)[2]
+#totals['datatype']=totals.filename.str.split('_',expand=True)[1]
+#totals=totals.loc[(totals.datestamp.str.contains('.csv')==True) & (totals.datestamp.str.contains('-'))].copy()
+#totals.datestamp=totals.datestamp.str.replace('.csv','')
+#totals.datestamp=pd.to_datetime(totals.datestamp)
+#totals=totals.sort_values('datestamp',ascending=False)
+#totals=totals.drop_duplicates(subset='datatype',keep='first').copy()
 
 # %%
-BIGGESTTotals=pd.read_csv(box.downloadFile(totals['fileid'][0]),low_memory=False,encoding='ISO-8859-1')
+#BIGGESTTotals=pd.read_csv(box.downloadFile(totals['fileid'][0]),low_memory=False,encoding='ISO-8859-1')
+BIGGESTTotals=pd.read_csv(outp+"temp_Totals.csv",low_memory=False)
 
 # %%
 BIGGESTTotals=BIGGESTTotals.loc[~(BIGGESTTotals.PIN.isnull()==True)]
@@ -1445,11 +1446,11 @@ inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('re
 # C,summv,a,agemv,ageav,bmiv: key REDCap aabc
 # T: toolbox
 # Hot1,Hot2b: hotflash
-QAAP=concat(Q1,C,summv,a, bmiv,T).drop(columns=['v0_date'])
+#QAAP=concat(Q1,C,summv,a, bmiv,T).drop(columns=['v0_date'])
 
-#QAAP=concat(Q1,Q2,a1,a11,a13,a14,a2,P,T,Hot1,Hot2b).drop(columns=['v0_date'])
+#QAAP=concat(a1,a11,a13,a14).drop(columns=['v0_date'])
 #QAAP=concat(Q1).drop(columns=['v0_date'])
-
+QAAP=Q2.copy()
 
 # %%
 
@@ -1476,7 +1477,9 @@ QAAP.sort_values(['site','issue_age'],ascending=False).to_csv('All_Issues_'+date
 
 # %%
 ###REDUCE by Color code.... need to be able to change these values.
-filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>36)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>45)) ]
+filteredQ=QAAP.loc[((QAAP.code=='PINK') & (QAAP.issue_age.dt.days>7)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days>4)) | ((QAAP.code=='RED') & (QAAP.issue_age.dt.days.isnull()==True)) |  ((QAAP.code=='ORANGE') & (QAAP.issue_age.dt.days>18)) |  ((QAAP.code=='YELLOW') & (QAAP.issue_age.dt.days>36)) |  ((QAAP.code=='GREEN') & (QAAP.issue_age.dt.days>45)) ].copy()
+#filteredQ['issue_age']=filteredQ.issue_age.astype('str').str.split(expand=True)[0]
+
 filteredQ.to_csv('FilteredQC4Jira.csv',index=False)
 #filteredQ=pd.read_csv('FilteredQC4Jira.csv')
 
