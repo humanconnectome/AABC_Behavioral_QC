@@ -10,8 +10,6 @@ from ccf.config import LoadSettings
 from creds import *
 from jira import JIRA, Issue
 from JiraConverter import LIST_JIRA_FIELDS_IN_ORDER, read_csv_cols
-#import requests
-#from requests.auth import HTTPBasicAuth
 
 config = LoadSettings()
 secret = pd.read_csv(config["config_files"]["secrets"])
@@ -33,7 +31,6 @@ MAP_FIELD_TO_N = {
     "event_n": 10039,
     "event_date": 10037
 }
-
 
 def as_search_field(field):
     if field not in MAP_FIELD_TO_N:
@@ -94,7 +91,7 @@ def create_jira_ticket(row: pd.Series) -> Issue:
 
 
 def search_for_ticket(row: pd.Series) -> str:
-    """Search for existing Jira ticket with the same summary and error code
+    """Search for existing Jira ticket with the same summary,description,and error code
 
     Args:
         row: row from DataFrame
@@ -102,7 +99,11 @@ def search_for_ticket(row: pd.Series) -> str:
     Returns:
         Jira ticket key if found, else empty string
     """
-    jql_search_query = f"summary ~ '{row.summary}'"
+    jql_search_query = f"summary ~ '\"{row.summary}\"'"
+
+    # Add description to the search criteria
+    #if pd.notna(row.description):
+        #jql_search_query += f" AND description ~ '{row.description}'"
 
     # Search for tickets with same Error Codes
     if pd.notna(row.error_code):
@@ -112,6 +113,7 @@ def search_for_ticket(row: pd.Series) -> str:
 
     issues = jira.search_issues(jql_search_query)
     issue_keys = ",".join([i.key for i in issues])
+    #print(issue_keys)
     return issue_keys
 
 
@@ -127,7 +129,6 @@ def create_if_not_exists(row: pd.Series) -> str:
     Side Effects:
         Prints to stdout whether ticket was created or not
     """
-    print(row)
     issues = search_for_ticket(row)
     if issues:
         print(f"Ticket(s) already exists: {issues}")
@@ -143,7 +144,7 @@ def create_if_not_exists(row: pd.Series) -> str:
     return issues
 
 
-DRYRUN = True
+DRYRUN = False
 jira = None
 BOT_PERSONAL_ACCESS_TOKEN = (
     secret.loc[secret.source == "JIRA_PERSONAL_ACCESS_TOKEN", "api_key"]
