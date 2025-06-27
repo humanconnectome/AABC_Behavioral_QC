@@ -70,17 +70,21 @@ folderqueue=['WU','UCLA','UMN','MGH'] ###,'UCLA']
 #import anything new by any definition (new name, new sha, new fileid)
 studyshortsum=0
 all2push=pd.DataFrame()
-for studyshort in folderqueue:
+getlist=False
+for studyshort in ['UCLA']:# folderqueue:
     print(studyshort,"......")
     folder = config['Redcap']['datasources']['qint']['BoxFolders'][studyshort]
     dag = config['Redcap']['datasources']['aabcarms'][studyshort]['dag']
     sitenum = config['Redcap']['datasources']['aabcarms'][studyshort]['sitenum']
-
-    filelist=box.list_of_files([folder])
-    #print(filelist)
-    db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
-    #print(db)
-    db.fileid=db.fileid.astype(int)
+    if getlist:
+        filelist=box.list_of_files([folder])
+        #print(filelist)
+        db=pd.DataFrame(filelist).transpose()#.reset_index().rename(columns={'index':'fileid'})
+        #print(db)
+        db.fileid=db.fileid.astype(int)
+        db.to_csv(outp + studyshort + ".csv", index=False)
+    if not getlist:
+        db=pd.read_csv(outp + studyshort + ".csv")
     #ones that already exist in q redcap
     cached_filelist=qintdf.copy()
     #cached_filelist.fileid=cached_filelist.fileid.astype('Int64') #ph.asInt(cached_filelist, 'fileid')
@@ -112,7 +116,7 @@ for studyshort in folderqueue:
                 fname=db2go.iloc[i][['filename']][0]
                 subjid = fname[fname.find('HCA'):10]
                 fsha=db2go.iloc[i][['sha1']][0]
-                #print(i)
+                print(i)
                 #print(db2go.iloc[i][['fileid']][0])
                 #print(db2go.iloc[i][['filename']][0])
                 #print(db2go.iloc[i][['sha1']][0])
@@ -150,7 +154,7 @@ for studyshort in folderqueue:
             print(list(rows2push.subjectid))
             print("***************************************************")
         all2push=pd.concat([all2push,rows2push]).drop_duplicates()
-
+        all2push.to_csv(outp+studyshort+"Qint_2push.csv",index=False)
 if not all2push.empty:
     print("**************** Summary All Sites **********************")
     print(len(all2push.subjectid), "Total rows to push across sites:")
