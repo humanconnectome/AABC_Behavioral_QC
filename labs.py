@@ -21,7 +21,7 @@ aabcidvisits=idvisits(aabcinvent,keepsies=['study_id','subject_id','redcap_event
 aabcidvisits.columns
 
 
-
+STOP
 ### STOP DO NOT RUN ANYTHING BUT THE CURRENT BATCH ###
 ### BATCH 1 ###
 batch1file="Box 8856 A-C Cruchaga.xlsx"
@@ -263,14 +263,150 @@ aabcidvisits['PIN']=aabcidvisits['subject']+"_"+aabcidvisits['redcap_event']
 batch4_3=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='right').drop(columns=['PIN'])
 batch4_3.to_csv(outp+"batch4/"+'Batch4b_forUpload.csv',index=False)
 
+#batch 5 uploaded by Preston
+
+#batch6
+folder="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/tmp2/batch6/"
+fileb="Box 9057 Box A,C,D,E,F Cruchaga.xls"
+sheet="Modified"
+btemp2=pd.read_excel(folder+fileb, sheet_name=sheet)[['TimePoint+ID','Test','Results']]
+btemp2=btemp2.rename(columns={'TimePoint+ID':'PIN'})
+btemp2=btemp2.loc[btemp2.PIN.isnull()==False]
+b6=pd.DataFrame(columns={'PIN'})
+for i in list(btemp2.Test.unique()):
+    try:
+        part = btemp2.loc[btemp2.Test==i]
+        part=part.rename(columns={'Results':i})
+        part=part.drop(columns=['Test'])
+        b6=pd.merge(b6,part,on=['PIN'],how='outer')
+    except:
+        print('error with',i)
+cruchaga=['DHEA-S', 'Albumin', 'Alk Phos, Total', 'ALT (SGPT)',
+       'AST (SGOT)', 'Calcium', 'Chloride', 'CO2 Content', 'Creatinine',
+       'Direct HDL Cholesterol', 'Friedewald LDL Chol', 'Glucose',
+       'HS C-Reactive Prot', 'Non-HDL Cholesterol', 'Potassium', 'Sodium',
+       'Total Bilirubin', 'Total Cholesterol', 'Total Protein',
+       'Triglycerides', 'Urea Nitrogen', 'Cortisol', 'Estradiol, e601',
+       'Follicle-Stimulating Hormone', 'Insulin', 'Luteinizing Hormone',
+       'Testosterone', 'Vitamin D', 'HbA1c']
+redcap= ['dheas','albumin',  'alkphos_total',  'alt_sgpt',
+         'ast_sgot',   'calcium', 'chloride',  'co2content', 'creatinine',
+         'hdl',                  'friedewald_ldl',        'glucose',
+         'hscrp', 'non-hdl',           'potassium','sodium',
+         'totalbilirubin',     'cholesterol', 'totalprotein',
+         'triglyceride',     'ureanitrogen',    'cortisol', 'estradiol',
+         'fsh',                           'insulin', 'lh',
+         'testosterone',    'vitamind', 'hba1c']
+##typos
+#s=['HCA7700265_V2','HCA8712883_V2']
+#btemp4f1_1.loc[btemp4f1_1.PIN.isin(s),'PIN']=btemp4f1_1.PIN.str.replace('V2','V3')
+renames=dict(zip(cruchaga,redcap))
+ff=b6.rename(columns=renames)
+#lab confirmed nightmare typo
+ff.loc[ff.PIN=='HCA6670479_V2','PIN']='HCA6670479_V3'
+
+aabcidvisits['PIN']=aabcidvisits['subject']+"_"+aabcidvisits['redcap_event']
+batch6=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='right')#.drop(columns=['PIN'])
+batch6.to_csv(outp+"tmp2/batch6/"+'Batch6_forUpload.csv',index=False)
+
+# batch 6 b
+# HCA8379495_V3
+#batch6
+folder="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/tmp2/batch6/"
+fileb="HCA8379495.xlsx"
+sheet="Sheet1"
+btemp2=pd.read_excel(folder+fileb, sheet_name=sheet)[['Time Point','ID','Test','Results']]
+btemp2['PIN']=btemp2['ID'].str.strip()+'_'+btemp2['Time Point'].str.strip()
+b6=pd.DataFrame(columns={'PIN'})
+for i in list(btemp2.Test.unique()):
+    try:
+        part = btemp2.loc[btemp2.Test==i]
+        part=part.rename(columns={'Results':i})
+        part=part.drop(columns=['Test','Time Point','ID'])
+        b6=pd.merge(b6,part,on=['PIN'],how='outer')
+    except:
+        print('error with',i)
+
+cruchaga=['Cortisol', 'Estradiol, e601', 'Follicle-Stimulating Hormone',
+       'Insulin', 'Luteinizing Hormone', 'Testosterone', 'Vitamin D', 'HbA1c',
+       'Albumin', 'Alk Phos, Total', 'ALT (SGPT)', 'AST (SGOT)', 'Calcium',
+       'Chloride', 'CO2 Content', 'Creatinine', 'Direct HDL Cholesterol',
+       'Friedewald LDL Chol', 'Glucose', 'HS C-Reactive Prot',
+       'Non-HDL Cholesterol', 'Potassium', 'Sodium', 'Total Bilirubin',
+       'Total Cholesterol', 'Total Protein', 'Triglycerides', 'Urea Nitrogen']
+
+redcap= ['cortisol','estradiol','fsh',
+         'insulin', 'lh','testosterone',    'vitamind', 'hba1c',
+         'albumin' ,'alkphos_total',  'alt_sgpt','ast_sgot',   'calcium',
+         'chloride',  'co2content', 'creatinine','hdl',
+         'friedewald_ldl', 'glucose', 'hscrp',
+         'non-hdl',  'potassium','sodium','totalbilirubin',
+         'cholesterol', 'totalprotein',  'triglyceride',     'ureanitrogen']
 
 ##typos
 #s=['HCA7700265_V2','HCA8712883_V2']
 #btemp4f1_1.loc[btemp4f1_1.PIN.isin(s),'PIN']=btemp4f1_1.PIN.str.replace('V2','V3')
+renames=dict(zip(cruchaga,redcap))
+ff=b6.rename(columns=renames)
 
+aabcidvisits['PIN']=aabcidvisits['subject']+"_"+aabcidvisits['redcap_event']
+batch6b=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='right')#.drop(columns=['PIN'])
+batch6b.to_csv(outp+"tmp2/batch6/"+'Batch6b_forUpload.csv',index=False)
 
 
 #sheet="Modified"
 #btemp4f2=pd.read_excel(outp+"batch4/"+batch4file2, sheet_name=sheet)[['Combo','Test','Result']]
 #btemp4f2=btemp4f2.rename(columns={'Combo':'PIN'})
 #btemp4f2=btemp4f2.loc[btemp4f2.PIN.isnull()==False]
+
+
+##########
+#Batch 7
+folder="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/tmp2/batch7/"
+fileb="Box 9120 A-B, E-K Cruchaga_Corrected.xlsx"
+sheet="Modified"
+btemp2=pd.read_excel(folder+fileb, sheet_name=sheet)[['TimePoint+ID','Test','Results']]
+btemp2['PIN']=btemp2['TimePoint+ID'].str.strip()
+
+#btemp2['PIN']=btemp2['ID'].str.strip()+'_'+btemp2['Time Point'].str.strip()
+b7=pd.DataFrame(columns={'PIN'})
+for i in list(btemp2.Test.unique()):
+    try:
+        part = btemp2.loc[btemp2.Test==i]
+        part=part.rename(columns={'Results':i})
+        part=part.drop(columns=['Test','TimePoint+ID'])
+        b7=pd.merge(b7,part,on=['PIN'],how='outer')
+    except:
+        print('error with',i)
+
+cruchaga=['DHEA-S', 'Albumin', 'Alk Phos, Total', 'ALT (SGPT)',
+       'AST (SGOT)', 'Calcium', 'Chloride', 'CO2 Content', 'Creatinine',
+       'Direct HDL Cholesterol', 'Friedewald LDL Chol', 'Glucose',
+       'HS C-Reactive Prot', 'Non-HDL Cholesterol', 'Potassium', 'Sodium',
+       'Total Bilirubin', 'Total Cholesterol', 'Total Protein',
+       'Triglycerides', 'Urea Nitrogen', 'Cortisol', 'Estradiol, e601',
+       'Follicle-Stimulating Hormone', 'Insulin', 'Luteinizing Hormone',
+       'Testosterone', 'Vitamin D', 'HbA1c']
+
+redcap= ['dheas','albumin' ,'alkphos_total',  'alt_sgpt',
+         'ast_sgot',   'calcium','chloride',  'co2content', 'creatinine',
+         'hdl','friedewald_ldl', 'glucose',
+         'hscrp','non-hdl',  'potassium','sodium',
+         'totalbilirubin',  'cholesterol', 'totalprotein',
+         'triglyceride',     'ureanitrogen','cortisol','estradiol',
+         'fsh', 'insulin', 'lh',
+         'testosterone',    'vitamind', 'hba1c']
+
+##typos
+#s=['HCA7700265_V2','HCA8712883_V2']
+#btemp4f1_1.loc[btemp4f1_1.PIN.isin(s),'PIN']=btemp4f1_1.PIN.str.replace('V2','V3')
+renames=dict(zip(cruchaga,redcap))
+ff=b7.rename(columns=renames)
+
+aabcidvisits['PIN']=aabcidvisits['subject']+"_"+aabcidvisits['redcap_event']
+batch7=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='right')#.drop(columns=['PIN'])
+#batch7=pd.merge(aabcidvisits[['PIN','redcap_event_name','study_id']],ff,on=['PIN'],how='outer',indicator=True)#.drop(columns=['PIN'])
+reordercol=['study_id','redcap_event_name']+[a for a in batch7.columns if a !='redcap_event_name' and a !='study_id']
+batch7[reordercol].drop(columns=['PIN','non-hdl']).to_csv(outp+"tmp2/batch7/"+'Batch7_forUpload.csv',index=False)
+
+##########
