@@ -1,6 +1,6 @@
 import pandas as pd
-#import yaml
-#import ccf
+import yaml
+import ccf
 from ccf.box import LifespanBox
 #import requests
 import re
@@ -9,19 +9,23 @@ import collections
 #import functions
 from config import *
 #import subprocess
-#import os
-#import sys
+import os
+import sys
 from datetime import date
 
 ## get configuration files
+print('getting creds')
+
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
 config = LoadSettings("/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/config.yml")
 secret=pd.read_csv(config['config_files']['secrets'])
+print('connecting to box')
+
 box = LifespanBox(cache=outp)
 scratch=205351313707
 
 #scan BOX
-folderqueue=['UMN','WU','MGH','UCLA']
+folderqueue=['UMN','WU','MGH']#,'UCLA']
 actdata=[]
 #studyshort='WU'
 for studyshort in folderqueue:
@@ -35,6 +39,7 @@ for studyshort in folderqueue:
     actsubs=[]
     for fid in dbitems.fileid:
         try:
+            print('looking for id')
             patrn = 'Identity'
             f=box.downloadFile(fid, download_dir="tmp", override_if_exists=False)
             print(f)
