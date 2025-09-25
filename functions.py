@@ -66,6 +66,16 @@ def idvisits(aabcarmsdf,keepsies):
     idvisit = idvisit.loc[~(idvisit.subject.astype(str).str.upper().str.contains('TEST'))]
     return idvisit
 
+def rollup(aabcarmsdf):
+    idvisit=aabcarmsdf.copy()
+    registers=idvisit.loc[idvisit.redcap_event_name.str.contains('register')][['subject_id','study_id']]
+    idvisit=pd.merge(registers,idvisit,on='study_id',how='right')
+    idvisit=idvisit.rename(columns={'subject_id_x':'subject','subject_id_y':'subject_id'})
+    idvisit['redcap_event']=idvisit.replace({'redcap_event_name':
+                                           config['Redcap']['datasources']['aabcarms']['AABCeventmap']})['redcap_event_name']
+    idvisit = idvisit.loc[~(idvisit.subject.astype(str).str.upper().str.contains('TEST'))]
+    return idvisit
+
 def rollforward(aabcarmsdf,variable,event_start):
     varinit=aabcarmsdf[['subject',variable,'redcap_event']]
     print(varinit.shape)
@@ -118,6 +128,47 @@ def parse_content(content):
             new_row.append(value)
 
     return new_row
+
+def parse_contentAppUpgrade(content):
+    #section_headers = [
+    #    'Subtest,,Raw score',
+    #    'Subtest,,Scaled score',
+    #    'Subtest,Type,Total',  # this not in aging or RAVLT
+    #    'Subtest,,Completion Time (seconds)',
+    #    'Subtest,Type,Yes/No',
+    #    'Item,,Raw score'
+    #]
+    section_headers = [
+        'Subtest,,Raw score',
+        'Subtest,,Scaled score',
+        'Subtest,,Completion Time (seconds)',
+        'Subtest,Type,Yes/No',
+        'Item,,Raw score'
+    ]
+    # Last section header is repeat data except for RAVLT
+    if 'RAVLT' in content:
+        section_headers.append('Scoring Type,,Scores')
+
+    new_row = []
+    capture_flag = False
+    for row in content.splitlines():
+        row = row.strip(' "')
+        if row in section_headers:
+            capture_flag = True
+            #print(row)
+
+        elif row == '':
+            capture_flag = False
+
+        elif capture_flag:
+            value = row.split(',')[-1].strip()
+
+            if value == '-':
+                value = ''
+            new_row.append(value)
+
+    return new_row
+
 
 def send_frame(dataframe, tok):
     data = {
@@ -482,10 +533,10 @@ def subsetfreeze(df,strname,listfreeze,byPIN=True,bySUB=False):
 
 def getASA(client,folderqueue):
     Totals = pd.DataFrame();
-    #TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
+    TNS = pd.DataFrame(); INS = pd.DataFrame(); TS = pd.DataFrame(); Totals = pd.DataFrame(); Items = pd.DataFrame(); Resp = pd.DataFrame()
     allsubdb = pd.DataFrame(); CORRUPT=pd.DataFrame();ALLSUBS=pd.DataFrame();
     BIGGESTTotals = pd.DataFrame();
-    #BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
+    BIGGESTTNS = pd.DataFrame(); BIGGESTINS = pd.DataFrame(); BIGGESTTS = pd.DataFrame(); BIGGESTTotals = pd.DataFrame(); BIGGESTItems = pd.DataFrame(); BIGGESTResp = pd.DataFrame()
 
     for studyshort in folderqueue:
         print("Study:",studyshort)
@@ -498,39 +549,48 @@ def getASA(client,folderqueue):
                 subsubfolders = folder_files(client, [i])
                 for j in subsubfolders:  # [0:3]:
                     subfilelist = box.list_of_files([j])
-                    f = client.folder(folder_id=j).get()
-                    subdb = pd.DataFrame(subfilelist).transpose()
-                    subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
-                    print(studyshort+":"+j)
-                    allsubdb = allsubdb.append(subdb)
+                    try:
+                        f = client.folder(folder_id=j).get()
+                        subdb = pd.DataFrame(subfilelist).transpose()
+                        subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+                        print(studyshort+":"+j)
+                        allsubdb = allsubdb.append(subdb)
+                    except:
+                        print('could not process ',str(j))
             else:
                 subfilelist = box.list_of_files([i])
-                f = client.folder(folder_id=i).get()
-                subdb = pd.DataFrame(subfilelist).transpose()
-                subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
-                allsubdb = allsubdb.append(subdb)
+                try:
+                    f = client.folder(folder_id=i).get()
+                    subdb = pd.DataFrame(subfilelist).transpose()
+                    subdb['PIN'] = str(f)[str(f).find('HC'):str(f).find('HC') + 13].strip(' ')
+                    allsubdb = allsubdb.append(subdb)
+                except:
+                    pass
         ALLSUBS = ALLSUBS.append(allsubdb)
         print("shape", ALLSUBS.shape)
-        #dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()
-        #dbitemsINS = allsubdb.loc[allsubdb.filename.str.contains('INS')].copy()
-        #dbitemsTS = allsubdb.loc[allsubdb.filename.str.contains('TS')].copy()
+        dbitemsTNS = allsubdb.loc[allsubdb.filename.str.contains('TNS')].copy()
+        dbitemsINS = allsubdb.loc[allsubdb.filename.str.contains('INS')].copy()
+        dbitemsTS = allsubdb.loc[allsubdb.filename.str.contains('TS')].copy()
         dbitemsTotals = allsubdb.loc[allsubdb.filename.str.contains('Totals')].copy()
-        #dbitemsItems = allsubdb.loc[allsubdb.filename.str.contains('Items')].copy()
-        #dbitemsResp = allsubdb.loc[allsubdb.filename.str.contains('Responses')].copy()
-        #TNS = TNS.append(dbitemsTNS)
-        #INS = INS.append(dbitemsINS)
-        #TS = TS.append(dbitemsTS)
-        Totals = Totals.append(dbitemsTotals)
-        #Items = Items.append(dbitemsItems)
-        #Resp = Resp.append(dbitemsResp)
+        dbitemsItems = allsubdb.loc[allsubdb.filename.str.contains('Items')].copy()
+        dbitemsResp = allsubdb.loc[allsubdb.filename.str.contains('Responses')].copy()
+        try:
+            TNS = TNS.append(dbitemsTNS)
+            INS = INS.append(dbitemsINS)
+            TS = TS.append(dbitemsTS)
+            Totals = Totals.append(dbitemsTotals)
+            Items = Items.append(dbitemsItems)
+            Resp = Resp.append(dbitemsResp)
+        except:
+            pass
 
         Corrupted1 = pd.DataFrame();Corrupted2 = pd.DataFrame();Corrupted3 = pd.DataFrame();Corrupted4 = pd.DataFrame();Corrupted5 = pd.DataFrame();Corrupted6 = pd.DataFrame();
         BigTotals = pd.DataFrame()
-        #BigItems = pd.DataFrame()
-        #BigResp = pd.DataFrame()
-        #BigTNS = pd.DataFrame()
-        #BigINS = pd.DataFrame()
-        #BigTS = pd.DataFrame()
+        BigItems = pd.DataFrame()
+        BigResp = pd.DataFrame()
+        BigTNS = pd.DataFrame()
+        BigINS = pd.DataFrame()
+        BigTS = pd.DataFrame()
 
         for f in list(Totals.fileid):
             try:
@@ -543,78 +603,78 @@ def getASA(client,folderqueue):
                 #corrupt['f'] = f
                 #corrupt['PIN'] = Totals.loc[Totals.fileid == f, "PIN"][0]
                 #Corrupted1 = Corrupted1.append(corrupt)
-        #for f in Items.fileid:
-        #    try:
-        #        k = box.read_csv(f)
-        #        if not k.empty:
-        #            k['PIN']= Items.loc[Items.fileid == f, "PIN"][0]
-        #            BigItems = BigItems.append(k)
-        #    except:
-        #        print("Couldn't read", f)
-        #        #corrupt['f'] = f
-        #        #corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
-        #        #Corrupted2 = Corrupted2.append(corrupt)
-        #for f in Resp.fileid:
-        #    try:
-        #        k = box.read_csv(f)
-        #        if not k.empty:
-        #            k['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
-        #            BigResp = BigResp.append(k)
-        #    except:
-        #        print("Couldn't read", f)
-        #        #corrupt['f'] = f
-        #        #corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
-        #        #Corrupted3 = Corrupted3.append(corrupt)
-        #for f in TNS.fileid:
-        #    try:
-        #        k = box.read_csv(f)
-        #        if not k.empty:
-        #            k['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
-        #            BigTNS = BigTNS.append(k)
-        #    except:
-        #        print("Couldn't read", f)
-        #        #corrupt['f'] = f
-        #        #corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
-        #        #Corrupted4 = Corrupted4.append(corrupt)
-        #for f in INS.fileid:
-        #    try:
-        #        k = box.read_csv(f)
-        #        if not k.empty:
-        #            k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
-        #            BigINS = BigINS.append(k)
-        #    except:
-        #        print("Couldn't read", f)
-        #        #corrupt['f'] = f
-        #        #corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
-        #        #Corrupted5 = Corrupted5.append(corrupt)
-        #for f in TS.fileid:
-        #    try:
-        #        k = box.read_csv(f)
-        #        if not k.empty:
-        #            k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
-        #            BigTS = BigTS.append(k)
-        #    except:
-        #        print("Couldn't read", f)
-        #        #corrupt['f'] = f
-        #        #corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
-        #        #Corrupted6 = Corrupted6.append(corrupt)
-        ##CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
-        ##print("Study:", studyshort)
+        for f in Items.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN']= Items.loc[Items.fileid == f, "PIN"][0]
+                    BigItems = BigItems.append(k)
+            except:
+                print("Couldn't read", f)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = Items.loc[Items.fileid == f, "PIN"][0]
+                #Corrupted2 = Corrupted2.append(corrupt)
+        for f in Resp.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+                    BigResp = BigResp.append(k)
+            except:
+                print("Couldn't read", f)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = Resp.loc[Resp.fileid == f, "PIN"][0]
+                #Corrupted3 = Corrupted3.append(corrupt)
+        for f in TNS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+                    BigTNS = BigTNS.append(k)
+            except:
+                print("Couldn't read", f)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = TNS.loc[TNS.fileid == f, "PIN"][0]
+                #Corrupted4 = Corrupted4.append(corrupt)
+        for f in INS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+                    BigINS = BigINS.append(k)
+            except:
+                print("Couldn't read", f)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = INS.loc[INS.fileid == f, "PIN"][0]
+                #Corrupted5 = Corrupted5.append(corrupt)
+        for f in TS.fileid:
+            try:
+                k = box.read_csv(f)
+                if not k.empty:
+                    k['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+                    BigTS = BigTS.append(k)
+            except:
+                print("Couldn't read", f)
+                #corrupt['f'] = f
+                #corrupt['PIN'] = TS.loc[TS.fileid == f, "PIN"][0]
+                #Corrupted6 = Corrupted6.append(corrupt)
+        #CORRUPT = pd.concat([CORRUPT,Corrupted1,Corrupted2,Corrupted3,Corrupted4,Corrupted5,Corrupted6],axis=0)
+        #print("Study:", studyshort)
         if not BigTotals.empty:
             BIGGESTTotals=BIGGESTTotals.append(BigTotals)
-        #if not BigItems.empty:
-        #    BIGGESTItems = BIGGESTItems.append(BigItems)
-        #if not BigTNS.empty:
-        #    BIGGESTTNS=BIGGESTTNS.append(BigTNS)
-        #if not BigINS.empty:
-        #    BIGGESTINS = BIGGESTINS.append(BigINS)
-        #if not BigTS.empty:
-        #    BIGGESTTS = BIGGESTTS.append(BigTS)
-        #if not BigResp.empty:
-        #    BIGGESTResp = BIGGESTResp.append(BigResp)
+        if not BigItems.empty:
+            BIGGESTItems = BIGGESTItems.append(BigItems)
+        if not BigTNS.empty:
+            BIGGESTTNS=BIGGESTTNS.append(BigTNS)
+        if not BigINS.empty:
+            BIGGESTINS = BIGGESTINS.append(BigINS)
+        if not BigTS.empty:
+            BIGGESTTS = BIGGESTTS.append(BigTS)
+        if not BigResp.empty:
+            BIGGESTResp = BIGGESTResp.append(BigResp)
 
-    return ALLSUBS, BIGGESTTotals
-    #return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS
+    #return ALLSUBS, BIGGESTTotals
+    return ALLSUBS, BIGGESTTotals,BIGGESTItems,BIGGESTResp,BIGGESTTS,BIGGESTTNS,BIGGESTINS
 
 #PRESTONs ASA_3
 def getASA_3(client, folderqueue):
@@ -809,3 +869,23 @@ def swapmeds(oldDF, medmap, medvarlist):
         DP[m] = DP[m].str.upper().str.strip().map(medmap)
         print(m,'after clean:',str(len(DP[m].unique())))
     return DP
+
+def catmeds(cleanmeds,medcat, medvarlist):
+    cleanmeds=cleanmeds.replace(np.nan,"").astype(str)
+    df=cleanmeds.copy()
+    with open(medcat, "r") as f:
+        drug_classes = json.load(f)
+
+    # First, make all med columns uppercase strings
+    for i in medvarlist:
+        df[i] = df[i].astype(str).str.upper().str.strip()
+    # Initialize drug class columns with 0
+    for drug_class in drug_classes.keys():
+        df[drug_class] = 0
+    # Loop through each med column and update counts
+    for i in medvarlist:
+        col = i
+        for drug_class, meds in drug_classes.items():
+            meds_upper = set(m.upper() for m in meds)
+            df[drug_class] += df[col].apply(lambda x: 1 if x in meds_upper else 0)
+    return df

@@ -10,6 +10,7 @@ import shutil
 from datetime import date
 from config import *
 import numpy as np
+import json
 from functions import *
 import numpy as np
 from pandas.api import types as pdt
@@ -25,6 +26,8 @@ medmap="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavio
 medmap1=pd.read_csv(medmap,sep=':',quotechar="'",header=None)
 medmap1.columns=['old','new']
 meddict=medmap1.set_index('old')['new'].to_dict()
+medcat="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/medCats.json" #a dictionary
+
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
 JohnF2='340446712733'
 PRCfolder='340425049927'
@@ -337,10 +340,13 @@ HCAdf5=consolidate_prefixed(HCAdf5,"fp_",iadlfp, drop_prefixed=True)
 ##HCAdf3[['subject','redcap_event']+[a for a in HCAdf3.columns if 'med' in a]].to_csv('testmeds.csv',index=False)
 #export meds for cleanup
 HCAdf5meds=HCAdf5.loc[HCAdf5.redcap_event.isin(['V1','V2','V3','V4'])][['subject','redcap_event']+[f"med{i}" for i in range(1, 16)]].copy()
+
+#meddict is a dictionary that was read in from a csv file of unique misspellings of medications and their clean names
 cleanmeds=swapmeds(HCAdf5meds, meddict, [f"med{i}" for i in range(1, 16)])
-cleanmeds.head()
-cleanmeds=cleanmeds.replace(np.nan,"")
-cleanmeds.to_csv(os.path.join(outp,"Freeze2_HCA-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
+#medcat is an actual json file
+df=catmeds(cleanmeds,medcat, [f"med{i}" for i in range(1, 16)])
+
+df.to_csv(os.path.join(outp,"Freeze2_HCA-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
 box.upload_file(os.path.join(outp,"Freeze2_HCA-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'), PRCfolder)
 
 HCAdf5.to_csv(os.path.join(outp,"HCA-RedCap_Processing_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
@@ -395,12 +401,14 @@ afu=pd.read_csv(box.downloadFile('1993837828756'),low_memory=False).rename(colum
 REDCapAABC5=pd.merge(REDCapAABC4,afu,on=['id','redcap_event_name'],how='left')
 
 REDCapAABC5meds=REDCapAABC5.loc[REDCapAABC5.redcap_event.isin(['V1','V2','V3','V4'])][['subject','redcap_event']+[f"med{i}" for i in range(1, 16)]].copy()
+#meddict is a dictionary that was read in from a csv file of unique misspellings of medications and their clean names
 cleanmedsA=swapmeds(REDCapAABC5meds, meddict, [f"med{i}" for i in range(1, 16)])
-cleanmedsA.head()
 cleanmedsA=cleanmedsA.replace(np.nan,"")
-cleanmedsA.to_csv(os.path.join(outp,"Freeze2_AABC-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
-box.upload_file(os.path.join(outp,"Freeze2_AABC-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'), PRCfolder)
 
+#medcat is an actual json file
+df=catmeds(cleanmedsA,medcat, [f"med{i}" for i in range(1, 16)])
+df.to_csv(os.path.join(outp,"Freeze2_AABC-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
+box.upload_file(os.path.join(outp,"Freeze2_AABC-Clean-Medications_"+ date.today().strftime("%Y-%m-%d") + '.csv'), PRCfolder)
 
 REDCapAABC5.to_csv(os.path.join(outp,"AABC-RedCap_Processing_"+ date.today().strftime("%Y-%m-%d") + '.csv'),index=False)
 box.upload_file(os.path.join(outp,"AABC-RedCap_Processing_"+ date.today().strftime("%Y-%m-%d") + '.csv'), PRCfolder)
