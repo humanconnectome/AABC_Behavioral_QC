@@ -9,7 +9,7 @@
 #4129-101	v2_inperson_arm_8
 #4129-134	v2_inperson_arm_6
 #4130-8	v3_inperson_arm_2
-
+PRCfolder='340425049927'
 # %%
 import pandas as pd
 from ccf.box import LifespanBox
@@ -30,9 +30,12 @@ DNR = ["HCA7787304_V1", "HCA6276071_V1", "HCA6229365_V1", "HCA9191078_V1", "HCA6
 #These guys accidentally recruited as V2
 v2oops=['HCA6686191','HCA7296183']
 
+
 # %%
 ## get configuration files
 outp="/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/tmp/"
+raiyanfile=outp+"cobracommentsJuly2025.csv"
+
 config = LoadSettings()
 secret=pd.read_csv(config['config_files']['secrets'])
 intradb=pd.read_csv(config['config_files']['PCP'])
@@ -99,6 +102,11 @@ aabcreport = redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset
 
 #download the inventory report from AABC for comparison
 aabcinvent=getframe(struct=aabcreport,api_url=config['Redcap']['api_url10'])
+failscreen=list(aabcinvent.loc[(aabcinvent.passedscreen.isin(['0'])) & (aabcinvent.subject_id!='')]['subject_id'])
+
+
+
+
 
 # %%
 #find subjectts who have completed a visit and are not DNR - save for later
@@ -303,16 +311,16 @@ result = fipscheck[missing_fips_mask & collectyn_mask]
 resultfips=pd.concat([result,wonkyfips],axis=0)
 resultfips=resultfips.loc[resultfips.redcap_event_name.str.contains('register')]
 
-if not resultfips.empty:
-    resultfips['reason']='Geocoder info for FIPS is missing or contains unexpected data'
-    resultfips['code']='RED'
-    resultfips['issueCode'] = 'AE1001'
-    resultfips['datatype']='REDCap'
-    qlist7 = resultfips[['subject', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype','issueCode']]
-    qlist7 = qlist7.rename(columns={'subject':'subject_id'})
-    for s7 in list(resultfips['subject'].unique()):
-        if s7 !='':
-            print('CODE RED :',s7,': Geocoder info for FIPS is missing or contains unexpected data')
+#if not resultfips.empty:
+#    resultfips['reason']='Geocoder info for FIPS is missing or contains unexpected data'
+#    resultfips['code']='RED'
+#    resultfips['issueCode'] = 'AE1001'
+#    resultfips['datatype']='REDCap'
+#    qlist7 = resultfips[['subject', 'study_id', 'redcap_event_name', 'site','reason','code','v0_date','event_date','datatype','issueCode']]
+#    qlist7 = qlist7.rename(columns={'subject':'subject_id'})
+#    for s7 in list(resultfips['subject'].unique()):
+#        if s7 !='':
+#            print('CODE RED :',s7,': Geocoder info for FIPS is missing or contains unexpected data')#
 
 
 
@@ -327,10 +335,6 @@ except:
 Q1=Q1.rename(columns={'subject_id':'subject'})
 Q1.event_date=Q1.v0_date
 Q1['redcap_event']='V0'
-#hca_lastvisits has redcap_event (event though its registration
-
-# %% [markdown]
-# ## Q interactive QC (hide for now)
 
 # %%
 #########################################################################################
@@ -361,7 +365,7 @@ if dups2.shape[0]>0:
     q0['issueCode']='AE5001'
 
 # %%
-inventoryaabc2=pd.merge(inventoryaabc,qintdf2.drop(columns=['site']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
+inventoryaabc2=pd.merge(inventoryaabc.drop(columns=['visit']),qintdf2.drop(columns=['site','redcap_data_access_group']),left_on=['subject','redcap_event'],right_on=['subjectid','redcap_event'],how='outer',indicator=True)
 q1=pd.DataFrame()
 if inventoryaabc2.loc[inventoryaabc2._merge=='right_only'].shape[0] > 0 :
     print("The following ID(s)/Visit(s) are not found in the main AABC-ARMS Redcap.  Please investigate")
@@ -379,20 +383,24 @@ inventoryaabc3=inventoryaabc2.loc[inventoryaabc2._merge!='right_only'].drop(colu
 unuse=getframe(struct=qintreport,api_url=config['Redcap']['api_url10'])[['subjectid','visit','q_unusable']]
 unuse['redcap_event']="V"+unuse.visit
 unuse=unuse.rename(columns={'subjectid':'subject'}).copy()
-#inventoryaabc3.drop(columns=['q_unusable']).merge(unuse,on=['subject','redcap_event'],how='left')
-inventoryaabc3 = inventoryaabc3.merge(unuse,on=['subject','redcap_event'],how='left')
+inventoryaabc3.drop(columns=['q_unusable','visit']).merge(unuse,on=['subject','redcap_event'],how='left')
+#inventoryaabc3 = inventoryaabc3.merge(unuse,on=['subject','redcap_event'],how='left')
 
+qcols=['subject','redcap_event','fileid','filename','sha1','created','assessment','visit','form','q_unusable','unusable_specify','common_complete','ravlt_two','ravlt_pea_ravlt_sd_tc','ravlt_delay_scaled','ravlt_delay_completion','ravlt_discontinue','ravlt_reverse','ravlt_pea_ravlt_sd_trial_i_tc','ravlt_pea_ravlt_sd_trial_ii_tc','ravlt_pea_ravlt_sd_trial_iii_tc','ravlt_pea_ravlt_sd_trial_iv_tc','ravlt_pea_ravlt_sd_trial_v_tc','ravlt_pea_ravlt_sd_listb_tc','ravlt_pea_ravlt_sd_trial_vi_tc','ravlt_recall_correct_trial1','ravlt_recall_correct_trial2','ravlt_recall_correct_trial3','ravlt_recall_correct_trial4','ravlt_delay_recall_correct','ravlt_delay_recall_intrusion','ravlt_delay_total_intrusion','ravlt_delay_total_repetitions']
+inventoryaabc3[qcols].loc[inventoryaabc3.redcap_event.str.contains('V')].to_csv(os.path.join(outp,"Qinteractive_processing_2025-09-11.csv"),index=False)
 
 # %%
 
 inventoryaabc3=inventoryaabc3.loc[~(inventoryaabc3.q_unusable_y=='1')].copy()
 
 # %%
-inventoryaabc3
+#inventoryaabc3
 
 # %%
-missingQ=inventoryaabc3.loc[(inventoryaabc3.redcap_event_name.str.contains('v')) & (~(inventoryaabc3.Qint=='YES')) & (~(inventoryaabc3.ravlt_collectyn=='0'))][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
+missingQ=inventoryaabc3.loc[(inventoryaabc3.redcap_event_name.str.contains('v')) & (~(inventoryaabc3.Qint=='YES')) & (~(inventoryaabc3.ravlt_collectyn=='0')) ][['subject_id','study_id','subject','redcap_event','site','event_date','ravlt_collectyn']]
 missingQ=missingQ.loc[~(missingQ.event_date=='')]
+missingQ=missingQ.loc[~(missingQ.subject=='')]
+
 q2=pd.DataFrame()
 if missingQ.shape[0]>0:
     print("Q-interactive cannot be found for")
@@ -413,7 +421,7 @@ Q2=pd.concat([Q0,q0,q1,q2],axis=0)
 Q2['subject_id']=Q2.subject
 
 # %%
-Q2
+#Q2
 
 # %%
 # TO DO: exclude the subjects marked as un-usable.
@@ -443,7 +451,7 @@ Q2
 # # 2. QC (after incorporating patches)
 # # 3. generate tickets and send to JIra if don't already exist
 # # 4. send tickets that arent identical to ones already in Jira
-# # 5. concatenate legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
+# # 5. CONCATENATE legit data (A scores file and a Raw file, no test subjects or identical duplicates -- no 'Narrow' or 'Registration' datasets)
 # # 6. create and send snapshot of patched data to BOX after dropping restricted variables
 
 # %%
@@ -500,6 +508,8 @@ dffull=dffull.loc[~(dffull.Inst.str.upper().str.contains('INSTRUCTIONS'))]
 rf2full=rf2full.loc[~(rf2full.Inst.str.upper().str.contains('PRACTICE'))]
 rf2full=rf2full.loc[~(rf2full.Inst.str.upper().str.contains('INSTRUCTIONS'))]
 
+inventoryaabc['PIN']=inventoryaabc.subject + "_" + inventoryaabc.redcap_event
+
 fixtypos=inventoryaabc.loc[~(inventoryaabc.nih_toolbox_upload_typo=="")]
 fixtypos.loc[~(fixtypos.nih_toolbox_upload_typo.str.upper().str.contains('NIGHTMARE'))]
 #NOW SWAP THE TYPOS FOR NON-NIGHTMARES
@@ -514,6 +524,8 @@ dfreg.PIN=dfreg.PIN.replace(fixes)
 print("Unique PINs in Data:",len(rf2full.PIN.unique()))
 print("Unique PINs in Scores:",len(dffull.PIN.unique()))
 print("Unique PINs in Registration:",len(dfreg.PIN.unique()))
+print("Unique PINs in all files combined:",len(set(list(rf2full.PIN.unique())+list(dffull.PIN.unique())+list(dfreg.PIN.unique()))))
+
 
 print("Data shape:",rf2full.shape)
 print("Scores shape",dffull.shape)
@@ -681,11 +693,13 @@ dffull=dffull.loc[~((dffull.PIN=="HCA7024655_V3") & (dffull.DeviceID==ipad2) & (
 rf2full=rf2full.loc[~((rf2full.PIN=="HCA7024655_V3") & (rf2full.DeviceID==ipad1) & (rf2full.Inst.isin(badinst1)))]
 rf2full=rf2full.loc[~((rf2full.PIN=="HCA7024655_V3") & (rf2full.DeviceID==ipad2) & (rf2full.Inst.isin(badinst2) ))]
 
+#a NIGHTMARE.  There were 2 assessment 3 HCA9247483_V2 for badinst1;
+#dffull=\
+dffull=dffull.loc[~((dffull.PIN=="HCA9247483_V2") & (dffull.Inst.isin(badinst1)) & (dffull.RawScore.isnull()==True) ) ]
+#no raw data asspcoated with scores
 #another oddity only exists in scores (app interruptions):
 dffull=dffull.loc[~((dffull.PIN=="HCA7841182_V1") & (dffull.Inst=="NIH Toolbox Words-In-Noise Test Age 6+ v2.1") & (dffull['Assessment Name'].isin(['Assessment 1','Assessment 2'])))].copy()
 #rf2full.loc[~((rf2full.PIN=="HCA7841182_V1") & (rf2full.Inst=="NIH Toolbox Words-In-Noise Test Age 6+ v2.1"))]# & (rf2full['Assessment Name'].isin(['Assessment 1','Assessment 2'])))]
-
-
 
 print("Data shape:",rf2full.shape)
 print("Scores shape",dffull.shape)
@@ -717,9 +731,9 @@ print("Scores shape",dffull.shape)
 print("Registration shape",dfreg.shape)
 
 #export temp copy:
-rf2full.to_csv("temp3_TLBX_RAW.csv",index=False)
-dffull.to_csv("temp3_TLBX_Scores.csv",index=False)
-dfreg.to_csv("temp3_TLBX_Registration.csv",index=False)
+rf2full.to_csv("Upload_Processing_TLBX_RAW.csv",index=False)
+dffull.to_csv("Upload_Processing_TLBX_Scores.csv",index=False)
+dfreg.to_csv("Upload_Processing_TLBX_Registration.csv",index=False)
 
 
 # %%
@@ -799,6 +813,10 @@ if cflag.shape[0]>0:
     print("Time elapsed between TLBX start and TLBX finished is greater than 22 days")
     print(tc[['PIN']])
 
+print("ignore HCA8889115_V3 (due to splitting tlbx collection between 3T and 7T visits) and HCA9854303_V4  (ipad glitch)")
+
+#these are checked and addressed
+
 # %%
 #add subject and visit
 df2=dffull.drop_duplicates(subset='PIN').copy()
@@ -808,7 +826,7 @@ df2['redcap_event']=df2.PIN.str.split("_",expand=True)[1]
 df2['TLBX']='YES'
 
 #now merge with inventory
-inventoryaabc4=pd.merge(inventoryaabc.drop(columns=['PIN']),df2[['subject','redcap_event','TLBX','PIN','site']].rename(columns={'site':'siteT'}),on=['subject','redcap_event'],how='outer',indicator=True)
+inventoryaabc4=pd.merge(inventoryaabc.drop(columns=['PIN']),df2[['subject','redcap_event','TLBX','PIN']],on=['subject','redcap_event'],how='outer',indicator=True)#.rename(columns={'site':'siteT'})
 
 #find PINS with length greater than 10
 tlong=pd.DataFrame()
@@ -833,7 +851,7 @@ if inventoryaabc4.loc[inventoryaabc4._merge=='right_only'].shape[0] > 0 :
     t2['issueCode']='AE1001'
     t2['datatype']='TLBX'
     print("The following TOOLBOX PINs are not found in the main AABC-ARMS Redcap.  Please investigate")
-    print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event','site','siteT']])
+    print(inventoryaabc4.loc[inventoryaabc4._merge=='right_only'][['PIN','subject','redcap_event','site']])
 t2b=pd.DataFrame()
 if df2.loc[df2.PIN.str.len()>13].shape[0] >0 :
     t2b=df2.loc[df2.PIN.str.len()>13].copy()
@@ -903,9 +921,26 @@ T.to_csv(outp+'ToolboxTix.csv',index=False)
 
 # %%
 #BIGGESTTotals=pd.read_csv(box.downloadFile(totals['fileid'][0]),low_memory=False,encoding='ISO-8859-1')
-BIGGESTTotals=pd.read_csv(outp+"temp_Totals.csv",low_memory=False)
+types = ['Totals', 'INS', 'TNS', 'Resp', 'Items', 'TTS']
+sites = ['MGH', 'UCLA', 'UMN', 'WU']
+
+dfs = {}  # dictionary to hold your results
+for j in types:
+    temp_dfs = []
+    for i in sites:
+        fname = os.path.join(outp, "ASA", f"{i}_temp_{j}.csv")
+        df_temp = pd.read_csv(fname, low_memory=False)
+        temp_dfs.append(df_temp)
+    dfs[j] = pd.concat(temp_dfs, axis=0, ignore_index=True)
+    fout = os.path.join(outp, "ASA", f"temp_{j}.csv")
+    dfs[j].to_csv(fout,index=False)
+    box.upload_file(fout,PRCfolder)
 
 # %%
+
+
+BIGGESTTotals=pd.read_csv(outp+"ASA/temp_Totals.csv",low_memory=False)
+
 BIGGESTTotals=BIGGESTTotals.loc[~(BIGGESTTotals.PIN.isnull()==True)]
 
 # %%
@@ -1026,42 +1061,129 @@ if misstype4.shape[0]>0:
 #move scan to cron
 
 # %%
-actigraphy=process_files.loc[(process_files.filename.str.contains('actigraphy'))].copy()
-actigraphy['datestamp']=actigraphy.filename.str.split('_',expand=True)[2]
-actigraphy['datatype']=actigraphy.filename.str.split('_',expand=True)[1]
-actigraphy=actigraphy.loc[(actigraphy.datestamp.str.contains('.csv')==True) & (actigraphy.datestamp.str.contains('-'))].copy()
-actigraphy.datestamp=actigraphy.datestamp.str.replace('.csv','')
-actigraphy.datestamp=pd.to_datetime(actigraphy.datestamp)
-actigraphy=actigraphy.sort_values('datestamp',ascending=False)
-actigraphy=actigraphy.drop_duplicates(subset='datatype',keep='first').copy()
+#actigraphy=process_files.loc[(process_files.filename.str.contains('actigraphy'))].copy()
+#actigraphy['datestamp']=actigraphy.filename.str.split('_',expand=True)[2]
+#actigraphy['datatype']=actigraphy.filename.str.split('_',expand=True)[1]
+#actigraphy=actigraphy.loc[(actigraphy.datestamp.str.contains('.csv')==True) & (actigraphy.datestamp.str.contains('-'))].copy()
+#actigraphy.datestamp=actigraphy.datestamp.str.replace('.csv','')
+#actigraphy.datestamp=pd.to_datetime(actigraphy.datestamp)
+#actigraphy=actigraphy.sort_values('datestamp',ascending=False)
+#actigraphy=actigraphy.drop_duplicates(subset='datatype',keep='first').copy()
 
 # %%
-actigraphy
+#actigraphy
 
 # %%
-actdatat=pd.read_csv(box.downloadFile(actigraphy['fileid'][0]),low_memory=False,encoding='ISO-8859-1')
-actdata=actdatat.PIN.to_list()
+#actdatat=pd.read_csv(box.downloadFile(actigraphy['fileid'][0]),low_memory=False,encoding='ISO-8859-1')
+actdatat=pd.read_csv(outp+'temp_actigraphy.csv',low_memory=False,encoding='ISO-8859-1')#[['PIN','watch','site','D','other']]
+actdatat=actdatat.drop_duplicates()
+actdatat=actdatat.loc[~(actdatat.PIN.isnull()==True)]
+def collapse_watch(watch_series):
+    unique_vals = watch_series.unique()
+    if len(unique_vals) > 1:
+        return 'BOTH'
+    else:
+        return unique_vals[0]
 
+collapsed = actdatat.groupby('PIN').agg({
+    'watch': collapse_watch,
+    'site': 'first',
+    'D': 'first'
+}).reset_index()
+
+
+
+#actdata=list(actdatat.PIN.unique())#.to_list()
 # %%
-#actdatat=pd.read_csv(outp+"temp_actigraphy.csv")
 #actdata=actdatat.PIN.to_list()
 
 # %%
 #Duplicates?
-if [item for item, count in collections.Counter(actdata).items() if count > 1] != '':
-    print('Duplicated Actigraphy Record Found:',[item for item, count in collections.Counter(actdata).items() if count > 1])
+#if [item for item, count in collections.Counter(actdata).items() if count > 1] != '':
+#    print('Duplicated Actigraphy Record Found:',[item for item, count in collections.Counter(actdata).items() if count > 1])
 
 # %%
-ActD=pd.DataFrame(actdata,columns=['PIN'])
+#ActD=pd.DataFrame(actdata,columns=['PIN']).drop_duplicates(subset='PIN')
+#ActD['Actigraphy']='YES'
+ActD=collapsed.copy()
 ActD['Actigraphy']='YES'
-#actigraphy_upload_typoyn
+
+#actigraphy_upload_typoyn - don't want to fix these on the fly - use as reference with COBRAs
+
 fixtypos=inventoryaabc.loc[inventoryaabc.actigraphy_upload_typo!=''][['subject','redcap_event','actigraphy_upload_typo']]
 fixtypos['PIN']=fixtypos.subject+'_'+fixtypos.redcap_event
-fixes=dict(zip(fixtypos.actigraphy_upload_typo, fixtypos.PIN))
-ActD.PIN=ActD.PIN.replace(fixes)
+fixtypos=fixtypos.loc[fixtypos.actigraphy_upload_typo!='NIGHTMARE']
+#temporarily turn off fixing to generate report for COBRA
+#fixes=dict(zip(fixtypos.actigraphy_upload_typo, fixtypos.PIN))
+#ActD.PIN=ActD.PIN.replace(fixes)
 
 # %%
-inventoryaabc2=pd.merge(inventoryaabc,ActD,on='PIN',how='left')
+inventoryaabc2=pd.merge(inventoryaabc,ActD.drop(columns=['site']),on='PIN',how='left')
+
+cobramerge=inventoryaabc2.loc[(inventoryaabc2.redcap_event_name.str.contains('v'))][['subject','redcap_event','site','actigraphy_collectyn','actigraphy_partial_1___1','actigraphy_upload_typo','camntech_yn','watch','D','Actigraphy']]
+cobramerge['Site']=cobramerge.site.replace({'1':'MGH','2':'UCLA','3':'UMN','4':'WashU'})
+cobramerge=cobramerge.drop(columns=['site'])
+
+cobramerge['FailedScreen']=''
+cobramerge.loc[cobramerge.subject.isin(failscreen),'FailedScreen']='YES'
+cobramerge.to_csv(outp+'test.csv')
+
+#get current Freeze expectation and merge in for COBRA inventory
+cobramergeFreeze=pd.read_csv("/Users/petralenzini/work/Behavioral/AABC/AABC_Behavioral_QC/AABC_Behavioral_QC/Union_HCA-AABC_Data-Freeze-2_id-events_2025-07-09.csv").drop(columns='Site')
+
+cobramergeFreezeforCobra=pd.merge(cobramerge,cobramergeFreeze,on=['subject','redcap_event'],how='outer',indicator=True)
+cobramergeFreezeforCobra._merge.value_counts()
+cobramergeFreezeforCobraAABC=cobramergeFreezeforCobra.loc[~(cobramergeFreezeforCobra.study=='HCA')].drop(columns=['race','age_visit','MRS_Freeze1','MRS_Collected','study','M/F','ethnic_group','age_bin'])
+cobramergeFreezeforCobraAABC._merge.value_counts()
+cobramergeFreezeforCobraAABC['AnyActigraphyDataCollected']=cobramergeFreezeforCobraAABC.actigraphy_collectyn.replace({'0':'No Data','1':'Device and Diary','2':'Partial'})
+#cobramergeFreezeforCobraAABC['DeviceDataCollected']=cobramergeFreezeforCobraAABC.actigraphy_partial_1___1.replace({'0':'','1':'YES','2':'Partial'})
+
+cobramergeFreezeforCobraAABC.loc[cobramergeFreezeforCobraAABC._merge=='left_only','Freeze']='After Freeze2 cutoff'
+cobramergeFreezeforCobraAABC['PIN']=cobramergeFreezeforCobraAABC.subject+'_'+cobramergeFreezeforCobraAABC.redcap_event
+cobramergeFreezeforCobraAABC.drop(columns=['_merge']).to_csv(outp+'testCobra.csv',index=False)
+
+#now load the COBRA results to see what is there
+Cobra=pd.DataFrame()
+for studyshort in ['UCLA','WUSM','MGH','UMN']:
+    box.downloadFile(config['NonQBox']['Cobras'][studyshort])
+    WUCobra=pd.read_excel("./tmp/"+studyshort+"_actig_all.xlsx",sheet_name='Sheet1')
+    x=list(WUCobra.columns)
+    z=[y.upper() for y in x]
+    WUCobra.columns=z
+    WUCobra=WUCobra.rename(columns={"PARTICIPANT ID":"PIN"})
+    WUCobra[['PIN','NIGHTS']]
+    WUCobra=WUCobra.loc[WUCobra.NIGHTS.isnull()==False].copy()
+    WUCobra['cobrasite']=studyshort
+    Cobra=pd.concat([Cobra,WUCobra])
+
+Cobra.cobrasite.value_counts()
+Cobra.head()
+Cobra['Cobra_Scored']='YES'
+cobramergeFreezeforCobraAABC_Scored=pd.merge(cobramergeFreezeforCobraAABC,Cobra[['PIN','Cobra_Scored']],on='PIN',how='left')
+
+clean=cobramergeFreezeforCobraAABC_Scored.drop(columns=['_merge','camntech_yn','Actigraphy','actigraphy_collectyn','actigraphy_partial_1___1','D'])
+clean['priority']=''
+clean.loc[clean.watch.isin((['PHILLIPS','CAMnTECH','BOTH'])) & (~(clean.Cobra_Scored=='YES')) & (~(clean.Freeze=='After Freeze2 cutoff')),'priority']=1
+
+reorder=['subject','redcap_event','Site','event_date','Freeze','ActD_Freeze1','watch','Cobra_Scored','AnyActigraphyDataCollected','actigraphy_upload_typo','FailedScreen','priority']
+#merge in known flags from Raiyan
+raiyan=pd.read_csv(raiyanfile)
+cleanraiyan=clean[reorder].merge(raiyan,on=['subject','redcap_event'],how='left')
+cleanraiyan.loc[cleanraiyan.bad_data==1.0,'priority']=''
+
+#merge in the diary info
+report = redreport(tok=secret.loc[secret.source=='aabcarms','api_key'].reset_index().drop(columns='index').api_key[0],reportid='100205')
+actdiary0=getframe(struct=report,api_url=config['Redcap']['api_url10'])
+actdiary1=rollup(actdiary0)
+actdiary2=actdiary1[[i for i in list(actdiary1.columns) if 'sad' not in i]+[i for i in list(actdiary1.columns) if 'sad' in i]]
+actdiary3=actdiary2.loc[actdiary2.redcap_event.isin(['V1','V2','V3','V4'])].drop(columns=['study_id','subject_id','redcap_event_name','redcap_data_access_group', 'visit6','actigraphy_complete'])
+actdiary4=actdiary3.drop(columns=['actigraphy_collectyn','actigraphy_upload_typo','actigraphy_upload_typoyn'])
+
+#final reorder
+reorderf=['subject','redcap_event','Site','event_date','Freeze','ActD_Freeze1','watch','Cobra_Scored','priority','comments','bad_data','AnyActigraphyDataCollected','camntech_yn','actigraphy_missreason','actigraphy_partial_1___1','actigraphy_partial_1___0','actigraphy_partial_1___2','actigraphy_partial_2___1','actigraphy_partial_2___0','actigraphy_partial_2___2','actigraphy_upload','actigraphy_upload_typo','actigraphy_upload_typo_details','actigraphy_upload_typo_s','actigraphy_upload_typo_u','general_note']
+clean4cobra=cleanraiyan.merge(actdiary4,on=['subject','redcap_event'],how='left')
+clean4cobra[reorderf+[o for o in clean4cobra.columns if 'sad' in o ]].to_csv(outp+'AABC_DataCurator_Actigraphy_Inventory.csv',index=False)
+
 
 #Missing  : add exception for partial missing
 missingAct=inventoryaabc2.loc[(inventoryaabc2.redcap_event_name.str.contains('v')) & (~(inventoryaabc2.Actigraphy=='YES'))]
@@ -1070,9 +1192,14 @@ missingAct.shape
 partials=missingAct.loc[ (missingAct.actigraphy_collectyn == '2' ) & (missingAct.actigraphy_partial_1___1.astype('int')==0)][['PIN','actigraphy_collectyn','subject','actigraphy_partial_1___1']]
 #don't want to include these guys in the list
 missingAct=missingAct.loc[~missingAct.PIN.isin(list(partials.PIN))]
+missingAct.shape
+
 #drop the ones that are definitely nos, too.
 missingAct=missingAct.loc[~(missingAct.actigraphy_collectyn == '0' )].copy()
+missingAct.shape
 
+#drop the ones that don't have subject ids
+missingAct=missingAct.loc[~((missingAct.subject=='') | (missingAct.event_date==''))]
 # %%
 a2=pd.DataFrame()
 if missingAct.shape[0]>0:
@@ -1098,17 +1225,17 @@ a2=a2[['subject_id','subject','redcap_event', 'study_id', 'redcap_event_name', '
 #dropsubj=["HCA9226374_V3"]
 
 # %%
-#Cobra=pd.DataFrame()
-#for studyshort in ['UCLA','WUSM','MGH','UMN']:
-    #box.downloadFile(config['NonQBox']['Cobras'][studyshort])
-    #WUCobra=pd.read_excel("./tmp/"+studyshort+"_actig_all.xlsx",sheet_name='Sheet1')
-    #x=list(WUCobra.columns)
-    #z=[y.upper() for y in x]
-    #WUCobra.columns=z
-    #WUCobra=WUCobra.rename(columns={"PARTICIPANT ID":"PIN"})
-    #WUCobra[['PIN','NIGHTS']]
-    #WUCobra=WUCobra.loc[WUCobra.NIGHTS.isnull()==False].copy()
-    #Cobra=pd.concat([Cobra,WUCobra])
+Cobra=pd.DataFrame()
+for studyshort in ['UCLA','WUSM','MGH','UMN']:
+    box.downloadFile(config['NonQBox']['Cobras'][studyshort])
+    WUCobra=pd.read_excel("./tmp/"+studyshort+"_actig_all.xlsx",sheet_name='Sheet1')
+    x=list(WUCobra.columns)
+    z=[y.upper() for y in x]
+    WUCobra.columns=z
+    WUCobra=WUCobra.rename(columns={"PARTICIPANT ID":"PIN"})
+    WUCobra[['PIN','NIGHTS']]
+    WUCobra=WUCobra.loc[WUCobra.NIGHTS.isnull()==False].copy()
+    Cobra=pd.concat([Cobra,WUCobra])
 
 # %%
 #For now just capture typos, since collection status is checked elsewhere
@@ -1441,24 +1568,24 @@ inventoryaabc.loc[inventoryaabc.redcap_event_name.astype('str').str.contains('re
 # Q1:mian check 
 # Q2:Q-interactive
 # a1,a11,a13,a14: ASA24
-# a2: antiscan
+# a2: actiscan
 # P: psychopy
 # C,summv,a,agemv,ageav,bmiv: key REDCap aabc
 # T: toolbox
 # Hot1,Hot2b: hotflash
 #QAAP=concat(Q1,C,summv,a, bmiv,T).drop(columns=['v0_date'])
-
+#QAAP=concat(a2).drop(columns=['v0_date'])
 #QAAP=concat(a1,a11,a13,a14).drop(columns=['v0_date'])
-#QAAP=concat(Q1).drop(columns=['v0_date'])
-QAAP=Q2.copy()
+QAAP=concat(Q2,T,a1,a11,a13,a14,C).drop(columns=['v0_date'])
+#QAAP=Q2.copy()
 
 # %%
 
-#Drop this screenfailure from inventory and issues:
+#Drop this screenfailure from inventory and issues
 #HCA6276071 V1
 #make sure screenfailures and DNR aren't included.
 #DNRsubs = ["HCA7787304", "HCA6276071", "HCA6229365", "HCA9191078", "HCA6863086","HCA9515381"]
-DNRsubs = ['HCA8151667','HCA7486188','HCA8421569','HCA8565694','HCA7665087','HCA8456790','HCA8476190','HCA7410559','HCA7908188','HCA6640672','HCA6223050','HCA6909286','HCA9061974','HCA9944304','HCA7030751','HCA9726192','HCA9662900','HCA9384089','HCA9833395','HCA7016050','HCA9017668','HCA9198294','HCA7996111','HCA9864811','HCA9071068','HCA9482089','HCA8187587','HCA8816592','HCA7982706','HCA7698204','HCA7256979','HCA7248879','HCA6570677','HCA8931693','HCA7106657','HCA6224355','HCA7291678','HCA6318465','HCA7316870','HCA7670989','HCA8532174','HCA9769211','HCA6143557','HCA8238275','HCA7153161','HCA7195884','HCA7385889','HCA9262277','HCA6785193','HCA9845403','HCA8363278','HCA6472071','HCA9154375','HCA7397391','HCA8232061','HCA7271369','HCA9449900','HCA6910372','HCA8378594','HCA7243263','HCA6631671','HCA9630684','HCA7891703','HCA6700664','HCA7025253','HCA7604067','HCA7738290','HCA7764594','HCA6791794','HCA9086990','HCA6421963','HCA8937807','HCA8912588','HCA9938309','HCA7655892','HCA7625176','HCA7382479','HCA8317675','HCA6120646','HCA7126663','HCA6946191','HCA8868915']
+DNRsubs = ['HCA8151667','HCA7486188','HCA8421569','HCA8565694','HCA7665087','HCA8456790','HCA8476190','HCA7410559','HCA7908188','HCA6640672','HCA6223050','HCA6909286','HCA9061974','HCA9944304','HCA7030751','HCA9726192','HCA9662900','HCA9384089','HCA9833395','HCA7016050','HCA9017668','HCA9198294','HCA7996111','HCA9864811','HCA9071068','HCA9482089','HCA8187587','HCA8816592','HCA7982706','HCA7698204','HCA7256979','HCA7248879','HCA6570677','HCA8931693','HCA7106657','HCA6224355','HCA7291678','HCA6318465','HCA7316870','HCA7670989','HCA8532174','HCA9769211','HCA6143557','HCA8238275','HCA7153161','HCA7195884','HCA7385889','HCA9262277','HCA6785193','HCA9845403','HCA8363278','HCA6472071','HCA9154375','HCA7397391','HCA8232061','HCA7271369','HCA9449900','HCA6910372','HCA8378594','HCA7243263','HCA6631671','HCA9630684','HCA7891703','HCA6700664','HCA7025253','HCA7604067','HCA7738290','HCA7764594','HCA6791794','HCA9086990','HCA6421963','HCA8937807','HCA8912588','HCA9938309','HCA7655892','HCA7625176','HCA7382479','HCA8317675','HCA6120646','HCA7126663','HCA6946191','HCA8868915','HCA6224355']
 
 QAAP=QAAP.loc[~(QAAP.subject.isin(DNRsubs))].copy()
 QAAP=QAAP.loc[~(QAAP.event_date=='')].copy()
